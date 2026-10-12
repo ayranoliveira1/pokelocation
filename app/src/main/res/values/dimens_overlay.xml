@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Overlay (W1c): dimensões e estilos dos botões das janelas do joystick (só framework). -->
+<resources>
+    <dimen name="ov_stick_base">75dp</dimen>
+    <dimen name="ov_stick_knob">30dp</dimen>
+    <dimen name="ov_btn">40dp</dimen>
+    <dimen name="ov_btn_small">25dp</dimen>
+    <dimen name="ov_pill_btn">36dp</dimen>
+    <dimen name="ov_drop">75dp</dimen>
+    <dimen name="ov_gap">4dp</dimen>
+
+    <style name="ov_style_btn">
+        <item name="android:layout_width">@dimen/ov_btn</item>
+        <item name="android:layout_height">@dimen/ov_btn</item>
+        <item name="android:layout_margin">2dp</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:background">@drawable/ov_btn</item>
+        <item name="android:tint">@color/primary</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+    <style name="ov_style_btn_small">
+        <item name="android:layout_width">@dimen/ov_btn_small</item>
+        <item name="android:layout_height">@dimen/ov_btn_small</item>
+        <item name="android:layout_margin">2dp</item>
+        <item name="android:padding">4dp</item>
+        <item name="android:background">@drawable/ov_btn_small</item>
+        <item name="android:tint">@color/primary</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+    <style name="ov_style_pill_btn">
+        <item name="android:layout_width">@dimen/ov_pill_btn</item>
+        <item name="android:layout_height">@dimen/ov_pill_btn</item>
+        <item name="android:padding">7dp</item>
+        <item name="android:background">?android:attr/selectableItemBackgroundBorderless</item>
+        <item name="android:tint">@color/primary</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+</resources>

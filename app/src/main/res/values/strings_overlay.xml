@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ov_auto_suspend_in">Auto suspend\nin</string>
+    <string name="ov_seconds">%d s</string>
+    <string name="ov_route_progress">%1$d/%2$d</string>
+    <string name="ov_current_location">Current Location</string>
+    <string name="ov_add_to_favorites">Add to Favorites</string>
+    <string name="ov_add_to_route">Add To Route</string>
+    <string name="ov_add_to_marker">Add To Marker</string>
+    <string name="ov_teleport_to_location">Teleport To Location</string>
+    <string name="ov_cd_menu">Open or close the menu</string>
+    <string name="ov_cd_move">Move</string>
+    <string name="ov_cd_map">Map</string>
+    <string name="ov_cd_route_stop">Stop route</string>
+    <string name="ov_cd_route_pause">Pause or resume route</string>
+    <string name="ov_cd_route_prev">Previous waypoint</string>
+    <string name="ov_cd_route_next">Next waypoint</string>
+    <string name="ov_cd_record">Record route</string>
+    <string name="ov_cd_record_stop">Discard recording</string>
+    <string name="ov_cd_record_add">Add current location</string>
+    <string name="ov_cd_record_map">Open recording on the map</string>
+    <string name="ov_cd_record_save">Save recording</string>
+    <string name="ov_cd_save">Save current location</string>
+    <string name="ov_cd_hide">Hide or show the joystick</string>
+    <string name="ov_cd_lock">Lock joystick</string>
+    <string name="ov_cd_speed">Speed</string>
+    <string name="ov_cd_walk">Walk</string>
+    <string name="ov_cd_jog">Jog</string>
+    <string name="ov_cd_run">Run</string>
+    <string name="ov_cd_suspend">Inject location now</string>
+    <string name="ov_cd_joystick">Joystick</string>
+</resources>

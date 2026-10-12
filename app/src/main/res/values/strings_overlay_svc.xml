@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W1b (Farol): serviço do overlay, notificação e MockingActivity. -->
+<resources>
+    <string name="ov_svc_running">PokeLocation running…</string>
+    <string name="ov_svc_route_progress">Route: %1$d/%2$d</string>
+    <string name="ov_svc_tap_inject">Tap to inject location</string>
+    <string name="ov_svc_inject">Inject</string>
+    <string name="ov_svc_replay_title">PokeLocation action pending</string>
+    <string name="ov_svc_replay_text">Tap to start the joystick and run it.</string>
+    <string name="ov_svc_stop">Stop</string>
+    <string name="ov_svc_hide">Hide</string>
+    <string name="ov_svc_show">Show</string>
+    <string name="ov_svc_map">Map</string>
+    <string name="ov_svc_route_stop">Stop route</string>
+    <string name="ov_svc_pause">Pause</string>
+    <string name="ov_svc_resume">Resume</string>
+    <string name="ov_svc_next">Next waypoint</string>
+    <string name="ov_svc_route_load_error">Sorry, there was an error getting the list of routes.</string>
+    <string name="ov_mocking_title">Mocking Location</string>
+    <string name="ov_mocking_msg">This dialog is required for the Suspended Mocking option to allow mocking location on the latest Android version. You can disable this feature from Settings. This dialog will close automatically once the location has been mocked.</string>
+    <string name="ov_mocking_need_location">This requires Location permissions. Please enable the Location permission.</string>
+</resources>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Caixa "Auto suspend in N s" (Suspended, 11 §2.6). Incluída nas janelas do stick e do classic. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/ov_as_box" android:layout_width="wrap_content" android:layout_height="wrap_content"
+    android:layout_marginTop="@dimen/ov_gap" android:background="@drawable/ov_autosuspend_bg"
+    android:gravity="center_vertical" android:orientation="horizontal"
+    android:paddingStart="8dp" android:paddingTop="4dp" android:paddingEnd="4dp" android:paddingBottom="4dp"
+    android:visibility="gone">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/ov_auto_suspend_in" android:textColor="@android:color/white" android:textSize="9sp" />
+    <TextView android:id="@+id/ov_as_num" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginStart="4dp" android:textColor="@android:color/white" android:textSize="12sp"
+        android:textStyle="bold" />
+    <ImageView android:id="@+id/ov_as_close" android:layout_width="20dp" android:layout_height="20dp"
+        android:layout_marginStart="4dp" android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/close" android:padding="2dp" android:src="@drawable/ic_close"
+        android:tint="@android:color/white" />
+</LinearLayout>

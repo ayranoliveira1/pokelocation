@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tipo "drawer": janela do joystick (alça de mover + stick + caixa de auto suspend). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content" android:layout_height="wrap_content"
+    android:gravity="center_horizontal" android:orientation="vertical" android:padding="8dp">
+    <ImageView android:id="@+id/ov_move" style="@style/ov_style_btn_small"
+        android:contentDescription="@string/ov_cd_move" android:src="@drawable/ic_move" />
+    <com.pokelocation.app.overlay.ui.JoystickView android:id="@+id/ov_stick"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/ov_gap" android:contentDescription="@string/ov_cd_joystick" />
+    <include layout="@layout/ov_autosuspend" />
+</LinearLayout>

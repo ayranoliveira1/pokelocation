@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ov_svc_running">PokeLocation em execução…</string>
+    <string name="ov_svc_route_progress">Rota: %1$d/%2$d</string>
+    <string name="ov_svc_tap_inject">Toque para injetar a localização</string>
+    <string name="ov_svc_inject">Injetar</string>
+    <string name="ov_svc_replay_title">Ação do PokeLocation pendente</string>
+    <string name="ov_svc_replay_text">Toque para iniciar o joystick e executá-la.</string>
+    <string name="ov_svc_stop">Parar</string>
+    <string name="ov_svc_hide">Ocultar</string>
+    <string name="ov_svc_show">Mostrar</string>
+    <string name="ov_svc_map">Mapa</string>
+    <string name="ov_svc_route_stop">Parar rota</string>
+    <string name="ov_svc_pause">Pausar</string>
+    <string name="ov_svc_resume">Retomar</string>
+    <string name="ov_svc_next">Próximo ponto</string>
+    <string name="ov_svc_route_load_error">Desculpe, houve um erro ao obter a lista de rotas.</string>
+    <string name="ov_mocking_title">Simulando localização</string>
+    <string name="ov_mocking_msg">Este diálogo é necessário para a opção Simulação Suspensa simular a localização nas versões recentes do Android. Você pode desativar esse recurso nas Configurações. Ele fecha sozinho assim que a localização for simulada.</string>
+    <string name="ov_mocking_need_location">É necessária a permissão de Localização. Ative a permissão de Localização.</string>
+</resources>

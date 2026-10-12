@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tipo "drawer": gaveta de botões. Alça abre/fecha a coluna; pílulas expandem à direita do botão. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="8dp">
+    <ImageView android:id="@+id/ov_handle" style="@style/ov_style_btn"
+        android:background="@drawable/ov_handle" android:contentDescription="@string/ov_cd_menu"
+        android:src="@drawable/ic_menu" android:tint="@color/on_primary" />
+    <!-- Barra superior: suspend fica fora da coluna, visível sempre que suspended (11 §2.6). -->
+    <ImageView android:id="@+id/ov_suspend" style="@style/ov_style_btn"
+        android:contentDescription="@string/ov_cd_suspend" android:src="@drawable/ov_ic_suspend" android:visibility="gone" />
+    <LinearLayout android:id="@+id/ov_column" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:gravity="center_vertical" android:orientation="horizontal">
+            <ImageView android:id="@+id/ov_map" style="@style/ov_style_btn"
+                android:contentDescription="@string/ov_cd_map" android:src="@drawable/ic_map" />
+            <LinearLayout android:id="@+id/ov_route_pill" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/ov_gap" android:background="@drawable/ov_pill" android:gravity="center_vertical"
+                android:orientation="horizontal" android:paddingStart="6dp" android:paddingEnd="6dp" android:visibility="gone">
+                <ImageView android:id="@+id/ov_r_stop" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_route_stop" android:src="@drawable/ic_stop" android:tint="@color/danger" />
+                <ImageView android:id="@+id/ov_r_pause" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_route_pause" android:src="@drawable/ic_pause" />
+                <ImageView android:id="@+id/ov_r_prev" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_route_prev" android:src="@drawable/ic_skip_previous" />
+                <TextView android:id="@+id/ov_r_progress" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:minWidth="36dp" android:gravity="center" android:textColor="@color/on_surface" android:textSize="12sp" />
+                <ImageView android:id="@+id/ov_r_next" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_route_next" android:src="@drawable/ic_skip_next" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:gravity="center_vertical" android:orientation="horizontal">
+            <ImageView android:id="@+id/ov_record" style="@style/ov_style_btn" android:background="@drawable/ov_btn_danger"
+                android:contentDescription="@string/ov_cd_record" android:src="@drawable/ic_record" android:tint="@color/danger" />
+            <LinearLayout android:id="@+id/ov_rec_pill" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/ov_gap" android:background="@drawable/ov_pill" android:gravity="center_vertical"
+                android:orientation="horizontal" android:paddingStart="6dp" android:paddingEnd="6dp" android:visibility="gone">
+                <ImageView android:id="@+id/ov_rec_stop" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_record_stop" android:src="@drawable/ic_stop" android:tint="@color/danger" />
+                <ImageView android:id="@+id/ov_rec_add" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_record_add" android:src="@drawable/ic_add" />
+                <ImageView android:id="@+id/ov_rec_map" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_record_map" android:src="@drawable/ic_map" android:visibility="gone" />
+                <ImageView android:id="@+id/ov_rec_save" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_record_save" android:src="@drawable/ic_check" android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+        <ImageView android:id="@+id/ov_teleport" style="@style/ov_style_btn"
+            android:contentDescription="@string/teleport" android:src="@drawable/ic_target" />
+        <ImageView android:id="@+id/ov_save" style="@style/ov_style_btn"
+            android:contentDescription="@string/ov_cd_save" android:src="@drawable/ic_favorite" />
+        <ImageView android:id="@+id/ov_share" style="@style/ov_style_btn"
+            android:contentDescription="@string/share" android:src="@drawable/ic_share" />
+        <ImageView android:id="@+id/ov_eye" style="@style/ov_style_btn"
+            android:contentDescription="@string/ov_cd_hide" android:src="@drawable/ic_visibility" />
+        <ImageView android:id="@+id/ov_lock" style="@style/ov_style_btn"
+            android:contentDescription="@string/ov_cd_lock" android:src="@drawable/ic_lock_open" />
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:gravity="center_vertical" android:orientation="horizontal">
+            <ImageView android:id="@+id/ov_speed" style="@style/ov_style_btn"
+                android:contentDescription="@string/ov_cd_speed" android:src="@drawable/ic_walk" />
+            <LinearLayout android:id="@+id/ov_speed_pill" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/ov_gap" android:background="@drawable/ov_pill" android:gravity="center_vertical"
+                android:orientation="horizontal" android:paddingStart="6dp" android:paddingEnd="6dp" android:visibility="gone">
+                <ImageView android:id="@+id/ov_sp_walk" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_walk" android:src="@drawable/ic_walk" />
+                <ImageView android:id="@+id/ov_sp_jog" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_jog" android:src="@drawable/ic_jog" />
+                <ImageView android:id="@+id/ov_sp_run" style="@style/ov_style_pill_btn"
+                    android:contentDescription="@string/ov_cd_run" android:src="@drawable/ic_run" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

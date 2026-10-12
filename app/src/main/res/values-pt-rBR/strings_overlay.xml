@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ov_auto_suspend_in">Suspensão\nem</string>
+    <string name="ov_seconds">%d s</string>
+    <string name="ov_route_progress">%1$d/%2$d</string>
+    <string name="ov_current_location">Local atual</string>
+    <string name="ov_add_to_favorites">Adicionar aos favoritos</string>
+    <string name="ov_add_to_route">Adicionar à rota</string>
+    <string name="ov_add_to_marker">Adicionar ao marcador</string>
+    <string name="ov_teleport_to_location">Teletransportar para o local</string>
+    <string name="ov_cd_menu">Abrir ou fechar o menu</string>
+    <string name="ov_cd_move">Mover</string>
+    <string name="ov_cd_map">Mapa</string>
+    <string name="ov_cd_route_stop">Parar rota</string>
+    <string name="ov_cd_route_pause">Pausar ou retomar a rota</string>
+    <string name="ov_cd_route_prev">Ponto anterior</string>
+    <string name="ov_cd_route_next">Próximo ponto</string>
+    <string name="ov_cd_record">Gravar rota</string>
+    <string name="ov_cd_record_stop">Descartar gravação</string>
+    <string name="ov_cd_record_add">Adicionar o local atual</string>
+    <string name="ov_cd_record_map">Abrir a gravação no mapa</string>
+    <string name="ov_cd_record_save">Salvar gravação</string>
+    <string name="ov_cd_save">Salvar o local atual</string>
+    <string name="ov_cd_hide">Esconder ou mostrar o joystick</string>
+    <string name="ov_cd_lock">Travar joystick</string>
+    <string name="ov_cd_speed">Velocidade</string>
+    <string name="ov_cd_walk">Andar</string>
+    <string name="ov_cd_jog">Trotar</string>
+    <string name="ov_cd_run">Correr</string>
+    <string name="ov_cd_suspend">Injetar o local agora</string>
+    <string name="ov_cd_joystick">Joystick</string>
+</resources>
