@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_config_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground" android:orientation="vertical">
+
+    <include layout="@layout/base_toolbar" />
+
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <androidx.recyclerview.widget.RecyclerView android:id="@+id/widget_config_list"
+            android:layout_width="match_parent" android:layout_height="match_parent"
+            android:clipToPadding="false" android:paddingBottom="88dp" android:visibility="gone" />
+
+        <TextView android:id="@+id/widget_config_empty" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:layout_gravity="center" android:gravity="center"
+            android:padding="32dp" android:text="@string/widget_app_empty"
+            android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="?attr/colorOnSurfaceVariant"
+            android:visibility="gone" />
+
+        <ProgressBar android:id="@+id/widget_config_loading" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:layout_gravity="center" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton android:id="@+id/widget_config_fab"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end" android:layout_margin="16dp"
+            android:contentDescription="@string/widget_add_items" android:src="@drawable/ic_add"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget Quick Actions (RemoteViews: só views remotáveis do framework, cores aplicadas por código). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <ImageView android:id="@+id/widget_bg" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:scaleType="fitXY" android:src="@drawable/widget_bg" android:importantForAccessibility="no" />
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="52dp"
+            android:gravity="center_vertical" android:orientation="horizontal" android:padding="12dp">
+            <ImageView android:layout_width="28dp" android:layout_height="28dp"
+                android:src="@mipmap/ic_launcher" android:importantForAccessibility="no" />
+            <TextView android:id="@+id/widget_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" android:maxLines="1" android:text="@string/app_name"
+                android:textColor="#1A1C1E" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/widget_status" android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" android:layout_weight="1" android:maxLines="1"
+                android:text="@string/widget_idle" android:textColor="#5F6670" android:textSize="12sp" android:textStyle="bold" />
+            <ImageView android:id="@+id/widget_add" android:layout_width="28dp" android:layout_height="28dp"
+                android:contentDescription="@string/widget_add" android:padding="2dp"
+                android:src="@drawable/widget_ic_add" />
+        </LinearLayout>
+
+        <ImageView android:id="@+id/widget_divider" android:layout_width="match_parent" android:layout_height="1dp"
+            android:background="#BBDEFB" android:importantForAccessibility="no" />
+
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+            <ListView android:id="@+id/widget_list" android:layout_width="match_parent" android:layout_height="match_parent"
+                android:divider="@null" android:dividerHeight="0dp" />
+            <LinearLayout android:id="@+id/widget_empty" android:layout_width="match_parent" android:layout_height="match_parent"
+                android:gravity="center" android:orientation="vertical" android:padding="8dp">
+                <TextView android:id="@+id/widget_empty_text" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/widget_empty_locations" android:textColor="#1A1C1E" android:textSize="14sp" />
+                <TextView android:id="@+id/widget_empty_hint" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp" android:text="@string/widget_empty_hint"
+                    android:textColor="#5F6670" android:textSize="12sp" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <LinearLayout android:id="@+id/widget_tabs" android:layout_width="match_parent" android:layout_height="44dp"
+            android:orientation="horizontal" android:paddingStart="8dp" android:paddingEnd="8dp"
+            android:paddingTop="4dp" android:paddingBottom="6dp">
+            <TextView android:id="@+id/widget_tab_favorites" android:layout_width="0dp" android:layout_height="match_parent"
+                android:layout_weight="1" android:background="@drawable/widget_tab_selected" android:gravity="center"
+                android:maxLines="1" android:text="@string/widget_tab_favorites" android:textColor="#FFFFFF" android:textSize="13sp" />
+            <TextView android:id="@+id/widget_tab_routes" android:layout_width="0dp" android:layout_height="match_parent"
+                android:layout_weight="1" android:gravity="center" android:maxLines="1"
+                android:text="@string/widget_tab_routes" android:textColor="#5F6670" android:textSize="13sp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

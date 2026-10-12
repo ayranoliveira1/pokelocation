@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frente W7c (widget). -->
+<resources>
+    <string name="widget_description">Acesso rápido aos seus locais e rotas salvos - teleporte ou inicie uma rota direto da tela inicial.</string>
+    <string name="widget_active">ATIVO</string>
+    <string name="widget_idle">PARADO</string>
+    <string name="widget_add">Adicionar</string>
+    <string name="widget_empty_locations">Nenhum local salvo</string>
+    <string name="widget_empty_routes">Nenhuma rota salva</string>
+    <string name="widget_empty_hint">Abra o PokeLocation para adicionar</string>
+    <string name="widget_tab_favorites">Favoritos</string>
+    <string name="widget_tab_routes">Rotas</string>
+
+    <string name="widget_settings_title">Configurações do widget</string>
+    <string name="widget_choose_items">Escolher itens</string>
+    <string name="widget_choose_items_sub">Selecione os favoritos e as rotas a mostrar</string>
+    <string name="widget_display">Exibição</string>
+    <string name="widget_theme">Tema</string>
+    <string name="widget_theme_light">Claro</string>
+    <string name="widget_theme_dark">Escuro</string>
+    <string name="widget_theme_system">Padrão do sistema</string>
+    <string name="widget_group">Agrupar por tipo</string>
+    <string name="widget_group_sub">Mostrar favoritos e rotas em seções separadas</string>
+
+    <string name="widget_config_title">Escolher itens do widget</string>
+    <string name="widget_add_items">Adicionar itens</string>
+    <string name="widget_section">%1$s (%2$d)</string>
+    <string name="widget_no_items">Nenhum item selecionado!</string>
+    <string name="widget_app_empty">Crie um favorito ou uma rota no app para adicioná-los aqui</string>
+    <string name="widget_max_items">Máximo de %d itens por widget.</string>
+    <string name="widget_max_items_cut">Máximo de %d itens. Algumas seleções foram removidas.</string>
+    <string name="widget_remove">Remover</string>
+    <string name="widget_expand">Expandir ou recolher</string>
+</resources>
