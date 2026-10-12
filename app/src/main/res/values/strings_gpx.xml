@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frente gpx (W6): importação/exportação GPX e KML. -->
+<resources>
+    <string name="gpx_import_title">GPX/KML Import</string>
+    <string name="gpx_export_title">GPX Export</string>
+    <string name="gpx_waypoints">WayPoints</string>
+    <string name="gpx_routes">Routes</string>
+    <string name="gpx_tracks">Tracks</string>
+    <string name="gpx_markers">Markers</string>
+    <string name="gpx_card_hint">Tap to view details and import into favorites or routes.</string>
+    <string name="gpx_invalid_gpx">Not a valid GPX file</string>
+    <string name="gpx_invalid_kml">Not a valid KML file</string>
+    <string name="gpx_no_data">No data was found!</string>
+    <string name="gpx_wrong_type">Wrong file type was selected, please select a gpx file and try again.</string>
+    <string name="gpx_pick_failed">There was an issue importing the file, please try again.</string>
+    <string name="gpx_perm_title">Storage Permission Required</string>
+    <string name="gpx_perm_msg">This requires Storage permissions. Please enable the Storage permission.</string>
+    <string name="gpx_importing">Importing items, please wait.</string>
+    <string name="gpx_save_failed">Woops… something went wrong, the item could not be saved. Please try again later…</string>
+    <plurals name="gpx_skipped">
+        <item quantity="one">%d placemark was skipped due to invalid coordinates.</item>
+        <item quantity="other">%d placemarks were skipped due to invalid coordinates.</item>
+    </plurals>
+    <plurals name="gpx_coordinates">
+        <item quantity="one">Coordinate: %d</item>
+        <item quantity="other">Coordinates: %d</item>
+    </plurals>
+    <plurals name="gpx_segments">
+        <item quantity="one">Segment: %d</item>
+        <item quantity="other">Segments: %d</item>
+    </plurals>
+    <string name="gpx_point_line">%1$s  ·  %2$s m</string>
+    <string name="gpx_already_saved">This item was already saved.</string>
+    <string name="gpx_options">Options</string>
+    <string name="gpx_add_to_favorites">Add to Favorites</string>
+    <string name="gpx_add_to_marker">Add To Marker</string>
+    <string name="gpx_add_to_routes">Add To Routes</string>
+    <string name="gpx_add_new_marker">Add As New Marker</string>
+    <string name="gpx_add_all_favorites">Add All To Favorites</string>
+    <string name="gpx_add_all_marker">Add All To Marker</string>
+    <string name="gpx_add_all_new_marker">Add All As New Marker</string>
+    <string name="gpx_add_all_routes">Add All To Routes</string>
+    <string name="gpx_create_route_all">Create Route From All</string>
+    <string name="gpx_add_all_folder">Add all in folder</string>
+    <string name="gpx_new_type_title">New Marker Type</string>
+    <string name="gpx_icon">Icon</string>
+    <string name="gpx_color">Color</string>
+
+    <string name="gpx_no_items">No items selected!</string>
+    <string name="gpx_add_items">Add Items</string>
+    <string name="gpx_export">Export</string>
+    <string name="gpx_export_format">Export Format</string>
+    <string name="gpx_format_gpx" translatable="false">GPX</string>
+    <string name="gpx_format_kml" translatable="false">KML</string>
+    <string name="gpx_retrieving">Retrieving items, please wait.</string>
+    <string name="gpx_exporting">Exporting items, please wait.</string>
+    <string name="gpx_export_success">File exported successfully!</string>
+    <string name="gpx_export_failed">There was an error exporting the file, please try again later.</string>
+    <string name="gpx_err_favorites">Sorry, there was an error getting the list of favorites.</string>
+    <string name="gpx_err_routes">Sorry, there was an error getting the list of routes.</string>
+    <string name="gpx_err_marker">Sorry, there was an error getting the marker.</string>
+
+    <string name="gpx_cd_add">Add</string>
+    <string name="gpx_cd_saved">Saved</string>
+    <string name="gpx_cd_bulk">Import options</string>
+    <string name="gpx_cd_add_items">Add items</string>
+    <string name="gpx_cd_remove">Remove from list</string>
+    <string name="gpx_cd_remove_folder">Remove folder from list</string>
+    <string name="gpx_cd_icon">Icon %1$d</string>
+    <string name="gpx_cd_color">Color %1$d</string>
+</resources>

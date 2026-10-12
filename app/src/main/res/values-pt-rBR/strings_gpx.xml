@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gpx_import_title">Importar GPX/KML</string>
+    <string name="gpx_export_title">Exportar GPX</string>
+    <string name="gpx_waypoints">Pontos</string>
+    <string name="gpx_routes">Rotas</string>
+    <string name="gpx_tracks">Trilhas</string>
+    <string name="gpx_markers">Marcadores</string>
+    <string name="gpx_card_hint">Toque para ver os detalhes e importar para favoritos ou rotas.</string>
+    <string name="gpx_invalid_gpx">Arquivo GPX inválido</string>
+    <string name="gpx_invalid_kml">Arquivo KML inválido</string>
+    <string name="gpx_no_data">Nenhum dado foi encontrado!</string>
+    <string name="gpx_wrong_type">O tipo de arquivo selecionado está errado. Selecione um arquivo gpx e tente de novo.</string>
+    <string name="gpx_pick_failed">Houve um problema ao importar o arquivo. Tente de novo.</string>
+    <string name="gpx_perm_title">Permissão de armazenamento necessária</string>
+    <string name="gpx_perm_msg">Isto requer a permissão de armazenamento. Ative a permissão de armazenamento.</string>
+    <string name="gpx_importing">Importando itens, aguarde.</string>
+    <string name="gpx_save_failed">Ops… algo deu errado e o item não pôde ser salvo. Tente de novo mais tarde…</string>
+    <plurals name="gpx_skipped">
+        <item quantity="one">%d local foi ignorado por coordenadas inválidas.</item>
+        <item quantity="many">%d locais foram ignorados por coordenadas inválidas.</item>
+        <item quantity="other">%d locais foram ignorados por coordenadas inválidas.</item>
+    </plurals>
+    <plurals name="gpx_coordinates">
+        <item quantity="one">Coordenada: %d</item>
+        <item quantity="many">Coordenadas: %d</item>
+        <item quantity="other">Coordenadas: %d</item>
+    </plurals>
+    <plurals name="gpx_segments">
+        <item quantity="one">Segmento: %d</item>
+        <item quantity="many">Segmentos: %d</item>
+        <item quantity="other">Segmentos: %d</item>
+    </plurals>
+    <string name="gpx_point_line">%1$s  ·  %2$s m</string>
+    <string name="gpx_already_saved">Este item já foi salvo.</string>
+    <string name="gpx_options">Opções</string>
+    <string name="gpx_add_to_favorites">Adicionar aos favoritos</string>
+    <string name="gpx_add_to_marker">Adicionar ao marcador</string>
+    <string name="gpx_add_to_routes">Adicionar às rotas</string>
+    <string name="gpx_add_new_marker">Adicionar como novo marcador</string>
+    <string name="gpx_add_all_favorites">Adicionar todos aos favoritos</string>
+    <string name="gpx_add_all_marker">Adicionar todos ao marcador</string>
+    <string name="gpx_add_all_new_marker">Adicionar todos como novo marcador</string>
+    <string name="gpx_add_all_routes">Adicionar todas às rotas</string>
+    <string name="gpx_create_route_all">Criar rota com todos</string>
+    <string name="gpx_add_all_folder">Adicionar tudo da pasta</string>
+    <string name="gpx_new_type_title">Novo tipo de marcador</string>
+    <string name="gpx_icon">Ícone</string>
+    <string name="gpx_color">Cor</string>
+
+    <string name="gpx_no_items">Nenhum item selecionado!</string>
+    <string name="gpx_add_items">Adicionar itens</string>
+    <string name="gpx_export">Exportar</string>
+    <string name="gpx_export_format">Formato de exportação</string>
+    <string name="gpx_retrieving">Carregando itens, aguarde.</string>
+    <string name="gpx_exporting">Exportando itens, aguarde.</string>
+    <string name="gpx_export_success">Arquivo exportado com sucesso!</string>
+    <string name="gpx_export_failed">Houve um erro ao exportar o arquivo. Tente de novo mais tarde.</string>
+    <string name="gpx_err_favorites">Desculpe, houve um erro ao carregar a lista de favoritos.</string>
+    <string name="gpx_err_routes">Desculpe, houve um erro ao carregar a lista de rotas.</string>
+    <string name="gpx_err_marker">Desculpe, houve um erro ao carregar o marcador.</string>
+
+    <string name="gpx_cd_add">Adicionar</string>
+    <string name="gpx_cd_saved">Salvo</string>
+    <string name="gpx_cd_bulk">Opções de importação</string>
+    <string name="gpx_cd_add_items">Adicionar itens</string>
+    <string name="gpx_cd_remove">Remover da lista</string>
+    <string name="gpx_cd_remove_folder">Remover pasta da lista</string>
+    <string name="gpx_cd_icon">Ícone %1$d</string>
+    <string name="gpx_cd_color">Cor %1$d</string>
+</resources>
