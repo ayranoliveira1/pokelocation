@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Um único menu; a FavoritesActivity alterna a visibilidade dos itens pelo estado da tela. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item android:id="@+id/fav_menu_search" android:icon="@drawable/ic_search" android:title="@string/search"
+        app:actionViewClass="androidx.appcompat.widget.SearchView" app:showAsAction="ifRoom|collapseActionView" />
+    <item android:id="@+id/fav_menu_search_location" android:icon="@drawable/ic_search"
+        android:title="@string/fav_search_location" android:visible="false" app:showAsAction="ifRoom" />
+    <item android:id="@+id/fav_menu_reorder" android:icon="@drawable/ic_sort" android:title="@string/fav_reorder"
+        app:showAsAction="ifRoom" />
+    <item android:id="@+id/fav_menu_select_all" android:icon="@drawable/ic_select_all" android:title="@string/select_all"
+        android:visible="false" app:showAsAction="ifRoom" />
+    <item android:id="@+id/fav_menu_confirm" android:icon="@drawable/ic_check" android:title="@string/select"
+        android:visible="false" app:showAsAction="always" />
+    <item android:id="@+id/fav_menu_delete_all" android:title="@string/fav_delete_all" app:showAsAction="never" />
+</menu>

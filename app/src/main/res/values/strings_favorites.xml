@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frente favorites (W5): favoritos, busca de endereço, tipos e editor de marcadores. -->
+<resources>
+    <!-- Favorites -->
+    <string name="fav_title">Favorites</string>
+    <string name="fav_add_title">Add to Favorites</string>
+    <string name="fav_empty">You don\'t have any favorites in your list! How about adding some?</string>
+    <string name="fav_reorder">Reorder</string>
+    <string name="fav_delete_all">Delete All</string>
+    <string name="fav_search_location">Search Location</string>
+    <string name="fav_new">New</string>
+    <string name="fav_new_favorite">Favorite</string>
+    <string name="fav_new_folder">Folder</string>
+    <string name="fav_create_folder">Create Folder</string>
+    <string name="fav_rename_folder">Rename Folder</string>
+    <string name="fav_copy_title">Copy Favorite</string>
+    <string name="fav_delete_item_title">Delete Item</string>
+    <string name="fav_delete_item_msg">Are you sure you want to delete this item?</string>
+    <string name="fav_delete_all_msg_root">Are you sure you want to delete ALL items? This cannot be undone.</string>
+    <string name="fav_delete_all_msg_folder">Delete all items in \"%1$s\" and its subfolders? This cannot be undone.</string>
+    <string name="fav_delete_folder_title">Delete Folder</string>
+    <string name="fav_delete_folder_msg">Delete \"%1$s\"?</string>
+    <string name="fav_delete_folder_msg_counts">Delete \"%1$s\"? This will permanently delete %2$s and %3$s.</string>
+    <plurals name="fav_delete_many_msg">
+        <item quantity="one">Are you sure you want to delete %d item?</item>
+        <item quantity="other">Are you sure you want to delete %d items?</item>
+    </plurals>
+    <plurals name="fav_n_favorites">
+        <item quantity="one">%d favorite</item>
+        <item quantity="other">%d favorites</item>
+    </plurals>
+    <plurals name="fav_n_subfolders">
+        <item quantity="one">%d subfolder</item>
+        <item quantity="other">%d subfolders</item>
+    </plurals>
+    <string name="fav_open_folder">Open folder</string>
+    <string name="fav_enter_folder">Enter Folder</string>
+    <string name="fav_select_contents">Select All Contents</string>
+    <string name="fav_deselect_contents">Deselect All Contents</string>
+    <string name="fav_move_cycle">A folder can\'t be moved into itself or one of its subfolders.</string>
+    <string name="fav_coords">Latitude: %1$s\nLongitude: %2$s\nAltitude: %3$s</string>
+    <string name="fav_map_failed">Map failed to load</string>
+    <string name="fav_retrieving_altitude">Retrieving altitude…</string>
+    <string name="fav_cd_drag">Drag to reorder</string>
+    <string name="fav_cd_open">Open folder</string>
+
+    <!-- Edit Favorite -->
+    <string name="fav_edit_title">Edit Favorite</string>
+    <string name="fav_address">Address</string>
+    <string name="fav_latitude">Latitude</string>
+    <string name="fav_longitude">Longitude</string>
+    <string name="fav_altitude">Altitude</string>
+    <string name="fav_sort_order">Sort Order</string>
+    <string name="fav_update_error">Woops… something went wrong, the item could not be updated. Please try again later…</string>
+
+    <!-- Search -->
+    <string name="search_hint">Search</string>
+
+    <!-- Markers -->
+    <string name="mk_title">Markers</string>
+    <string name="mk_select_title">Select Marker Type</string>
+    <string name="mk_add_type">Add Marker</string>
+    <string name="mk_edit_type">Edit</string>
+    <string name="mk_icon">Icon</string>
+    <string name="mk_color">Color</string>
+    <plurals name="mk_n_markers">
+        <item quantity="one">%d marker</item>
+        <item quantity="other">%d markers</item>
+    </plurals>
+    <string name="mk_delete_title">Delete Marker Type</string>
+    <string name="mk_delete_msg">Delete \"%1$s\" and all of its markers?</string>
+    <string name="mk_delete_default_msg">\"%1$s\" is a default type and can\'t be deleted. Remove all of its markers?</string>
+    <string name="mk_import">Import Markers</string>
+    <string name="mk_none_selected">No items selected!</string>
+    <string name="mk_open_map">Edit markers on the map</string>
+    <string name="mk_map_hint">Tap the map to add a marker.</string>
+    <string name="mk_map_failed">Map failed to load</string>
+    <string name="mk_icon_pin">Pin</string>
+    <string name="mk_icon_flag">Flag</string>
+    <string name="mk_icon_park">Park</string>
+    <string name="mk_icon_star">Star</string>
+    <string name="mk_icon_home">Home</string>
+    <string name="mk_icon_heart">Heart</string>
+</resources>

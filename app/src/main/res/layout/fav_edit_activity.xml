@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fav_edit_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <include layout="@layout/base_toolbar" />
+
+    <com.pokelocation.app.ui.base.StateView
+        android:id="@+id/fav_edit_state"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/gap_large">
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/fav_edit_name_l" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="@string/name" android:layout_marginBottom="@dimen/gap">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/fav_edit_name"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="textCapWords" android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/fav_edit_address_l" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="@string/fav_address" android:layout_marginBottom="@dimen/gap">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/fav_edit_address"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="textMultiLine|textPostalAddress" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/fav_edit_lat_l" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="@string/fav_latitude" android:layout_marginBottom="@dimen/gap">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/fav_edit_lat"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="numberSigned|numberDecimal" android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/fav_edit_lng_l" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="@string/fav_longitude" android:layout_marginBottom="@dimen/gap">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/fav_edit_lng"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="numberSigned|numberDecimal" android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/fav_edit_alt_l" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="@string/fav_altitude" android:layout_marginBottom="@dimen/gap">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/fav_edit_alt"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="numberSigned|numberDecimal" android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/fav_edit_sort_l" android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:hint="@string/fav_sort_order">
+                    <com.google.android.material.textfield.TextInputEditText android:id="@+id/fav_edit_sort"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:inputType="number" android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+        </ScrollView>
+    </com.pokelocation.app.ui.base.StateView>
+</LinearLayout>

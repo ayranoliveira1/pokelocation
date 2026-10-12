@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Favoritos -->
+    <string name="fav_title">Favoritos</string>
+    <string name="fav_add_title">Adicionar aos favoritos</string>
+    <string name="fav_empty">Você não tem nenhum favorito na lista! Que tal adicionar alguns?</string>
+    <string name="fav_reorder">Reordenar</string>
+    <string name="fav_delete_all">Excluir tudo</string>
+    <string name="fav_search_location">Buscar local</string>
+    <string name="fav_new">Novo</string>
+    <string name="fav_new_favorite">Favorito</string>
+    <string name="fav_new_folder">Pasta</string>
+    <string name="fav_create_folder">Criar pasta</string>
+    <string name="fav_rename_folder">Renomear pasta</string>
+    <string name="fav_copy_title">Copiar favorito</string>
+    <string name="fav_delete_item_title">Excluir item</string>
+    <string name="fav_delete_item_msg">Tem certeza de que deseja excluir este item?</string>
+    <string name="fav_delete_all_msg_root">Tem certeza de que deseja excluir TODOS os itens? Isso não pode ser desfeito.</string>
+    <string name="fav_delete_all_msg_folder">Excluir todos os itens de \"%1$s\" e das subpastas? Isso não pode ser desfeito.</string>
+    <string name="fav_delete_folder_title">Excluir pasta</string>
+    <string name="fav_delete_folder_msg">Excluir \"%1$s\"?</string>
+    <string name="fav_delete_folder_msg_counts">Excluir \"%1$s\"? Isso vai apagar para sempre %2$s e %3$s.</string>
+    <plurals name="fav_delete_many_msg">
+        <item quantity="one">Tem certeza de que deseja excluir %d item?</item>
+        <item quantity="many">Tem certeza de que deseja excluir %d itens?</item>
+        <item quantity="other">Tem certeza de que deseja excluir %d itens?</item>
+    </plurals>
+    <plurals name="fav_n_favorites">
+        <item quantity="one">%d favorito</item>
+        <item quantity="many">%d favoritos</item>
+        <item quantity="other">%d favoritos</item>
+    </plurals>
+    <plurals name="fav_n_subfolders">
+        <item quantity="one">%d subpasta</item>
+        <item quantity="many">%d subpastas</item>
+        <item quantity="other">%d subpastas</item>
+    </plurals>
+    <string name="fav_open_folder">Abrir pasta</string>
+    <string name="fav_enter_folder">Entrar na pasta</string>
+    <string name="fav_select_contents">Selecionar todo o conteúdo</string>
+    <string name="fav_deselect_contents">Desmarcar todo o conteúdo</string>
+    <string name="fav_move_cycle">Uma pasta não pode ser movida para dentro dela mesma ou de uma subpasta.</string>
+    <string name="fav_coords">Latitude: %1$s\nLongitude: %2$s\nAltitude: %3$s</string>
+    <string name="fav_map_failed">Não foi possível carregar o mapa</string>
+    <string name="fav_retrieving_altitude">Obtendo a altitude…</string>
+    <string name="fav_cd_drag">Arraste para reordenar</string>
+    <string name="fav_cd_open">Abrir pasta</string>
+
+    <!-- Editar favorito -->
+    <string name="fav_edit_title">Editar favorito</string>
+    <string name="fav_address">Endereço</string>
+    <string name="fav_latitude">Latitude</string>
+    <string name="fav_longitude">Longitude</string>
+    <string name="fav_altitude">Altitude</string>
+    <string name="fav_sort_order">Posição</string>
+    <string name="fav_update_error">Ops… algo deu errado e o item não foi atualizado. Tente novamente mais tarde…</string>
+
+    <!-- Busca -->
+    <string name="search_hint">Buscar</string>
+
+    <!-- Marcadores -->
+    <string name="mk_title">Marcadores</string>
+    <string name="mk_select_title">Selecionar tipo de marcador</string>
+    <string name="mk_add_type">Adicionar marcador</string>
+    <string name="mk_edit_type">Editar</string>
+    <string name="mk_icon">Ícone</string>
+    <string name="mk_color">Cor</string>
+    <plurals name="mk_n_markers">
+        <item quantity="one">%d marcador</item>
+        <item quantity="many">%d marcadores</item>
+        <item quantity="other">%d marcadores</item>
+    </plurals>
+    <string name="mk_delete_title">Excluir tipo de marcador</string>
+    <string name="mk_delete_msg">Excluir \"%1$s\" e todos os seus marcadores?</string>
+    <string name="mk_delete_default_msg">\"%1$s\" é um tipo padrão e não pode ser excluído. Remover todos os marcadores dele?</string>
+    <string name="mk_import">Importar marcadores</string>
+    <string name="mk_none_selected">Nenhum item selecionado!</string>
+    <string name="mk_open_map">Editar marcadores no mapa</string>
+    <string name="mk_map_hint">Toque no mapa para adicionar um marcador.</string>
+    <string name="mk_map_failed">Não foi possível carregar o mapa</string>
+    <string name="mk_icon_pin">Alfinete</string>
+    <string name="mk_icon_flag">Bandeira</string>
+    <string name="mk_icon_park">Parque</string>
+    <string name="mk_icon_star">Estrela</string>
+    <string name="mk_icon_home">Casa</string>
+    <string name="mk_icon_heart">Coração</string>
+</resources>

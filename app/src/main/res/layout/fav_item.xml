@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="@dimen/gap"
+    android:layout_marginTop="4dp"
+    android:layout_marginEnd="@dimen/gap"
+    android:layout_marginBottom="4dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="12dp"
+        android:paddingTop="@dimen/gap"
+        android:paddingEnd="4dp"
+        android:paddingBottom="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/fav_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@color/on_surface"
+                android:textSize="@dimen/text_body"
+                android:textStyle="bold" />
+            <ImageButton android:id="@+id/fav_copy" android:layout_width="40dp" android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="@string/copy"
+                android:src="@drawable/ic_copy" android:tint="@color/primary" />
+            <ImageButton android:id="@+id/fav_edit" android:layout_width="40dp" android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="@string/edit"
+                android:src="@drawable/ic_edit" android:tint="@color/primary" />
+            <ImageButton android:id="@+id/fav_delete" android:layout_width="40dp" android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="@string/delete"
+                android:src="@drawable/ic_delete" android:tint="@color/danger" />
+            <ImageView android:id="@+id/fav_drag" android:layout_width="40dp" android:layout_height="40dp"
+                android:contentDescription="@string/fav_cd_drag" android:scaleType="center"
+                android:src="@drawable/ic_drag" android:tint="@color/on_surface_variant" android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/fav_address"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/gap"
+            android:textColor="@color/on_surface_variant"
+            android:textSize="14sp" />
+        <TextView
+            android:id="@+id/fav_coords"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/on_surface_variant"
+            android:textSize="@dimen/text_small"
+            android:textStyle="italic" />
+        <TextView
+            android:id="@+id/fav_line"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="@dimen/gap"
+            android:textSize="@dimen/text_small"
+            android:visibility="gone" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

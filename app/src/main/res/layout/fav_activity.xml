@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/fav_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <include layout="@layout/base_toolbar" />
+
+    <HorizontalScrollView
+        android:id="@+id/fav_crumbs_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_container"
+        android:scrollbars="none">
+        <LinearLayout
+            android:id="@+id/fav_crumbs"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/gap"
+            android:paddingEnd="@dimen/gap" />
+    </HorizontalScrollView>
+
+    <FrameLayout
+        android:id="@+id/fav_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <com.pokelocation.app.ui.base.StateView
+            android:id="@+id/fav_state"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/fav_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingTop="@dimen/gap"
+                android:paddingBottom="85dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        </com.pokelocation.app.ui.base.StateView>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fav_fab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="@dimen/gap_large"
+            android:contentDescription="@string/fav_new"
+            app:srcCompat="@drawable/ic_add" />
+
+        <LinearLayout
+            android:id="@+id/fav_sel_bar"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_gravity="bottom"
+            android:background="@color/primary_dark"
+            android:elevation="8dp"
+            android:orientation="horizontal"
+            android:translationY="56dp"
+            android:visibility="invisible">
+            <TextView android:id="@+id/fav_sel_copy" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless" android:gravity="center"
+                android:paddingTop="6dp" android:drawablePadding="2dp" android:drawableTint="@color/on_primary"
+                android:textColor="@color/on_primary" android:textSize="11sp" android:maxLines="1"
+                android:drawableTop="@drawable/ic_copy" android:text="@string/copy" />
+            <TextView android:id="@+id/fav_sel_edit" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless" android:gravity="center"
+                android:paddingTop="6dp" android:drawablePadding="2dp" android:drawableTint="@color/on_primary"
+                android:textColor="@color/on_primary" android:textSize="11sp" android:maxLines="1"
+                android:drawableTop="@drawable/ic_edit" android:text="@string/edit" />
+            <TextView android:id="@+id/fav_sel_rename" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless" android:gravity="center"
+                android:paddingTop="6dp" android:drawablePadding="2dp" android:drawableTint="@color/on_primary"
+                android:textColor="@color/on_primary" android:textSize="11sp" android:maxLines="1"
+                android:drawableTop="@drawable/ic_edit" android:text="@string/rename" />
+            <TextView android:id="@+id/fav_sel_move" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless" android:gravity="center"
+                android:paddingTop="6dp" android:drawablePadding="2dp" android:drawableTint="@color/on_primary"
+                android:textColor="@color/on_primary" android:textSize="11sp" android:maxLines="1"
+                android:drawableTop="@drawable/ic_folder_move" android:text="@string/move" />
+            <TextView android:id="@+id/fav_sel_delete" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"
+                android:background="?attr/selectableItemBackgroundBorderless" android:gravity="center"
+                android:paddingTop="6dp" android:drawablePadding="2dp" android:drawableTint="@color/on_primary"
+                android:textColor="@color/on_primary" android:textSize="11sp" android:maxLines="1"
+                android:drawableTop="@drawable/ic_delete" android:text="@string/delete" />
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>
