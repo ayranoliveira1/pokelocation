@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/routes_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <include layout="@layout/base_toolbar" />
+
+    <HorizontalScrollView
+        android:id="@+id/routes_breadcrumb_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_container"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/routes_breadcrumb"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/gap"
+            android:paddingEnd="@dimen/gap" />
+    </HorizontalScrollView>
+
+    <FrameLayout
+        android:id="@+id/routes_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <com.pokelocation.app.ui.base.StateView
+            android:id="@+id/routes_state"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/routes_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingTop="@dimen/gap"
+                android:paddingBottom="88dp" />
+        </com.pokelocation.app.ui.base.StateView>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/routes_fab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="@dimen/gap_large"
+            android:contentDescription="@string/routes_new"
+            app:srcCompat="@drawable/ic_add" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/routes_selection_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_container"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/routes_bar_copy"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
+            android:text="@string/copy"
+            android:textSize="12sp"
+            app:icon="@drawable/ic_copy"
+            app:iconGravity="top"
+            app:iconPadding="2dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/routes_bar_edit"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
+            android:text="@string/edit"
+            android:textSize="12sp"
+            app:icon="@drawable/ic_edit"
+            app:iconGravity="top"
+            app:iconPadding="2dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/routes_bar_rename"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
+            android:text="@string/rename"
+            android:textSize="12sp"
+            app:icon="@drawable/ic_edit"
+            app:iconGravity="top"
+            app:iconPadding="2dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/routes_bar_move"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
+            android:text="@string/move"
+            android:textSize="12sp"
+            app:icon="@drawable/ic_folder_move"
+            app:iconGravity="top"
+            app:iconPadding="2dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/routes_bar_delete"
+            style="@style/Widget.Material3.Button.TextButton.Icon"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
+            android:text="@string/delete"
+            android:textSize="12sp"
+            app:icon="@drawable/ic_delete"
+            app:iconGravity="top"
+            app:iconPadding="2dp" />
+    </LinearLayout>
+</LinearLayout>

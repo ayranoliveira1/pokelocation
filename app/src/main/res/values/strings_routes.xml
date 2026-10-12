@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frente W4 routes (Trilha). -->
+<resources>
+    <string name="routes_title">Routes</string>
+    <string name="routes_empty">You don\'t have any routes in your list!</string>
+    <string name="routes_load_error">Sorry, there was an error getting the list of routes.</string>
+    <string name="routes_new">New</string>
+    <string name="routes_route">Route</string>
+    <string name="routes_folder">Folder</string>
+    <string name="routes_new_route">New Route</string>
+    <string name="routes_edit_route">Edit Route</string>
+    <string name="routes_copy_route">Copy Route</string>
+    <string name="routes_edit_mode">Edit Mode</string>
+    <string name="routes_mode_map">Map</string>
+    <string name="routes_mode_advanced">Advanced</string>
+    <string name="routes_reorder">Drag to reorder</string>
+    <string name="routes_drag">Drag</string>
+    <string name="routes_delete_item">Delete Item</string>
+    <string name="routes_delete_item_msg">Are you sure you want to delete this item?</string>
+    <string name="routes_delete_all">Delete All</string>
+    <string name="routes_delete_all_root_msg">Are you sure you want to delete ALL items? This cannot be undone.</string>
+    <string name="routes_delete_all_folder_msg">Delete all items in \"%1$s\" and its subfolders? This cannot be undone.</string>
+    <string name="routes_delete_folder">Delete Folder</string>
+    <string name="routes_delete_folder_msg">Delete \"%1$s\"?</string>
+    <string name="routes_delete_folder_full_msg">Delete \"%1$s\"? This will permanently delete %2$s and %3$s.</string>
+    <string name="routes_create_folder">Create Folder</string>
+    <string name="routes_rename_folder">Rename Folder</string>
+    <string name="routes_open_folder">Open folder</string>
+    <string name="routes_enter_folder">Enter Folder</string>
+    <string name="routes_select_contents">Select All Contents</string>
+    <string name="routes_deselect_contents">Deselect All Contents</string>
+    <string name="routes_move_cycle">A folder can\'t be moved into itself or one of its subfolders.</string>
+    <string name="routes_map_failed">Map failed to load</string>
+    <string name="routes_save_error">Oh no! We couldn\'t add that route. Please try again later…</string>
+    <string name="routes_update_error">Woops… something went wrong, the item could not be updated. Please try again later…</string>
+    <string name="routes_sort_order">Sort Order</string>
+    <string name="routes_number">Number</string>
+    <string name="routes_latitude">Latitude</string>
+    <string name="routes_longitude">Longitude</string>
+    <string name="routes_altitude">Altitude (random if empty)</string>
+    <string name="routes_add_point">Add coordinate</string>
+    <string name="routes_route_info">Total distance: %1$s · ETA: %2$s</string>
+    <string name="routes_finish_editing">Save the coordinate being edited first.</string>
+    <string name="routes_invalid_lat">Latitude must be between -90 and 90.</string>
+    <string name="routes_invalid_lng">Longitude must be between -180 and 180.</string>
+    <plurals name="routes_coordinates">
+        <item quantity="one">%d coordinate</item>
+        <item quantity="other">%d coordinates</item>
+    </plurals>
+    <plurals name="routes_folder_routes">
+        <item quantity="one">%d route</item>
+        <item quantity="other">%d routes</item>
+    </plurals>
+    <plurals name="routes_items">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+    <plurals name="routes_subfolders">
+        <item quantity="one">%d subfolder</item>
+        <item quantity="other">%d subfolders</item>
+    </plurals>
+    <plurals name="routes_delete_many_msg">
+        <item quantity="one">Are you sure you want to delete %d item?</item>
+        <item quantity="other">Are you sure you want to delete %d items?</item>
+    </plurals>
+</resources>

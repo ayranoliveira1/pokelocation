@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="routes_title">Rotas</string>
+    <string name="routes_empty">Você não tem nenhuma rota na sua lista!</string>
+    <string name="routes_load_error">Desculpe, houve um erro ao carregar a lista de rotas.</string>
+    <string name="routes_new">Novo</string>
+    <string name="routes_route">Rota</string>
+    <string name="routes_folder">Pasta</string>
+    <string name="routes_new_route">Nova rota</string>
+    <string name="routes_edit_route">Editar rota</string>
+    <string name="routes_copy_route">Copiar rota</string>
+    <string name="routes_edit_mode">Modo de edição</string>
+    <string name="routes_mode_map">Mapa</string>
+    <string name="routes_mode_advanced">Avançado</string>
+    <string name="routes_reorder">Arraste para reordenar</string>
+    <string name="routes_drag">Arrastar</string>
+    <string name="routes_delete_item">Excluir item</string>
+    <string name="routes_delete_item_msg">Tem certeza de que deseja excluir este item?</string>
+    <string name="routes_delete_all">Excluir tudo</string>
+    <string name="routes_delete_all_root_msg">Tem certeza de que deseja excluir TODOS os itens? Isso não pode ser desfeito.</string>
+    <string name="routes_delete_all_folder_msg">Excluir todos os itens de \"%1$s\" e das subpastas? Isso não pode ser desfeito.</string>
+    <string name="routes_delete_folder">Excluir pasta</string>
+    <string name="routes_delete_folder_msg">Excluir \"%1$s\"?</string>
+    <string name="routes_delete_folder_full_msg">Excluir \"%1$s\"? Isso vai excluir permanentemente %2$s e %3$s.</string>
+    <string name="routes_create_folder">Criar pasta</string>
+    <string name="routes_rename_folder">Renomear pasta</string>
+    <string name="routes_open_folder">Abrir pasta</string>
+    <string name="routes_enter_folder">Entrar na pasta</string>
+    <string name="routes_select_contents">Selecionar todo o conteúdo</string>
+    <string name="routes_deselect_contents">Desmarcar todo o conteúdo</string>
+    <string name="routes_move_cycle">Uma pasta não pode ser movida para ela mesma ou para uma subpasta dela.</string>
+    <string name="routes_map_failed">Falha ao carregar o mapa</string>
+    <string name="routes_save_error">Ah, não! Não foi possível adicionar a rota. Tente novamente mais tarde…</string>
+    <string name="routes_update_error">Ops… algo deu errado e o item não pôde ser atualizado. Tente novamente mais tarde…</string>
+    <string name="routes_sort_order">Ordem</string>
+    <string name="routes_number">Número</string>
+    <string name="routes_latitude">Latitude</string>
+    <string name="routes_longitude">Longitude</string>
+    <string name="routes_altitude">Altitude (aleatória se vazia)</string>
+    <string name="routes_add_point">Adicionar coordenada</string>
+    <string name="routes_route_info">Distância total: %1$s · Tempo estimado: %2$s</string>
+    <string name="routes_finish_editing">Salve primeiro a coordenada em edição.</string>
+    <string name="routes_invalid_lat">A latitude deve estar entre -90 e 90.</string>
+    <string name="routes_invalid_lng">A longitude deve estar entre -180 e 180.</string>
+    <plurals name="routes_coordinates">
+        <item quantity="one">%d coordenada</item>
+        <item quantity="many">%d coordenadas</item>
+        <item quantity="other">%d coordenadas</item>
+    </plurals>
+    <plurals name="routes_folder_routes">
+        <item quantity="one">%d rota</item>
+        <item quantity="many">%d rotas</item>
+        <item quantity="other">%d rotas</item>
+    </plurals>
+    <plurals name="routes_items">
+        <item quantity="one">%d item</item>
+        <item quantity="many">%d itens</item>
+        <item quantity="other">%d itens</item>
+    </plurals>
+    <plurals name="routes_subfolders">
+        <item quantity="one">%d subpasta</item>
+        <item quantity="many">%d subpastas</item>
+        <item quantity="other">%d subpastas</item>
+    </plurals>
+    <plurals name="routes_delete_many_msg">
+        <item quantity="one">Tem certeza de que deseja excluir %d item?</item>
+        <item quantity="many">Tem certeza de que deseja excluir %d itens?</item>
+        <item quantity="other">Tem certeza de que deseja excluir %d itens?</item>
+    </plurals>
+</resources>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
+    android:paddingStart="@dimen/gap"
+    android:paddingEnd="4dp">
+
+    <EditText
+        android:id="@+id/routes_row_num"
+        android:layout_width="56dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:hint="@string/routes_number"
+        android:importantForAutofill="no"
+        android:inputType="number"
+        android:maxLines="1"
+        android:textColor="@color/on_surface"
+        android:textSize="14sp" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/routes_row_lat"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/routes_latitude"
+                android:importantForAutofill="no"
+                android:inputType="numberSigned|numberDecimal"
+                android:maxLines="1"
+                android:textColor="@color/on_surface"
+                android:textSize="14sp" />
+
+            <EditText
+                android:id="@+id/routes_row_lng"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/routes_longitude"
+                android:importantForAutofill="no"
+                android:inputType="numberSigned|numberDecimal"
+                android:maxLines="1"
+                android:textColor="@color/on_surface"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/routes_row_alt"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/routes_altitude"
+                android:importantForAutofill="no"
+                android:inputType="numberSigned|numberDecimal"
+                android:maxLines="1"
+                android:textColor="@color/on_surface"
+                android:textSize="14sp" />
+
+            <ImageButton
+                android:id="@+id/routes_row_edit"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/edit"
+                android:padding="@dimen/gap"
+                app:srcCompat="@drawable/ic_edit"
+                app:tint="@color/primary" />
+
+            <ImageButton
+                android:id="@+id/routes_row_delete"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/delete"
+                android:padding="@dimen/gap"
+                app:srcCompat="@drawable/ic_delete"
+                app:tint="@color/on_surface_variant" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
