@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/search_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- Mesma estrutura do base_toolbar (container recebe o inset), com a SearchView sempre expandida dentro. -->
+    <FrameLayout
+        android:id="@+id/toolbar_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/primary">
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/primary"
+        android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
+        app:contentInsetStartWithNavigation="0dp"
+        app:navigationIconTint="@color/on_primary"
+        app:titleTextColor="@color/on_primary">
+        <androidx.appcompat.widget.SearchView
+            android:id="@+id/search_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:imeOptions="actionSearch"
+            app:iconifiedByDefault="false"
+            app:queryHint="@string/search_hint"
+            app:searchIcon="@null" />
+    </com.google.android.material.appbar.MaterialToolbar>
+    </FrameLayout>
+
+    <com.pokelocation.app.ui.base.StateView
+        android:id="@+id/search_state"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/search_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingTop="@dimen/gap"
+            android:paddingBottom="@dimen/gap"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+    </com.pokelocation.app.ui.base.StateView>
+</LinearLayout>
