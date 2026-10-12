@@ -291,3 +291,7 @@ fechada sem interromper a simulação e para manter o consumo de memória baixo.
 ---
 
 Use com responsabilidade: simular localização pode violar os termos de uso de alguns apps e jogos.
+
+## Licença
+
+Distribuído sob a [licença MIT](LICENSE).
