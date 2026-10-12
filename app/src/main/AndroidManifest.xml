@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION"
+        tools:ignore="MockLocation,ProtectedPermissions" />
+    <!-- A-GPS Reset (F63 / F19 Fix 1) -->
+    <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- System Mode (ILocationManager.reportLocation) -->
+    <uses-permission android:name="android.permission.INSTALL_LOCATION_PROVIDER" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <!-- RAM (PLAN §1.4.2): application hardwareAccelerated=false. Uma janela sem pai (overlay do :overlay, painéis)
+         herda a aceleração da APPLICATION em WindowManagerGlobal.addView, o que criava RenderThread e caches do HWUI
+         no :overlay. As Activities do main ligam a aceleração explicitamente; a janela do :map seta
+         FLAG_HARDWARE_ACCELERATED nos LayoutParams. -->
+    <application
+        android:name=".App"
+        android:hardwareAccelerated="false"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PokeLocation"
+        android:usesCleartextTraffic="false"
+        tools:targetApi="33">
+
+        <activity android:hardwareAccelerated="true"
+            android:name=".ui.main.MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.PokeLocation.Launch"
+            android:windowSoftInputMode="adjustPan">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="geo" />
+            </intent-filter>
+            <!-- Links de mapas (sem path) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="maps.google.com" />
+                <data android:host="maps.apple.com" />
+                <data android:host="www.openstreetmap.org" />
+                <data android:host="openstreetmap.org" />
+                <data android:host="osm.org" />
+                <data android:host="maps.yandex.ru" />
+                <data android:host="maps.yandex.com" />
+                <data android:host="map.baidu.cn" />
+                <data android:host="map.baidu.com" />
+                <data android:host="wb.amap.com" />
+                <data android:host="www.amap.com" />
+                <data android:host="here.com" />
+                <data android:host="www.here.com" />
+                <data android:host="share.here.com" />
+                <data android:host="map.wap.qq.com" />
+                <data android:host="map.qq.com" />
+            </intent-filter>
+            <!-- Google com path -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="google.com" />
+                <data android:host="www.google.com" />
+                <data android:pathPrefix="/maps" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".overlay.MockingActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:hardwareAccelerated="false"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:process=":overlay"
+            android:taskAffinity=""
+            android:theme="@style/Theme.PokeLocation.Translucent" />
+
+        <activity
+            android:name=".ui.deeplink.DeepLinkActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:hardwareAccelerated="false"
+            android:noHistory="true"
+            android:process=":overlay"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pokelocation" />
+            </intent-filter>
+        </activity>
+
+        <activity android:hardwareAccelerated="true" android:name=".ui.favorites.FavoritesActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".ui.favorites.EditFavoriteActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".ui.search.SearchActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".ui.markers.MarkerTypesActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".ui.routes.RoutesActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".ui.routes.EditRouteActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+
+        <activity android:hardwareAccelerated="true" android:name=".ui.gpx.ImportActivity" android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/gpx+xml" />
+                <data android:mimeType="application/gpx" />
+                <data android:mimeType="application/vnd.google-earth.kml+xml" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.gpx" />
+                <data android:pathPattern=".*\\..*\\.gpx" />
+                <data android:pathPattern=".*\\.kml" />
+                <data android:pathPattern=".*\\..*\\.kml" />
+            </intent-filter>
+        </activity>
+        <activity android:hardwareAccelerated="true" android:name=".ui.gpx.ExportActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+
+        <activity android:hardwareAccelerated="true" android:name=".ui.settings.SettingsActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".ui.setup.SetupWizardActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".ui.about.AboutActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".widget.WidgetConfigActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".widget.WidgetSettingsActivity" android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".overlay.OverlayService"
+            android:exported="true"
+            android:foregroundServiceType="location"
+            android:process=":overlay"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="pokelocation.action.TELEPORT" />
+                <action android:name="pokelocation.action.ROUTE" />
+                <action android:name="pokelocation.action.WALK" />
+                <action android:name="pokelocation.action.STOP" />
+                <action android:name="pokelocation.action.ROUTE_PAUSE" />
+                <action android:name="pokelocation.action.ROUTE_RESUME" />
+                <action android:name="pokelocation.action.ROUTE_NEXT" />
+                <action android:name="pokelocation.action.ROUTE_PREV" />
+                <action android:name="pokelocation.action.HIDE" />
+                <action android:name="pokelocation.action.SHOW" />
+                <action android:name="pokelocation.action.SPEED" />
+                <action android:name="pokelocation.action.FAVORITES" />
+                <action android:name="pokelocation.action.RECORD_START" />
+                <action android:name="pokelocation.action.RECORD_ADD" />
+                <action android:name="pokelocation.action.RECORD_STOP" />
+                <action android:name="pokelocation.action.GENERATE" />
+                <action android:name="pokelocation.action.STATUS" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".mapoverlay.MapOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="location"
+            android:process=":map" />
+        <service
+            android:name=".widget.WidgetListService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data android:name="autoStoreLocales" android:value="true" />
+        </service>
+
+        <receiver android:name=".widget.QuickActionsWidgetProvider" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_actions" />
+        </receiver>
+        <receiver android:name=".ipc.SpoofStateReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="pokelocation.action.SPOOF_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:ignore="MissingClass"
+            tools:node="remove" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>

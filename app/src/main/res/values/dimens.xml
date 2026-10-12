@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="gap">8dp</dimen>
+    <dimen name="gap_large">16dp</dimen>
+    <dimen name="panel_margin">16dp</dimen>
+    <dimen name="panel_padding">20dp</dimen>
+    <dimen name="panel_corner">28dp</dimen>
+    <dimen name="panel_max_width">560dp</dimen>
+    <dimen name="row_height">48dp</dimen>
+    <dimen name="icon_size">24dp</dimen>
+    <dimen name="text_title">20sp</dimen>
+    <dimen name="text_body">16sp</dimen>
+    <dimen name="text_small">13sp</dimen>
+</resources>

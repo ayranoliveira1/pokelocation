@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fallback API 24-25: vetor quadrado arredondado. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#1565C0" android:pathData="M10,2h28a8,8 0,0 1,8 8v28a8,8 0,0 1,-8 8h-28a8,8 0,0 1,-8 -8v-28a8,8 0,0 1,8 -8z"/>
+    <group android:translateX="10" android:translateY="9" android:scaleX="1.1667" android:scaleY="1.1667">
+        <path android:fillColor="#FFFFFF" android:pathData="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7z"/>
+        <path android:fillColor="#1565C0" android:pathData="M12,6a3,3 0,1 0,0.001 0z"/>
+    </group>
+</vector>

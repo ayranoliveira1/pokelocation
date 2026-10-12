@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancelar</string>
+    <string name="save">Salvar</string>
+    <string name="delete">Excluir</string>
+    <string name="edit">Editar</string>
+    <string name="copy">Copiar</string>
+    <string name="move">Mover</string>
+    <string name="rename">Renomear</string>
+    <string name="close">Fechar</string>
+    <string name="retry">Tentar novamente</string>
+    <string name="search">Buscar</string>
+    <string name="select">Selecionar</string>
+    <string name="select_all">Selecionar tudo</string>
+    <string name="done">Concluído</string>
+    <string name="loading">Carregando…</string>
+    <string name="error">Erro</string>
+    <string name="success">Sucesso</string>
+    <string name="all">Todas</string>
+    <string name="none_root">Nenhuma (Raiz)</string>
+    <string name="untitled">Sem título</string>
+    <string name="field_required">Este campo é obrigatório.</string>
+    <string name="field_number">Este campo deve ser um número.</string>
+    <string name="copied">Copiado para a área de transferência!</string>
+    <string name="item_saved">Item salvo!</string>
+    <string name="unknown_error">Desculpe, ocorreu um erro desconhecido. Tente novamente mais tarde.</string>
+    <string name="state_empty_title">Nada por aqui…</string>
+    <string name="state_error_title">Algo deu errado…</string>
+    <string name="state_error_msg">Tente novamente.</string>
+    <string name="list_empty">Não há itens na sua lista!</string>
+    <string name="unsaved_changes">Alterações não salvas</string>
+    <string name="unsaved_changes_msg">Você tem alterações não salvas. Deseja mesmo sair?</string>
+    <string name="leave">Sair</string>
+    <string name="selected_count">%d selecionado(s)</string>
+    <string name="select_folder">Selecionar pasta</string>
+    <string name="share">Compartilhar</string>
+
+    <string name="teleport_title">Teleportar para o local</string>
+    <string name="teleport">Teleportar</string>
+    <string name="teleport_back">Voltar (teleporte)</string>
+    <string name="walk">Caminhar</string>
+    <string name="walk_back">Voltar caminhando</string>
+    <string name="walk_mode">Modo caminhada</string>
+    <string name="favorites">Favoritos</string>
+    <string name="format">Formatar</string>
+    <string name="paste">Colar</string>
+    <string name="lat_lng_hint">Latitude, Longitude</string>
+    <string name="invalid_location">Local inválido. Use o formato: Latitude, Longitude</string>
+    <string name="name">Nome</string>
+    <string name="folder">Pasta</string>
+
+    <string name="distance_info">Distância: %1$s - Cooldown: %2$s - Decorrido: %3$s</string>
+    <plurals name="days">
+        <item quantity="one">%d dia</item>
+        <item quantity="many">%d dias</item>
+        <item quantity="other">%d dias</item>
+    </plurals>
+</resources>

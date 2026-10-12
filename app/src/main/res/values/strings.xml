@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings comuns (fundação). Cada frente usa values/strings_<frente>.xml com prefixo próprio. -->
+<resources>
+    <string name="app_name" translatable="false">PokeLocation</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="copy">Copy</string>
+    <string name="move">Move</string>
+    <string name="rename">Rename</string>
+    <string name="close">Close</string>
+    <string name="retry">Retry</string>
+    <string name="search">Search</string>
+    <string name="select">Select</string>
+    <string name="select_all">Select All</string>
+    <string name="done">Done</string>
+    <string name="loading">Loading…</string>
+    <string name="error">Error</string>
+    <string name="success">Success</string>
+    <string name="all">All</string>
+    <string name="none_root">None (Root)</string>
+    <string name="untitled">Untitled</string>
+    <string name="field_required">This field is required.</string>
+    <string name="field_number">This field must be a number.</string>
+    <string name="copied">Copied to clipboard!</string>
+    <string name="item_saved">Item saved!</string>
+    <string name="unknown_error">Sorry, an unknown error occurred. Please try again later.</string>
+    <string name="state_empty_title">Nothing here…</string>
+    <string name="state_error_title">Something went wrong…</string>
+    <string name="state_error_msg">Please try again.</string>
+    <string name="list_empty">There are no items in your list!</string>
+    <string name="unsaved_changes">Unsaved Changes</string>
+    <string name="unsaved_changes_msg">You have unsaved changes. Are you sure you want to leave?</string>
+    <string name="leave">Leave</string>
+    <string name="selected_count">%d selected</string>
+    <string name="select_folder">Select Folder</string>
+    <string name="share">Share</string>
+
+    <!-- Painéis -->
+    <string name="teleport_title">Teleport To Location</string>
+    <string name="teleport">Teleport</string>
+    <string name="teleport_back">Teleport Back</string>
+    <string name="walk">Walk</string>
+    <string name="walk_back">Walk Back</string>
+    <string name="walk_mode">Walk Mode</string>
+    <string name="favorites">Favorites</string>
+    <string name="format">Format</string>
+    <string name="paste">Paste</string>
+    <string name="lat_lng_hint">Latitude, Longitude</string>
+    <string name="invalid_location">Invalid location, please enter in format: Latitude, Longitude</string>
+    <string name="name">Name</string>
+    <string name="folder">Folder</string>
+
+    <!-- Cooldown -->
+    <string name="distance_info">Distance: %1$s - Cooldown: %2$s - Elapsed: %3$s</string>
+    <plurals name="days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+
+    <!-- Mapa -->
+    <string name="map_attribution" translatable="false">© OpenStreetMap contributors</string>
+</resources>

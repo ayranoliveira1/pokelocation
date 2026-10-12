@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Main: Material 3 azul, sem dynamic color. -->
+    <style name="Theme.PokeLocation" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorPrimaryContainer">@color/primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/on_primary_container</item>
+        <item name="colorPrimaryInverse">@color/accent</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorOnSecondary">@color/on_primary</item>
+        <item name="colorSecondaryContainer">@color/primary_container</item>
+        <item name="colorOnSecondaryContainer">@color/on_primary_container</item>
+        <item name="colorTertiary">@color/accent</item>
+        <item name="colorOnTertiary">@color/on_primary</item>
+        <item name="colorTertiaryContainer">@color/primary_container</item>
+        <item name="colorOnTertiaryContainer">@color/on_primary_container</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="colorSurfaceVariant">@color/surface_container</item>
+        <item name="colorOnSurfaceVariant">@color/on_surface_variant</item>
+        <item name="colorSurfaceContainerLowest">@color/surface</item>
+        <item name="colorSurfaceContainerLow">@color/surface_container</item>
+        <item name="colorSurfaceContainer">@color/surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/surface_container</item>
+        <item name="colorSurfaceContainerHighest">@color/surface_container</item>
+        <item name="colorSurfaceBright">@color/surface</item>
+        <item name="colorSurfaceDim">@color/surface_container</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="colorOutlineVariant">@color/outline_variant</item>
+        <item name="colorError">@color/danger</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Overflow da toolbar: a toolbar usa overlay Dark (ícones brancos) e o popup herdava texto branco no claro (QA nº 5).
+         Tokens já mudam com values-night. -->
+    <style name="ThemeOverlay.PokeLocation.Popup" parent="ThemeOverlay.Material3">
+        <item name="android:textColorPrimary">@color/on_surface</item>
+        <item name="android:textColorSecondary">@color/on_surface_variant</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/on_surface_variant</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorSurfaceContainer">@color/surface_container</item>
+    </style>
+
+    <!-- Splash: a MainActivity troca para Theme.PokeLocation antes do super.onCreate. -->
+    <style name="Theme.PokeLocation.Launch">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+
+    <!-- :overlay / :map: só framework (Themes.overlayContext). -->
+    <style name="Theme.PokeLocation.Overlay" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/primary</item>
+        <item name="android:colorPrimaryDark">@color/primary_dark</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:colorControlNormal">@color/outline</item>
+        <item name="android:colorControlActivated">@color/accent</item>
+        <item name="android:colorBackground">@color/surface</item>
+        <item name="android:textColorPrimary">@color/on_surface</item>
+        <item name="android:textColorSecondary">@color/on_surface_variant</item>
+        <item name="android:textColorHint">@color/outline</item>
+    </style>
+
+    <!-- MockingActivity (Suspended): transparente, sem animação, só framework. -->
+    <style name="Theme.PokeLocation.Translucent" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorAccent">@color/accent</item>
+    </style>
+
+    <!-- Estilos dos painéis (ui/panel): pais do framework, valem em todos os processos. -->
+    <style name="TextAppearance.PokeLocation.PanelTitle" parent="android:TextAppearance.Material.Title">
+        <item name="android:textSize">@dimen/text_title</item>
+        <item name="android:textColor">@color/on_surface</item>
+    </style>
+    <style name="TextAppearance.PokeLocation.PanelBody" parent="android:TextAppearance.Material.Body1">
+        <item name="android:textSize">@dimen/text_body</item>
+        <item name="android:textColor">@color/on_surface_variant</item>
+    </style>
+    <style name="Widget.PokeLocation.PanelButton" parent="android:Widget.Material.Button.Borderless">
+        <item name="android:textColor">@color/accent</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:minWidth">48dp</item>
+    </style>
+    <style name="Widget.PokeLocation.PanelButton.Filled">
+        <item name="android:background">@drawable/bg_pill</item>
+        <item name="android:textColor">@color/on_primary</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+</resources>
