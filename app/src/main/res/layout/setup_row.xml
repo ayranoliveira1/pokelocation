@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:gravity="center_vertical" android:minHeight="56dp" android:orientation="horizontal"
+    android:paddingTop="4dp" android:paddingBottom="4dp">
+    <ImageView android:id="@+id/setup_row_icon" android:layout_width="24dp" android:layout_height="24dp"
+        android:importantForAccessibility="no" app:tint="?attr/colorPrimary" />
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="16dp"
+        android:layout_weight="1" android:orientation="vertical">
+        <TextView android:id="@+id/setup_row_name" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBodyLarge" android:textColor="?attr/colorOnSurface" />
+        <TextView android:id="@+id/setup_row_status" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBodySmall" />
+    </LinearLayout>
+    <Button android:id="@+id/setup_row_fix" style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/setup_fix" />
+</LinearLayout>

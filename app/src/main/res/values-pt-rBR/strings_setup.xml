@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W7b Setup Wizard (F01–F05). -->
+<resources>
+    <!-- Welcome -->
+    <string name="setup_welcome_title">Bem-vindo ao\nPokeLocation</string>
+    <string name="setup_welcome_text">Vamos preparar seu aparelho em menos de 2 minutos. Vamos guiar você em cada passo.</string>
+    <string name="setup_welcome_footer">✓ Sua localização, suas regras.</string>
+    <string name="setup_lets_go">Vamos lá</string>
+
+    <!-- Step (comum) -->
+    <string name="setup_step_of">Passo %1$d de %2$d</string>
+    <string name="setup_why">Por que isso importa</string>
+    <string name="setup_ive_done">Já fiz isso</string>
+    <string name="setup_skip">Pular este passo</string>
+    <string name="setup_back_to_setup">Voltar à configuração</string>
+    <string name="setup_verify_error">Parece que esse passo ainda não foi concluído. Tente novamente.</string>
+    <string name="setup_intro">Siga estes passos:</string>
+    <string name="setup_intro_brand">Siga estes passos no seu aparelho %s:</string>
+    <string name="setup_intro_generic">Abra as Configurações do telefone e siga estes passos:</string>
+    <string name="setup_intro_mock">Abra as Opções do desenvolvedor e siga estes passos:</string>
+    <string name="setup_tip_dev">Não encontrou? Pesquise \"número da versão\" no app Configurações.</string>
+    <string name="setup_tip_mock">Não encontrou? Pesquise \"simulada\" no app Configurações.</string>
+    <string name="setup_privacy">🔒 Sua privacidade: o PokeLocation nunca coleta nem compartilha sua localização. Tudo fica no seu aparelho.</string>
+    <string name="setup_open_failed">Infelizmente não conseguimos abrir essa tela para você. Abra-a pelas Configurações do telefone.</string>
+    <string name="setup_close">Fechar</string>
+    <string name="setup_back">Voltar</string>
+
+    <!-- Passo 0: notificações -->
+    <string name="setup_notif_title">Ativar notificações</string>
+    <string name="setup_notif_short">Ativar notificações</string>
+    <string name="setup_notif_why">Enquanto o joystick está ativo, o PokeLocation mostra uma notificação com controles para você esconder, pausar ou parar de qualquer lugar.</string>
+    <string name="setup_notif_action">Permitir notificações</string>
+    <string-array name="setup_notif_steps">
+        <item>Toque em \"Permitir notificações\" abaixo</item>
+        <item>Escolha \"Permitir\" na janela do sistema</item>
+    </string-array>
+
+    <!-- Passo 1: localização -->
+    <string name="setup_location_title">Acesso à localização</string>
+    <string name="setup_location_short">Conceder acesso à localização</string>
+    <string name="setup_location_why">O PokeLocation precisa do acesso à localização para ler sua posição real e mostrá-la no mapa.</string>
+    <string name="setup_location_action">Conceder acesso à localização</string>
+    <string-array name="setup_location_steps">
+        <item>Toque em \"Conceder acesso à localização\" abaixo</item>
+        <item>Escolha \"Durante o uso do app\"</item>
+        <item>Mantenha a localização \"Precisa\" ativada</item>
+    </string-array>
+
+    <!-- Passo 2: overlay -->
+    <string name="setup_overlay_title">Sobrepor a outros apps</string>
+    <string name="setup_overlay_short">Permitir o joystick na tela</string>
+    <string name="setup_overlay_why">O joystick flutua sobre os outros apps para você se mover enquanto os usa.</string>
+    <string name="setup_overlay_action">Conceder permissão</string>
+    <string-array name="setup_overlay_steps">
+        <item>Toque em \"Conceder permissão\" abaixo</item>
+        <item>Encontre o PokeLocation na lista, se pedido</item>
+        <item>Ative \"Permitir sobreposição a outros apps\"</item>
+        <item>Volte para esta tela</item>
+    </string-array>
+
+    <!-- Passo 3: opções do desenvolvedor -->
+    <string name="setup_dev_title">Ativar Opções do desenvolvedor</string>
+    <string name="setup_dev_short">Desbloquear as ferramentas do desenvolvedor</string>
+    <string name="setup_dev_why">O Android só deixa escolher um app de localização simulada depois que as Opções do desenvolvedor são desbloqueadas.</string>
+    <string name="setup_dev_action">Abrir Configurações</string>
+    <string-array name="setup_dev_steps_samsung">
+        <item>Vá em Configurações &gt; Sobre o telefone</item>
+        <item>Toque em Informações do software</item>
+        <item>Encontre Número de compilação</item>
+        <item>Toque nele 7 vezes rapidamente</item>
+        <item>Você verá \"Você agora é um desenvolvedor!\"</item>
+    </string-array>
+    <string-array name="setup_dev_steps_oneplus">
+        <item>Vá em Configurações &gt; Sobre o dispositivo</item>
+        <item>Encontre Número da versão</item>
+        <item>Toque nele 7 vezes rapidamente</item>
+        <item>Você verá \"Você agora é um desenvolvedor!\"</item>
+    </string-array>
+    <string-array name="setup_dev_steps_xiaomi">
+        <item>Vá em Configurações &gt; Sobre o telefone</item>
+        <item>Toque em \"Versão da MIUI\" 7 vezes</item>
+        <item>Você verá \"Você agora é um desenvolvedor!\"</item>
+    </string-array>
+    <string-array name="setup_dev_steps_default">
+        <item>Vá em Configurações &gt; Sobre o telefone</item>
+        <item>Encontre Número da versão</item>
+        <item>Toque nele 7 vezes rapidamente</item>
+        <item>Você verá \"Você agora é um desenvolvedor!\"</item>
+    </string-array>
+
+    <!-- Passo 4: app de localização simulada -->
+    <string name="setup_mock_title">Selecionar app de local fictício</string>
+    <string name="setup_mock_short">Definir o PokeLocation como provedor de localização</string>
+    <string name="setup_mock_why">O Android só aceita localizações simuladas do app escolhido como app de local fictício.</string>
+    <string name="setup_mock_action">Abrir Opções do desenvolvedor</string>
+    <string-array name="setup_mock_steps">
+        <item>Toque em \"Abrir Opções do desenvolvedor\" abaixo</item>
+        <item>Role até \"Selecionar app de local fictício\"</item>
+        <item>Toque e escolha o PokeLocation</item>
+        <item>Volte para esta tela</item>
+    </string-array>
+
+    <!-- OverlayDenial (F03) -->
+    <string name="setup_denial_title">Permissão bloqueada pelo seu aparelho</string>
+    <string name="setup_denial_subtitle">Desbloquear a permissão</string>
+    <string name="setup_denial_text">O Android bloqueia essa permissão para apps instalados fora da Play Store. Você pode desbloqueá-la em poucos passos.</string>
+    <string name="setup_tab_settings">Pelas Configurações</string>
+    <string name="setup_tab_adb">Comando ADB</string>
+    <string-array name="setup_denial_steps">
+        <item>Toque em \"Abrir informações do app\" abaixo</item>
+        <item>Toque no menu ⋮ no canto superior direito</item>
+        <item>Toque em \"Permitir configurações restritas\" e confirme</item>
+        <item>Volte e toque em \"Tentar conceder a permissão de novo\"</item>
+    </string-array>
+    <string name="setup_open_app_info">Abrir informações do app</string>
+    <string name="setup_try_again">Tentar conceder a permissão de novo</string>
+    <string name="setup_adb_text">Conecte o telefone a um computador com a depuração USB ativada e rode este comando:</string>
+    <string name="setup_tap_to_copy">Toque para copiar</string>
+
+    <!-- LocationDenied (F04) -->
+    <string name="setup_loc_denied_title">A localização é necessária</string>
+    <string name="setup_loc_denied_text">O PokeLocation não funciona sem acesso à localização. Abra as Configurações do app, toque em Permissões &gt; Localização e escolha \"Permitir apenas durante o uso do app\" com a localização precisa.</string>
+    <string name="setup_open_app_settings">Abrir configurações do app</string>
+
+    <!-- Complete / hub (F05) -->
+    <string name="setup_all_set">Tudo pronto!</string>
+    <string name="setup_all_set_text">Tudo está configurado corretamente!</string>
+    <string name="setup_incomplete">Configuração incompleta</string>
+    <string name="setup_incomplete_attention">Alguns passos precisam de atenção</string>
+    <string name="setup_incomplete_skipped">Quase lá. Alguns passos foram pulados.</string>
+    <string name="setup_start_using">Começar a usar o PokeLocation</string>
+    <string name="setup_fix">Corrigir</string>
+    <string name="setup_status_granted">Concedida</string>
+    <string name="setup_status_not_granted">Não concedida</string>
+    <string name="setup_status_enabled">Ativadas</string>
+    <string name="setup_status_not_enabled">Não ativadas</string>
+    <string name="setup_status_set">Definido</string>
+    <string name="setup_status_not_set">Não definido</string>
+    <string name="setup_status_skipped">Pulado</string>
+
+    <!-- Sair no meio -->
+    <string name="setup_exit_title">Sair da configuração?</string>
+    <string name="setup_exit_msg">Você pode voltar a qualquer momento pelo menu.</string>
+    <string name="setup_exit">Sair</string>
+</resources>
