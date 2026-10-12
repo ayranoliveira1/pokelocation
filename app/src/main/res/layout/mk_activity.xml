@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/mk_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <include layout="@layout/base_toolbar" />
+
+    <FrameLayout
+        android:id="@+id/mk_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <com.pokelocation.app.ui.base.StateView
+            android:id="@+id/mk_state"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/mk_list"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingTop="@dimen/gap"
+                android:paddingBottom="85dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        </com.pokelocation.app.ui.base.StateView>
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/mk_fab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="@dimen/gap_large"
+            android:contentDescription="@string/mk_add_type"
+            app:srcCompat="@drawable/ic_add" />
+    </FrameLayout>
+</LinearLayout>
