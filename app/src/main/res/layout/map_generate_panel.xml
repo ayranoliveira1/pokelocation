@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="@dimen/panel_padding">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/map_generate_route_title"
+        android:textAppearance="@style/TextAppearance.PokeLocation.PanelTitle" />
+    <RadioGroup android:id="@+id/map_gen_mode" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap_large" android:orientation="horizontal">
+        <RadioButton android:id="@+id/map_gen_random" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:text="@string/map_random" android:textColor="@color/on_surface" />
+        <RadioButton android:id="@+id/map_gen_circle" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:text="@string/map_circle" android:textColor="@color/on_surface" />
+    </RadioGroup>
+    <EditText android:id="@+id/map_gen_count" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap" android:hint="@string/map_marker_count" android:importantForAutofill="no"
+        android:inputType="number" android:maxLines="1" android:textColor="@color/on_surface" />
+    <EditText android:id="@+id/map_gen_offset" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap" android:hint="@string/map_offset_meters" android:importantForAutofill="no"
+        android:inputType="numberDecimal" android:maxLines="1" android:textColor="@color/on_surface" />
+    <TextView android:id="@+id/map_gen_error" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap" android:textColor="@color/danger" android:textSize="@dimen/text_small"
+        android:visibility="gone" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap_large" android:gravity="end" android:orientation="horizontal">
+        <Button android:id="@+id/map_gen_cancel" style="@style/Widget.PokeLocation.PanelButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/cancel" />
+        <Button android:id="@+id/map_gen_ok" style="@style/Widget.PokeLocation.PanelButton.Filled"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/gap" android:text="@string/map_generate" />
+    </LinearLayout>
+</LinearLayout>

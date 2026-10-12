@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RouteMapView (03 §2.4 / 09 §2.3). O MapView é criado por código dentro de map_container no 1º attach. -->
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <FrameLayout android:id="@+id/map_container" android:layout_width="match_parent" android:layout_height="match_parent"
+        android:background="#FFEEEEEE" />
+
+    <ScrollView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|start"
+        android:layout_marginStart="10dp" android:layout_marginTop="10dp" android:layout_marginBottom="120dp"
+        android:fillViewport="false" android:scrollbars="none">
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical">
+            <LinearLayout android:id="@+id/map_route_box" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:orientation="vertical" android:visibility="gone">
+                <LinearLayout android:id="@+id/map_route_options" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:background="@drawable/map_bg_card" android:orientation="vertical" android:padding="8dp">
+                    <TextView android:id="@+id/map_route_options_title" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:clickable="true" android:focusable="true" android:drawableEnd="@drawable/ic_expand_more"
+                        android:drawablePadding="4dp" android:drawableTint="@color/on_surface" android:gravity="center_vertical"
+                        android:text="@string/map_route_options" android:textAllCaps="true" android:textColor="@color/on_surface"
+                        android:textSize="12sp" android:textStyle="bold" />
+                    <LinearLayout android:id="@+id/map_route_options_body" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                    android:text="@string/map_route_mode" android:textAllCaps="true" android:textColor="@color/on_surface_variant"
+                    android:textSize="11sp" android:textStyle="bold" />
+                        <RadioGroup android:id="@+id/map_rg_mode" android:layout_width="wrap_content" android:layout_height="wrap_content">
+                    <RadioButton android:id="@+id/map_rb_stop" android:layout_width="wrap_content" android:layout_height="32dp"
+                        android:text="@string/map_stop_at_end" android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" />
+                    <RadioButton android:id="@+id/map_rb_loop" android:layout_width="wrap_content" android:layout_height="32dp"
+                        android:text="@string/map_loop_to_start" android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" />
+                    <RadioButton android:id="@+id/map_rb_reverse" android:layout_width="wrap_content" android:layout_height="32dp"
+                        android:text="@string/map_reverse" android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" />
+                        </RadioGroup>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+                    android:text="@string/map_start_mode" android:textAllCaps="true" android:textColor="@color/on_surface_variant"
+                    android:textSize="11sp" android:textStyle="bold" />
+                        <RadioGroup android:id="@+id/map_rg_start" android:layout_width="wrap_content" android:layout_height="wrap_content">
+                    <RadioButton android:id="@+id/map_rb_teleport" android:layout_width="wrap_content" android:layout_height="32dp"
+                        android:text="@string/map_teleport_to_start" android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" />
+                    <RadioButton android:id="@+id/map_rb_walk" android:layout_width="wrap_content" android:layout_height="32dp"
+                        android:text="@string/map_walk_to_start" android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" />
+                        </RadioGroup>
+                    </LinearLayout>
+                </LinearLayout>
+            <TextView android:id="@+id/map_btn_start_route" android:layout_width="wrap_content" android:layout_height="36dp"
+                android:layout_marginTop="6dp" android:background="@drawable/map_bg_pill" android:clickable="true"
+                android:focusable="true" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="12dp"
+                android:drawableStart="@drawable/ic_play" android:drawablePadding="6dp" android:drawableTint="@color/accent"
+                android:text="@string/map_start_route" android:textAllCaps="true" android:textColor="@color/on_surface"
+                android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+            <TextView android:id="@+id/map_btn_generate" android:layout_width="wrap_content" android:layout_height="36dp"
+                android:layout_marginTop="6dp" android:background="@drawable/map_bg_pill" android:clickable="true"
+                android:focusable="true" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="12dp"
+                android:drawableStart="@drawable/ic_generate" android:drawablePadding="6dp" android:drawableTint="@color/accent"
+                android:text="@string/map_generate_route" android:textAllCaps="true" android:textColor="@color/on_surface"
+                android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+            <TextView android:id="@+id/map_btn_load" android:layout_width="wrap_content" android:layout_height="36dp"
+                android:layout_marginTop="6dp" android:background="@drawable/map_bg_pill" android:clickable="true"
+                android:focusable="true" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="12dp"
+                android:drawableStart="@drawable/ic_list" android:drawablePadding="6dp" android:drawableTint="@color/accent"
+                android:text="@string/map_load_route" android:textAllCaps="true" android:textColor="@color/on_surface"
+                android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+            <TextView android:id="@+id/map_btn_save" android:layout_width="wrap_content" android:layout_height="36dp"
+                android:layout_marginTop="6dp" android:background="@drawable/map_bg_pill" android:clickable="true"
+                android:focusable="true" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="12dp"
+                android:drawableStart="@drawable/ic_check" android:drawablePadding="6dp" android:drawableTint="@color/accent"
+                android:text="@string/map_save_route" android:textAllCaps="true" android:textColor="@color/on_surface"
+                android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+            <TextView android:id="@+id/map_btn_clear" android:layout_width="wrap_content" android:layout_height="36dp"
+                android:layout_marginTop="6dp" android:background="@drawable/map_bg_pill" android:clickable="true"
+                android:focusable="true" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="12dp"
+                android:drawableStart="@drawable/ic_delete" android:drawablePadding="6dp" android:drawableTint="@color/accent"
+                android:text="@string/map_clear_route" android:textAllCaps="true" android:textColor="@color/on_surface"
+                android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+            </LinearLayout>
+            <TextView android:id="@+id/map_btn_set_route" android:layout_width="wrap_content" android:layout_height="36dp"
+                android:layout_marginTop="6dp" android:background="@drawable/map_bg_pill" android:clickable="true"
+                android:focusable="true" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="12dp"
+                android:drawableStart="@drawable/ic_route" android:drawablePadding="6dp" android:drawableTint="@color/accent"
+                android:text="@string/map_set_route" android:textAllCaps="true" android:textColor="@color/on_surface"
+                android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+            <TextView android:id="@+id/map_btn_set_location" android:layout_width="wrap_content" android:layout_height="36dp"
+                android:layout_marginTop="6dp" android:background="@drawable/map_bg_pill" android:clickable="true"
+                android:focusable="true" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="12dp"
+                android:drawableStart="@drawable/ic_target" android:drawablePadding="6dp" android:drawableTint="@color/accent"
+                android:text="@string/map_set_location" android:textAllCaps="true" android:textColor="@color/on_surface"
+                android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+            <TextView android:id="@+id/map_btn_record" android:layout_width="wrap_content" android:layout_height="36dp"
+                android:layout_marginTop="6dp" android:background="@drawable/map_bg_pill" android:clickable="true"
+                android:focusable="true" android:gravity="center_vertical" android:paddingStart="8dp" android:paddingEnd="12dp"
+                android:drawableStart="@drawable/ic_record" android:drawablePadding="6dp" android:drawableTint="@color/accent"
+                android:text="@string/map_record_route" android:textAllCaps="true" android:textColor="@color/on_surface"
+                android:textSize="12sp" android:textStyle="bold" android:visibility="gone" />
+        </LinearLayout>
+    </ScrollView>
+
+    <ImageView android:id="@+id/map_close" android:layout_width="36dp" android:layout_height="36dp"
+        android:layout_gravity="top|end" android:layout_margin="10dp" android:background="@drawable/map_bg_close"
+        android:contentDescription="@string/close" android:padding="7dp" android:src="@drawable/ic_close"
+        android:tint="#FFFFFFFF" android:visibility="gone" />
+
+    <LinearLayout android:id="@+id/map_actions" android:layout_width="150dp" android:layout_height="wrap_content"
+        android:layout_gravity="top|end" android:layout_marginTop="10dp" android:layout_marginEnd="10dp"
+        android:background="@drawable/map_bg_card" android:orientation="vertical" android:paddingTop="6dp"
+        android:paddingBottom="6dp" android:visibility="gone">
+        <TextView android:id="@+id/map_act_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:gravity="center" android:maxLines="2" android:ellipsize="end" android:paddingStart="8dp" android:paddingEnd="8dp"
+            android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" />
+        <TextView android:id="@+id/map_act_coords" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:background="?android:attr/selectableItemBackground" android:clickable="true" android:focusable="true"
+            android:gravity="center" android:paddingStart="8dp" android:paddingTop="2dp" android:paddingEnd="8dp"
+            android:paddingBottom="4dp" android:textColor="@color/accent" android:textSize="11sp" />
+        <TextView android:id="@+id/map_act_move" android:layout_width="match_parent" android:layout_height="36dp"
+            android:background="?android:attr/selectableItemBackground" android:clickable="true" android:focusable="true"
+            android:gravity="center" android:paddingStart="12dp" android:paddingEnd="12dp" android:text="@string/move"
+            android:textAllCaps="true" android:textColor="@color/accent" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:id="@+id/map_act_copy" android:layout_width="match_parent" android:layout_height="36dp"
+            android:background="?android:attr/selectableItemBackground" android:clickable="true" android:focusable="true"
+            android:gravity="center" android:paddingStart="12dp" android:paddingEnd="12dp" android:text="@string/copy"
+            android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:id="@+id/map_act_delete" android:layout_width="match_parent" android:layout_height="36dp"
+            android:background="?android:attr/selectableItemBackground" android:clickable="true" android:focusable="true"
+            android:gravity="center" android:paddingStart="12dp" android:paddingEnd="12dp" android:text="@string/delete"
+            android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:id="@+id/map_act_add_marker" android:layout_width="match_parent" android:layout_height="36dp"
+            android:background="?android:attr/selectableItemBackground" android:clickable="true" android:focusable="true"
+            android:gravity="center" android:paddingStart="12dp" android:paddingEnd="12dp" android:text="@string/map_add_marker"
+            android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:id="@+id/map_act_save" android:layout_width="match_parent" android:layout_height="36dp"
+            android:background="?android:attr/selectableItemBackground" android:clickable="true" android:focusable="true"
+            android:gravity="center" android:paddingStart="12dp" android:paddingEnd="12dp" android:text="@string/save"
+            android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:id="@+id/map_act_share" android:layout_width="match_parent" android:layout_height="36dp"
+            android:background="?android:attr/selectableItemBackground" android:clickable="true" android:focusable="true"
+            android:gravity="center" android:paddingStart="12dp" android:paddingEnd="12dp" android:text="@string/share"
+            android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/map_move" android:layout_width="150dp" android:layout_height="wrap_content"
+        android:layout_gravity="top|end" android:layout_marginTop="10dp" android:layout_marginEnd="10dp"
+        android:background="@drawable/map_bg_card" android:orientation="vertical" android:paddingTop="6dp"
+        android:paddingBottom="6dp" android:visibility="gone">
+        <TextView android:id="@+id/map_move_ok" android:layout_width="match_parent" android:layout_height="36dp"
+            android:background="?android:attr/selectableItemBackground" android:clickable="true" android:focusable="true"
+            android:gravity="center" android:paddingStart="12dp" android:paddingEnd="12dp" android:text="@string/ok"
+            android:textAllCaps="true" android:textColor="@color/accent" android:textSize="12sp" android:textStyle="bold" />
+        <TextView android:id="@+id/map_move_cancel" android:layout_width="match_parent" android:layout_height="36dp"
+            android:background="?android:attr/selectableItemBackground" android:clickable="true" android:focusable="true"
+            android:gravity="center" android:paddingStart="12dp" android:paddingEnd="12dp" android:text="@string/cancel"
+            android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="16dp" android:gravity="center_horizontal"
+        android:orientation="vertical">
+        <TextView android:id="@+id/map_btn_start" android:layout_width="120dp" android:layout_height="48dp"
+            android:background="@drawable/bg_pill" android:clickable="true" android:focusable="true" android:elevation="4dp"
+            android:gravity="center" android:text="@string/map_start" android:textColor="@color/on_primary"
+            android:textSize="18sp" android:textStyle="bold" />
+        <TextView android:id="@+id/map_btn_teleport" android:layout_width="wrap_content" android:layout_height="40dp"
+            android:background="@drawable/map_bg_pill" android:clickable="true" android:focusable="true"
+            android:drawableStart="@drawable/ic_target" android:drawablePadding="6dp" android:drawableTint="@color/accent"
+            android:gravity="center_vertical" android:paddingStart="10dp" android:paddingEnd="14dp"
+            android:textColor="@color/on_surface" android:textSize="13sp" android:textStyle="bold" android:visibility="gone" />
+        <FrameLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+            android:background="@drawable/map_bg_card" android:paddingStart="10dp" android:paddingEnd="6dp">
+            <Switch android:id="@+id/map_sw_markers" android:layout_width="wrap_content" android:layout_height="36dp"
+                android:enabled="false" android:switchPadding="8dp" android:text="@string/map_show_markers"
+                android:textAllCaps="true" android:textColor="@color/on_surface" android:textSize="12sp" android:textStyle="bold" />
+        </FrameLayout>
+        <TextView android:id="@+id/map_distance" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" android:layout_marginStart="16dp" android:layout_marginEnd="16dp"
+            android:gravity="center" android:paddingStart="8dp" android:paddingTop="3dp" android:paddingEnd="8dp"
+            android:paddingBottom="3dp" android:textColor="#FFFFFFFF" android:textSize="12sp" android:visibility="gone" />
+    </LinearLayout>
+</merge>

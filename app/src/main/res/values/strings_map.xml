@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frente W2 (map): RouteMapView, GenerateRoutePanel, MapOverlayService. -->
+<resources>
+    <string name="map_route_options">Route Options</string>
+    <string name="map_route_mode">Route Mode</string>
+    <string name="map_stop_at_end">Stop At End</string>
+    <string name="map_loop_to_start">Loop To Start</string>
+    <string name="map_reverse">Reverse</string>
+    <string name="map_start_mode">Start Mode</string>
+    <string name="map_teleport_to_start">Teleport To Start</string>
+    <string name="map_walk_to_start">Walk To Start</string>
+    <string name="map_start_route">Start Route</string>
+    <string name="map_resume_route">Resume Route</string>
+    <string name="map_generate_route">Generate Route</string>
+    <string name="map_load_route">Load Route</string>
+    <string name="map_save_route">Save Route</string>
+    <string name="map_clear_route">Clear Route</string>
+    <string name="map_set_route">Set Route</string>
+    <string name="map_set_location">Set Location</string>
+    <string name="map_record_route">Record Route</string>
+    <string name="map_resume_record">Resume Record</string>
+    <string name="map_start">Start</string>
+    <string name="map_stop">Stop</string>
+    <string name="map_teleport_to">TELEPORT TO</string>
+    <string name="map_location">LOCATION</string>
+    <string name="map_show_markers">Show Markers</string>
+    <string name="map_current_location">Current Location</string>
+    <string name="map_start_location">Start Location</string>
+    <string name="map_add_marker">Add Marker</string>
+    <string name="map_add_to_favorites">Add to Favorites</string>
+    <string name="map_add_to_marker">Add To Marker</string>
+    <string name="map_markers">Markers</string>
+    <string name="map_routes">Routes</string>
+    <string name="map_tap_to_set">Tap on map to set location!</string>
+    <string name="map_route_saved">Route saved!</string>
+    <string name="map_route_save_failed">Oh no! We couldn\'t add that route. Please try again later…</string>
+    <string name="map_failed">Map failed to load</string>
+    <string name="map_generate_route_title">Generate Route</string>
+    <string name="map_random">Random</string>
+    <string name="map_circle">Circle</string>
+    <string name="map_marker_count">Marker Count</string>
+    <string name="map_offset_meters">Offset (meters)</string>
+    <string name="map_generate">Generate</string>
+    <string name="map_err_count">Marker count must be a positive integer.</string>
+    <string name="map_err_count_max">Marker count cannot exceed %d.</string>
+    <string name="map_err_offset">Offset must be positive number.</string>
+    <string name="map_notif_channel">PokeLocation Map</string>
+    <string name="map_notif_title">PokeLocation Map</string>
+    <plurals name="map_coordinates">
+        <item quantity="one">%d coordinate</item>
+        <item quantity="other">%d coordinates</item>
+    </plurals>
+</resources>
