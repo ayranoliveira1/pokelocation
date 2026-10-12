@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Frente W7a (settings/about). Prefixos set_ e about_. -->
+<resources>
+    <string name="set_title">Settings</string>
+    <string name="set_hint_next_start">The joystick is running. Changes apply the next time the joystick starts.</string>
+    <string name="set_cat_general">General</string>
+    <string name="set_cat_joystick">JoyStick</string>
+    <string name="set_cat_backup">Backup</string>
+    <string name="set_cat_advanced">Advanced</string>
+
+    <!-- General -->
+    <string name="set_language">Select Language</string>
+    <string-array name="set_language_entries">
+        <item>Device Default</item>
+        <item>English</item>
+        <item>Português (Brasil)</item>
+    </string-array>
+    <string name="set_theme">Theme</string>
+    <string-array name="set_theme_entries">
+        <item>System Default</item>
+        <item>Light</item>
+        <item>Dark</item>
+    </string-array>
+    <string name="set_map_style">Map Style</string>
+    <string-array name="set_map_style_entries">
+        <item>OpenStreetMap</item>
+        <item>OpenStreetMap (Latin names)</item>
+    </string-array>
+    <string name="set_elevation">Elevation Lookup</string>
+    <string name="set_elevation_summary">Looks up the altitude online (Open-Meteo) when it is unknown. Uses data.</string>
+    <string name="set_dev_options">Developer Options</string>
+    <string name="set_dev_options_summary">Open the Developer Options screen.</string>
+    <string name="set_dev_options_error">Unfortunately, it seems like we can\'t open Developer Options for you…</string>
+    <string name="set_ignore_mock">Always Ignore Mock Location</string>
+    <string name="set_ignore_mock_summary">Always ignores the mock location check before starting the joystick.</string>
+    <string name="set_prevent_screenshots">Prevent Screenshots</string>
+    <string name="set_prevent_screenshots_summary">Prevents any app from taking screenshots when the joystick is visible.</string>
+    <string name="set_distance_info">Display Distance Info</string>
+    <string name="set_distance_info_summary">Displays the distance and time from the last mocked location to a new selected location. (Green = Generally OK, Red = Too Far Too Soon)</string>
+    <string name="set_suspended">Enable Suspended Mocking</string>
+    <string name="set_suspended_summary">*Requires Android version Marshmallow or higher on an older version of Google Play Services.* This feature broadcasts a mock location for a short period and then suspends broadcasting to let apps pick up the last known location.</string>
+    <string name="set_auto_suspend">Enable Auto Suspend Location</string>
+    <string name="set_auto_suspend_summary">Repeats the last suspended location after the specified interval.</string>
+    <string name="set_auto_suspend_interval">Auto Suspend Interval</string>
+    <string name="set_auto_suspend_interval_summary">The interval used to broadcast the last suspended location.</string>
+    <string name="set_indirect">Enable Indirect Mocking</string>
+    <string name="set_indirect_summary">*Requires Android version Marshmallow or higher on an older version of the security patch.* This feature prevents apps from detecting mock location being enabled in developer options.</string>
+    <string name="set_system_mode">System Mode</string>
+    <string name="set_system_mode_summary">Uses hidden ILocationManager API (system app required). Only works on Android &lt; 10. Bypasses mock detection.</string>
+    <string name="set_system_mode_disabled">Requires: Android &lt; 10 + GPS + System App</string>
+    <string name="set_agps">Enable A-GPS Reset</string>
+    <string name="set_agps_summary">This helps prevent jumping to real location by forcing the GPS to reset. **Uses data**</string>
+    <string name="set_save_location">Save Last Location</string>
+    <string name="set_save_location_summary">Helpful for users experiencing issues with the joystick disappearing. Saves the location while moving so it can be restored. *Not recommended, may degrade performance.</string>
+    <string name="set_auto_close">Auto Close App</string>
+    <string name="set_auto_close_summary">Automatically close this app after the joystick control is started.</string>
+    <string name="set_auto_start_joystick">Auto Start JoyStick</string>
+    <string name="set_auto_start_joystick_summary">Automatically start the joystick control when you select a favorite or route.</string>
+    <string name="set_auto_start_app">Auto Start App</string>
+    <string name="set_none">None</string>
+    <string name="set_apps_error">Sorry there was an issue retrieving the list of apps installed on your device.</string>
+    <string name="set_privacy_mode">Privacy Mode</string>
+    <string name="set_privacy_mode_summary">Generate a cloned APK with randomized package name to avoid detection</string>
+    <string name="set_privacy_mode_generate">Generate Clone</string>
+    <string name="set_privacy_mode_started">Clone generation started. The app will install the new APK automatically.</string>
+    <string name="set_privacy_mode_error">Failed to generate clone app. Check logs for details.</string>
+    <string name="set_privacy_mode_warning">This will generate a cloned APK with a randomized package name to avoid detection by anti-fraud apps. The cloned app will be signed with the debug keystore. This increases APK size significantly. Uninstall any previous clones before generating a new one. The A-GPS reset will only auto-run when the cloned app is detected. Continue?</string>
+
+    <!-- JoyStick -->
+    <string name="set_joystick_type">JoyStick Type</string>
+    <string-array name="set_joystick_type_entries">
+        <item>Drawer</item>
+        <item>Classic</item>
+    </string-array>
+    <string name="set_joystick_size">JoyStick Size</string>
+    <string name="set_joystick_opacity">JoyStick Opacity</string>
+    <string name="set_walking_speed">Walking Speed</string>
+    <string name="set_jogging_speed">Jogging Speed</string>
+    <string name="set_running_speed">Running Speed</string>
+
+    <!-- Backup -->
+    <string name="set_save_db">Save Database</string>
+    <string name="set_save_db_summary">Save your favorites, routes and markers to a file.</string>
+    <string name="set_restore_db">Restore Database</string>
+    <string name="set_restore_db_summary">Replace all data with a saved file. The app will restart.</string>
+    <string name="set_saving_db">Saving database…</string>
+    <string name="set_restoring_db">Restoring database…</string>
+    <string name="set_db_saved">Database Saved!</string>
+    <string name="set_save_error">There was an error saving the database…</string>
+    <string name="set_restore_error">There was an error restoring the database…</string>
+    <string name="set_wrong_file">Wrong file type selected.</string>
+    <string name="set_no_file_manager">No file manager app found…</string>
+    <string name="set_restart_title">Restore Database</string>
+    <string name="set_restart_msg">Please restart the app for changes to take effect.</string>
+    <string name="set_restart">Restart</string>
+
+    <!-- Advanced -->
+    <string name="set_advanced_warning">The settings below are used to emulate realistic GPS values by creating random errors for mocked values. Only change these settings if you know what you are doing. Erratic behavior may occur if set incorrectly!</string>
+    <string name="set_process_interval">Process Interval</string>
+    <string name="set_process_interval_summary">The interval used to broadcast all mocked values. This value should always be lesser than all intervals below to prevent skipped updates.</string>
+    <string name="set_update_interval">Update Interval</string>
+    <string name="set_update_interval_summary">The interval used to update the change in location when moving.</string>
+    <string name="set_idle_interval">Idle Interval</string>
+    <string name="set_idle_interval_summary">The interval used to update the change in location when idle.</string>
+    <string name="set_idle_offset">Idle Offset</string>
+    <string name="set_idle_offset_summary">The +/- offset used in the calculation to determine a random location when idle.</string>
+    <string name="set_heading_offset">Heading Angle Offset</string>
+    <string name="set_heading_offset_summary">The +/- offset used in the calculation to determine the heading angle when moving.</string>
+    <string name="set_speed_offset">Speed Offset</string>
+    <string name="set_speed_offset_summary">The +/- offset used in the calculation to determine the speed when moving.</string>
+    <string name="set_altitude_offset">Altitude Offset</string>
+    <string name="set_altitude_offset_summary">The +/- offset used in the calculation to determine a random altitude when moving.</string>
+    <string name="set_min_idle_accuracy">Min Idle Accuracy</string>
+    <string name="set_min_idle_accuracy_summary">The minimum location accuracy used when idle.</string>
+    <string name="set_max_idle_accuracy">Max Idle Accuracy</string>
+    <string name="set_max_idle_accuracy_summary">The maximum location accuracy used when idle.</string>
+    <string name="set_min_moving_accuracy">Min Moving Accuracy</string>
+    <string name="set_min_moving_accuracy_summary">The minimum location accuracy used when moving.</string>
+    <string name="set_max_moving_accuracy">Max Moving Accuracy</string>
+    <string name="set_max_moving_accuracy_summary">The maximum location accuracy used when moving.</string>
+
+    <!-- Unidades (iguais nos dois idiomas) -->
+    <string name="set_fmt_percent" translatable="false">%d %%</string>
+    <string name="set_unit_ms" translatable="false">%s ms</string>
+    <string name="set_unit_s" translatable="false">%s s</string>
+    <string name="set_unit_kmh" translatable="false">%s km/h</string>
+    <string name="set_unit_m" translatable="false">%s m</string>
+    <string name="set_unit_deg" translatable="false">%s°</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_version">Version: %s</string>
+</resources>

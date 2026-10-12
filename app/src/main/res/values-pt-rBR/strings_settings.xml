@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="set_title">Configurações</string>
+    <string name="set_hint_next_start">O joystick está em execução. As mudanças valem no próximo início do joystick.</string>
+    <string name="set_cat_general">Geral</string>
+    <string name="set_cat_joystick">JoyStick</string>
+    <string name="set_cat_backup">Backup</string>
+    <string name="set_cat_advanced">Avançado</string>
+
+    <!-- Geral -->
+    <string name="set_language">Selecionar idioma</string>
+    <string-array name="set_language_entries">
+        <item>Padrão do dispositivo</item>
+        <item>English</item>
+        <item>Português (Brasil)</item>
+    </string-array>
+    <string name="set_theme">Tema</string>
+    <string-array name="set_theme_entries">
+        <item>Padrão do sistema</item>
+        <item>Claro</item>
+        <item>Escuro</item>
+    </string-array>
+    <string name="set_map_style">Estilo do mapa</string>
+    <string-array name="set_map_style_entries">
+        <item>OpenStreetMap</item>
+        <item>OpenStreetMap (nomes latinos)</item>
+    </string-array>
+    <string name="set_elevation">Buscar altitude</string>
+    <string name="set_elevation_summary">Busca a altitude online (Open-Meteo) quando ela é desconhecida. Usa dados.</string>
+    <string name="set_dev_options">Opções do desenvolvedor</string>
+    <string name="set_dev_options_summary">Abre a tela de Opções do desenvolvedor.</string>
+    <string name="set_dev_options_error">Infelizmente, não conseguimos abrir as Opções do desenvolvedor para você…</string>
+    <string name="set_ignore_mock">Sempre ignorar local fictício</string>
+    <string name="set_ignore_mock_summary">Sempre ignora a verificação de local fictício antes de iniciar o joystick.</string>
+    <string name="set_prevent_screenshots">Bloquear capturas de tela</string>
+    <string name="set_prevent_screenshots_summary">Impede que qualquer app capture a tela enquanto o joystick estiver visível.</string>
+    <string name="set_distance_info">Mostrar info de distância</string>
+    <string name="set_distance_info_summary">Mostra a distância e o tempo da última localização simulada até um novo local selecionado. (Verde = geralmente OK, Vermelho = longe demais, cedo demais)</string>
+    <string name="set_suspended">Ativar simulação suspensa</string>
+    <string name="set_suspended_summary">*Requer Android Marshmallow ou superior com uma versão antiga do Google Play Services.* Este recurso transmite uma localização simulada por um curto período e depois suspende a transmissão para que os apps peguem a última localização conhecida.</string>
+    <string name="set_auto_suspend">Ativar localização suspensa automática</string>
+    <string name="set_auto_suspend_summary">Repete a última localização suspensa após o intervalo definido.</string>
+    <string name="set_auto_suspend_interval">Intervalo da suspensão automática</string>
+    <string name="set_auto_suspend_interval_summary">O intervalo usado para transmitir a última localização suspensa.</string>
+    <string name="set_indirect">Ativar simulação indireta</string>
+    <string name="set_indirect_summary">*Requer Android Marshmallow ou superior com um patch de segurança antigo.* Este recurso impede que apps detectem o local fictício ativado nas opções do desenvolvedor.</string>
+    <string name="set_system_mode">Modo Sistema</string>
+    <string name="set_system_mode_summary">Usa API ILocationManager oculta (requer app de sistema). Funciona apenas no Android &lt; 10. Ignora detecção de mock.</string>
+    <string name="set_system_mode_disabled">Requer: Android &lt; 10 + GPS + App de Sistema</string>
+    <string name="set_agps">Ativar reset do A-GPS</string>
+    <string name="set_agps_summary">Ajuda a evitar saltos para a localização real forçando o reset do GPS. **Usa dados**</string>
+    <string name="set_save_location">Salvar última localização</string>
+    <string name="set_save_location_summary">Útil para quem tem problemas com o joystick sumindo. Salva a localização em movimento para poder restaurá-la. *Não recomendado, pode reduzir o desempenho.</string>
+    <string name="set_auto_close">Fechar o app automaticamente</string>
+    <string name="set_auto_close_summary">Fecha este app automaticamente depois que o controle do joystick é iniciado.</string>
+    <string name="set_auto_start_joystick">Iniciar o JoyStick automaticamente</string>
+    <string name="set_auto_start_joystick_summary">Inicia o controle do joystick automaticamente quando você escolhe um favorito ou uma rota.</string>
+    <string name="set_auto_start_app">Abrir app automaticamente</string>
+    <string name="set_none">Nenhum</string>
+    <string name="set_apps_error">Desculpe, houve um problema ao obter a lista de apps instalados no seu dispositivo.</string>
+    <string name="set_privacy_mode">Modo Privacidade</string>
+    <string name="set_privacy_mode_summary">Gera um APK clonado com nome de pacote randomizado para evitar detecção</string>
+    <string name="set_privacy_mode_generate">Gerar Clone</string>
+    <string name="set_privacy_mode_started">Geração do clone iniciada. O app instalará o novo APK automaticamente.</string>
+    <string name="set_privacy_mode_error">Falha ao gerar app clone. Verifique os logs para detalhes.</string>
+    <string name="set_privacy_mode_warning">Isso gerará um APK clonado com nome de pacote randomizado para evitar detecção por apps anti-fraude. O app clonado será assinado com a chave de debug. Isso aumenta significativamente o tamanho do APK. Desinstale clones anteriores antes de gerar um novo. O reset do A-GPS só será executado automaticamente quando o app clonado for detectado. Continuar?</string>
+
+    <!-- JoyStick -->
+    <string name="set_joystick_type">Tipo de JoyStick</string>
+    <string-array name="set_joystick_type_entries">
+        <item>Gaveta</item>
+        <item>Clássico</item>
+    </string-array>
+    <string name="set_joystick_size">Tamanho do JoyStick</string>
+    <string name="set_joystick_opacity">Opacidade do JoyStick</string>
+    <string name="set_walking_speed">Velocidade caminhando</string>
+    <string name="set_jogging_speed">Velocidade trotando</string>
+    <string name="set_running_speed">Velocidade correndo</string>
+
+    <!-- Backup -->
+    <string name="set_save_db">Salvar banco de dados</string>
+    <string name="set_save_db_summary">Salva seus favoritos, rotas e marcadores em um arquivo.</string>
+    <string name="set_restore_db">Restaurar banco de dados</string>
+    <string name="set_restore_db_summary">Substitui todos os dados por um arquivo salvo. O app será reiniciado.</string>
+    <string name="set_saving_db">Salvando banco de dados…</string>
+    <string name="set_restoring_db">Restaurando banco de dados…</string>
+    <string name="set_db_saved">Banco de dados salvo!</string>
+    <string name="set_save_error">Houve um erro ao salvar o banco de dados…</string>
+    <string name="set_restore_error">Houve um erro ao restaurar o banco de dados…</string>
+    <string name="set_wrong_file">Tipo de arquivo errado selecionado.</string>
+    <string name="set_no_file_manager">Nenhum app gerenciador de arquivos encontrado…</string>
+    <string name="set_restart_title">Restaurar banco de dados</string>
+    <string name="set_restart_msg">Reinicie o app para que as mudanças tenham efeito.</string>
+    <string name="set_restart">Reiniciar</string>
+
+    <!-- Avançado -->
+    <string name="set_advanced_warning">As configurações abaixo emulam valores de GPS realistas criando erros aleatórios nos valores simulados. Só altere se souber o que está fazendo. Valores incorretos podem causar comportamento errático!</string>
+    <string name="set_process_interval">Intervalo de processamento</string>
+    <string name="set_process_interval_summary">O intervalo usado para transmitir todos os valores simulados. Deve ser sempre menor que todos os intervalos abaixo para evitar atualizações puladas.</string>
+    <string name="set_update_interval">Intervalo de atualização</string>
+    <string name="set_update_interval_summary">O intervalo usado para atualizar a mudança de localização em movimento.</string>
+    <string name="set_idle_interval">Intervalo parado</string>
+    <string name="set_idle_interval_summary">O intervalo usado para atualizar a mudança de localização quando parado.</string>
+    <string name="set_idle_offset">Desvio parado</string>
+    <string name="set_idle_offset_summary">O desvio +/- usado no cálculo de uma localização aleatória quando parado.</string>
+    <string name="set_heading_offset">Desvio do ângulo de direção</string>
+    <string name="set_heading_offset_summary">O desvio +/- usado no cálculo do ângulo de direção em movimento.</string>
+    <string name="set_speed_offset">Desvio de velocidade</string>
+    <string name="set_speed_offset_summary">O desvio +/- usado no cálculo da velocidade em movimento.</string>
+    <string name="set_altitude_offset">Desvio de altitude</string>
+    <string name="set_altitude_offset_summary">O desvio +/- usado no cálculo de uma altitude aleatória em movimento.</string>
+    <string name="set_min_idle_accuracy">Precisão mínima parado</string>
+    <string name="set_min_idle_accuracy_summary">A precisão mínima da localização usada quando parado.</string>
+    <string name="set_max_idle_accuracy">Precisão máxima parado</string>
+    <string name="set_max_idle_accuracy_summary">A precisão máxima da localização usada quando parado.</string>
+    <string name="set_min_moving_accuracy">Precisão mínima em movimento</string>
+    <string name="set_min_moving_accuracy_summary">A precisão mínima da localização usada em movimento.</string>
+    <string name="set_max_moving_accuracy">Precisão máxima em movimento</string>
+    <string name="set_max_moving_accuracy_summary">A precisão máxima da localização usada em movimento.</string>
+
+    <!-- Sobre -->
+    <string name="about_title">Sobre</string>
+    <string name="about_version">Versão: %s</string>
+</resources>
