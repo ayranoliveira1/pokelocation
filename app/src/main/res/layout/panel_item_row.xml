@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:minHeight="@dimen/row_height" android:gravity="center_vertical" android:orientation="vertical"
+    android:paddingStart="@dimen/panel_padding" android:paddingEnd="@dimen/panel_padding"
+    android:paddingTop="@dimen/gap" android:paddingBottom="@dimen/gap"
+    android:background="?android:attr/selectableItemBackground">
+    <TextView android:id="@+id/row_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="@color/on_surface" android:textSize="@dimen/text_body" />
+    <TextView android:id="@+id/row_subtitle" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="@color/on_surface_variant" android:textSize="@dimen/text_small" />
+    <TextView android:id="@+id/row_line" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textSize="@dimen/text_small" android:visibility="gone" />
+</LinearLayout>

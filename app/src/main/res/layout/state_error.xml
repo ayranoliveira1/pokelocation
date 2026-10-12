@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:gravity="center" android:orientation="vertical" android:padding="32dp">
+    <ImageView android:layout_width="64dp" android:layout_height="64dp" android:src="@drawable/ic_info"
+        android:importantForAccessibility="no" android:alpha="0.5" />
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap_large" android:text="@string/state_error_title"
+        android:textAppearance="@style/TextAppearance.PokeLocation.PanelTitle" />
+    <TextView android:id="@+id/state_error_text" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap" android:gravity="center" android:text="@string/state_error_msg"
+        android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" />
+    <Button android:id="@+id/state_retry" style="@style/Widget.PokeLocation.PanelButton.Filled"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap_large" android:text="@string/retry" />
+</LinearLayout>

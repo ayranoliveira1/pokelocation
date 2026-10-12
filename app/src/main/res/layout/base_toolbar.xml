@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Incluir no topo do layout da Activity: <include layout="@layout/base_toolbar"/> (sem android:id no include).
+     BaseActivity.applyInsets põe o inset da status bar no paddingTop de toolbar_container; a toolbar mantém
+     minHeight = actionBarSize (inflar o minHeight desalinha os botões da Toolbar). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/toolbar_container"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/primary">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/primary"
+        android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.PokeLocation.Popup"
+        app:titleTextColor="@color/on_primary"
+        app:subtitleTextColor="@color/on_primary"
+        app:navigationIconTint="@color/on_primary" />
+</FrameLayout>

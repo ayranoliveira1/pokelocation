@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="@dimen/panel_padding">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/teleport_title" android:textAppearance="@style/TextAppearance.PokeLocation.PanelTitle" />
+    <EditText android:id="@+id/tp_text" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap_large" android:hint="@string/lat_lng_hint" android:importantForAutofill="no"
+        android:inputType="text" android:maxLines="1" android:textColor="@color/on_surface" />
+    <TextView android:id="@+id/tp_error" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/invalid_location" android:textColor="@color/danger" android:textSize="@dimen/text_small"
+        android:visibility="gone" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+        <Button android:id="@+id/tp_paste" style="@style/Widget.PokeLocation.PanelButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:drawableStart="@drawable/ic_paste" android:drawablePadding="@dimen/gap" android:text="@string/paste" />
+        <Button android:id="@+id/tp_format" style="@style/Widget.PokeLocation.PanelButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/format" />
+        <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+        <Button android:id="@+id/tp_favorites" style="@style/Widget.PokeLocation.PanelButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:drawableStart="@drawable/ic_favorite" android:drawablePadding="@dimen/gap" android:text="@string/favorites" />
+    </LinearLayout>
+    <CheckBox android:id="@+id/tp_walk" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/walk_mode" android:textColor="@color/on_surface" />
+    <TextView android:id="@+id/tp_distance" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap" android:textSize="@dimen/text_small" android:visibility="gone" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/gap_large" android:gravity="end" android:orientation="horizontal">
+        <Button android:id="@+id/tp_cancel" style="@style/Widget.PokeLocation.PanelButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/cancel" />
+        <Button android:id="@+id/tp_back" style="@style/Widget.PokeLocation.PanelButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/teleport_back" />
+        <Button android:id="@+id/tp_go" style="@style/Widget.PokeLocation.PanelButton.Filled"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/gap" android:text="@string/teleport" />
+    </LinearLayout>
+</LinearLayout>

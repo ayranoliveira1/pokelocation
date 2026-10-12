@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:paddingTop="@dimen/panel_padding" android:paddingBottom="@dimen/gap">
+    <TextView android:id="@+id/panel_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingStart="@dimen/panel_padding" android:paddingEnd="@dimen/panel_padding"
+        android:textAppearance="@style/TextAppearance.PokeLocation.PanelTitle" />
+    <Spinner android:id="@+id/panel_folder" android:layout_width="match_parent" android:layout_height="@dimen/row_height"
+        android:layout_marginStart="@dimen/gap_large" android:layout_marginEnd="@dimen/gap_large"
+        android:spinnerMode="dropdown" />
+    <EditText android:id="@+id/panel_filter" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/gap_large" android:layout_marginEnd="@dimen/gap_large"
+        android:drawableStart="@drawable/ic_search" android:drawablePadding="@dimen/gap" android:hint="@string/search"
+        android:importantForAutofill="no" android:inputType="text" android:maxLines="1" android:textColor="@color/on_surface" />
+    <FrameLayout android:layout_width="match_parent" android:layout_height="360dp">
+        <ListView android:id="@+id/panel_list" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:divider="@null" android:fastScrollEnabled="true" />
+        <TextView android:id="@+id/panel_empty" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:gravity="center" android:padding="@dimen/panel_padding" android:text="@string/list_empty"
+            android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" android:visibility="gone" />
+        <ProgressBar android:id="@+id/panel_progress" android:layout_width="48dp" android:layout_height="48dp"
+            android:layout_gravity="center" android:indeterminate="true" />
+    </FrameLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingStart="@dimen/gap" android:paddingEnd="@dimen/gap" android:gravity="end" android:orientation="horizontal">
+        <Button android:id="@+id/panel_action" style="@style/Widget.PokeLocation.PanelButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" />
+        <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
+        <Button android:id="@+id/panel_negative" style="@style/Widget.PokeLocation.PanelButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/close" />
+    </LinearLayout>
+</LinearLayout>

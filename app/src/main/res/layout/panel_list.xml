@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:paddingTop="@dimen/panel_padding" android:paddingBottom="@dimen/gap">
+    <TextView android:id="@+id/panel_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingStart="@dimen/panel_padding" android:paddingEnd="@dimen/panel_padding"
+        android:paddingBottom="@dimen/gap" android:textAppearance="@style/TextAppearance.PokeLocation.PanelTitle" />
+    <ListView android:id="@+id/panel_list" android:layout_width="match_parent" android:layout_height="320dp"
+        android:divider="@null" />
+    <Button android:id="@+id/panel_negative" style="@style/Widget.PokeLocation.PanelButton"
+        android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="end"
+        android:layout_marginEnd="@dimen/gap" android:text="@string/cancel" />
+</LinearLayout>
