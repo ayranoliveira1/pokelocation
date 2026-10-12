@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- minSdk 24: android:tint funciona nativamente. Os layouts ov_* (overlay), map_* (:map) e RemoteViews são
+         inflados pelo framework, onde app:tint seria ignorado. -->
+    <issue id="UseAppTint" severity="ignore" />
+</lint>

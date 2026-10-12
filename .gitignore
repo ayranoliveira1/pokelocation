@@ -1,0 +1,16 @@
+build/
+.gradle/
+local.properties
+*.iml
+.idea/
+.kotlin/
+.DS_Store
+captures/
+.gbuild.lock/
+wip/
+.maestri/
+dist/
+apks/*.bak
+*.bak
+docs/
+IMPLEMENTATION_SUMMARY.md
