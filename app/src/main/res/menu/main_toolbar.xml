@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item android:id="@+id/main_menu_search" android:icon="@drawable/ic_search" android:title="@string/search"
+        app:iconTint="@color/on_primary" app:showAsAction="always" />
+    <item android:id="@+id/main_menu_open_map" android:icon="@drawable/ic_map" android:title="@string/main_menu_map"
+        app:iconTint="@color/on_primary" app:showAsAction="always" />
+    <item android:id="@+id/main_menu_open_form" android:icon="@drawable/ic_list" android:title="@string/main_menu_form"
+        android:visible="false" app:iconTint="@color/on_primary" app:showAsAction="always" />
+</menu>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Moldura do spinner de rotas (03 §2.1): contorno arredondado + seta. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="8dp" />
+            <stroke android:width="1dp" android:color="@color/outline" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/ic_expand_more" android:gravity="end|center_vertical" android:end="8dp"
+        android:width="24dp" android:height="24dp" />
+</layer-list>

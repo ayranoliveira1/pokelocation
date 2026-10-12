@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Drawer (10 §2.1). -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:id="@+id/main_nav_group_main" android:checkableBehavior="single">
+        <item android:id="@+id/main_nav_home" android:icon="@drawable/ic_home" android:title="@string/main_nav_home" />
+        <item android:id="@+id/main_nav_favorites" android:icon="@drawable/ic_favorite" android:title="@string/favorites" />
+        <item android:id="@+id/main_nav_routes" android:icon="@drawable/ic_route" android:title="@string/main_nav_routes" />
+        <item android:id="@+id/main_nav_markers" android:icon="@drawable/ic_pin" android:title="@string/main_nav_markers" />
+        <item android:id="@+id/main_nav_gpx" android:icon="@drawable/ic_download" android:title="@string/main_nav_gpx" />
+        <item android:id="@+id/main_nav_widget" android:icon="@drawable/ic_widget" android:title="@string/main_nav_widget" />
+    </group>
+    <group android:id="@+id/main_nav_group_app" android:checkableBehavior="single">
+        <item android:id="@+id/main_nav_settings" android:icon="@drawable/ic_settings" android:title="@string/main_nav_settings" />
+        <item android:id="@+id/main_nav_setup" android:icon="@drawable/ic_help" android:title="@string/main_nav_setup" />
+        <item android:id="@+id/main_nav_about" android:icon="@drawable/ic_info" android:title="@string/main_nav_about" />
+    </group>
+</menu>

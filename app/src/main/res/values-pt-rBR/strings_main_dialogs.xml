@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="main_dlg_settings">Configurações</string>
+    <string name="main_dlg_open_failed">Infelizmente não conseguimos abrir esta tela. Abra-a pelas Configurações do aparelho.</string>
+
+    <string name="main_dlg_gps_title">Localização (GPS) necessária</string>
+    <string name="main_dlg_gps_msg">Este app precisa da localização (GPS) ligada. Ative a localização nas configurações de Localização.</string>
+    <string name="main_dlg_draw_title">Permissão de sobreposição necessária</string>
+    <string name="main_dlg_draw_msg">Este app precisa de permissão para aparecer sobre outros apps. Ative a permissão para ver o joystick.</string>
+    <string name="main_dlg_location_title">Permissão de localização necessária</string>
+    <string name="main_dlg_location_msg">É necessária a permissão de Localização. Ative a permissão de Localização.</string>
+    <string name="main_dlg_notification_title">Permissão de notificação necessária</string>
+    <string name="main_dlg_notification_msg">É necessária a permissão de Notificações. Ative a permissão de Notificações.</string>
+    <string name="main_dlg_disclosure_title">Acesso à localização</string>
+    <string name="main_dlg_disclosure_msg">O PokeLocation usa sua localização precisa para ler sua posição real (Obter localização atual) e para executar a simulação de localização que você iniciar. Sua localização nunca sai deste aparelho.</string>
+    <string name="main_dlg_continue">Continuar</string>
+
+    <string name="main_dlg_mock_title">Localização simulada necessária</string>
+    <string name="main_dlg_mock_msg">Este app precisa da \"Localização simulada\" ativada. Selecione o PokeLocation como app de localização simulada nas Opções do desenvolvedor.\n\nRole até \"Selecionar app de local fictício\". Não encontrou? Pesquise \"fictício\" ou \"mock\" na busca das Configurações.</string>
+    <string name="main_dlg_mock_failed">Infelizmente não conseguimos abrir as Opções do desenvolvedor. Abra as Opções do desenvolvedor e defina o PokeLocation como app de localização simulada.</string>
+    <string name="main_dlg_go_settings">Ir para configurações</string>
+    <string name="main_dlg_ignore">Ignorar</string>
+    <string name="main_dlg_always_ignore">Sempre ignorar</string>
+
+    <string name="main_dlg_fix_title">👉Corrigir localização GPS👈</string>
+    <string name="main_dlg_fix_default">Padrão</string>
+    <string name="main_dlg_fix_default_desc">Desativa o reset do A-GPS\nDefine o intervalo de processamento em 1000ms</string>
+    <string name="main_dlg_fix_1">Correção 1 (A-GPS)</string>
+    <string name="main_dlg_fix_1_desc">Ativa o reset do A-GPS **Usa dados**</string>
+    <string name="main_dlg_fix_2">Correção 2</string>
+    <string name="main_dlg_fix_2_desc">Define o intervalo de processamento em 100ms **Com a Correção 1 pode gastar muitos dados**</string>
+    <string name="main_dlg_fix_2_suspended">Indisponível com a simulação suspensa.</string>
+
+    <string name="main_dlg_cd_title">Tempos de cooldown</string>
+    <string name="main_dlg_cd_subtitle">Tempo de espera recomendado entre teleportes, por distância.</string>
+    <string name="main_dlg_cd_empty">Defina uma localização para ver seu cooldown ao vivo aqui.</string>
+    <string name="main_dlg_cd_ready">Pronto</string>
+    <string name="main_dlg_cd_cooling">Aguardando</string>
+    <string name="main_dlg_cd_details">Distância: %1$s\nCooldown: %2$s\nDecorrido: %3$s\nRestante: %4$s</string>
+    <string name="main_dlg_cd_col_distance">Distância</string>
+    <string name="main_dlg_cd_col_cooldown">Cooldown</string>
+</resources>

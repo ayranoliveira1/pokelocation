@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- W3b (Vitrine): diálogos e helpers da main. -->
+<resources>
+    <string name="main_dlg_settings">Settings</string>
+    <string name="main_dlg_open_failed">Unfortunately, it seems we can\'t open this screen for you. Please open it from your device Settings.</string>
+
+    <!-- StartChecks -->
+    <string name="main_dlg_gps_title">GPS Location Required</string>
+    <string name="main_dlg_gps_msg">This app requires GPS Location to be enabled. Please enable GPS Location in Location Settings.</string>
+    <string name="main_dlg_draw_title">Draw Permission Required</string>
+    <string name="main_dlg_draw_msg">This app requires permission to draw over other apps. Please enable the permission so you can see the joystick.</string>
+    <string name="main_dlg_location_title">Location Permission Required</string>
+    <string name="main_dlg_location_msg">This requires Location permissions. Please enable the Location permission.</string>
+    <string name="main_dlg_notification_title">Notification Permission Required</string>
+    <string name="main_dlg_notification_msg">This requires Notification permissions. Please enable the Notification permission.</string>
+    <string name="main_dlg_disclosure_title">Location Access</string>
+    <string name="main_dlg_disclosure_msg">PokeLocation uses your precise location to read your real position (Get Current Location) and to run the location simulation you start. Your location never leaves this device.</string>
+    <string name="main_dlg_continue">Continue</string>
+
+    <!-- MockLocationDialog (F07) -->
+    <string name="main_dlg_mock_title">Mock Location Required</string>
+    <string name="main_dlg_mock_msg">This app requires \"Mock Location\" to be enabled. Please select PokeLocation as the mock location app in Developer Options.\n\nScroll down to \"Select mock location app\". Can\'t find it? Search for \"mock\" in your Settings search bar.</string>
+    <string name="main_dlg_mock_failed">Unfortunately, it seems like we can\'t open Developer Options for you. Please open Developer Options and set PokeLocation as the Mock Location app.</string>
+    <string name="main_dlg_go_settings">Go to settings</string>
+    <string name="main_dlg_ignore">Ignore</string>
+    <string name="main_dlg_always_ignore">Always ignore</string>
+
+    <!-- GpsFixDialog (F19) -->
+    <string name="main_dlg_fix_title">👉Fix GPS Location👈</string>
+    <string name="main_dlg_fix_default">Default</string>
+    <string name="main_dlg_fix_default_desc">Disables A-GPS Reset\nSets Process Interval to 1000ms</string>
+    <string name="main_dlg_fix_1">Fix 1 (A-GPS)</string>
+    <string name="main_dlg_fix_1_desc">Enables A-GPS Reset **Uses data**</string>
+    <string name="main_dlg_fix_2">Fix 2</string>
+    <string name="main_dlg_fix_2_desc">Sets Process Interval to 100ms **If used with Fix 1 can result in a large amount of data use**</string>
+    <string name="main_dlg_fix_2_suspended">Not available with Suspended Mocking.</string>
+
+    <!-- CooldownSheet (F17) -->
+    <string name="main_dlg_cd_title">Cooldown Times</string>
+    <string name="main_dlg_cd_subtitle">Recommended wait time between teleports by distance.</string>
+    <string name="main_dlg_cd_empty">Set a location to see your live cooldown here.</string>
+    <string name="main_dlg_cd_ready">Ready</string>
+    <string name="main_dlg_cd_cooling">Cooling</string>
+    <string name="main_dlg_cd_details">Distance: %1$s\nCooldown: %2$s\nElapsed: %3$s\nRemaining: %4$s</string>
+    <string name="main_dlg_cd_col_distance">Distance</string>
+    <string name="main_dlg_cd_col_cooldown">Cooldown</string>
+</resources>
