@@ -35,7 +35,8 @@ RAM e bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
 
 ## Instalação
 
-O APK de release já compilado está em [`apks/pokelocation-v1.0-release.apk`](apks/pokelocation-v1.0-release.apk).
+**[⬇️ Baixar o APK mais recente](https://github.com/ayranoliveira1/pokelocation/releases/latest)** (também em
+[`apks/`](apks/pokelocation-v1.0-release.apk)).
 
 ```bash
 adb install -r apks/pokelocation-v1.0-release.apk
