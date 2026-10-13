@@ -316,7 +316,7 @@ public final class Api {
 
     /** RFC 4648: url = §5 sem padding (PKCE); senão §4 com padding ([]byte do Go). Manual: java.util.Base64 é API 26
      *  e android.util.Base64 não roda na JVM. */
-    static String b64(byte[] b, boolean url) {
+    public static String b64(byte[] b, boolean url) {
         char[] abc = url ? B64URL : B64;
         StringBuilder sb = new StringBuilder((b.length + 2) / 3 * 4);
         for (int i = 0; i < b.length; i += 3) {
