@@ -9,6 +9,8 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
+        // Build de teste lado a lado com o app instalado (ex.: -PPOKELOCATION_ID_SUFFIX=.dev): outro pacote, dados separados.
+        providers.gradleProperty("POKELOCATION_ID_SUFFIX").orNull?.let { applicationIdSuffix = it }
         // Servidor social; sobrescreva com -PPOKELOCATION_SOCIAL_API=... (ex.: servidor local).
         buildConfigField("String", "SOCIAL_API",
             "\"" + (providers.gradleProperty("POKELOCATION_SOCIAL_API").orNull ?: "https://api.pokelocation.app") + "\"")
