@@ -9,7 +9,11 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
+        // Servidor social; sobrescreva com -PPOKELOCATION_SOCIAL_API=... (ex.: servidor local).
+        buildConfigField("String", "SOCIAL_API",
+            "\"" + (providers.gradleProperty("POKELOCATION_SOCIAL_API").orNull ?: "https://api.pokelocation.app") + "\"")
     }
+    buildFeatures { buildConfig = true }
     // Credenciais só em ~/.gradle/gradle.properties (fora do repo); sem elas o release sai sem assinatura.
     val storeFilePath = providers.gradleProperty("POKELOCATION_STORE_FILE").orNull
     if (storeFilePath != null) {
@@ -56,4 +60,5 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.20")
     testImplementation("junit:junit:4.13.2") // só teste JVM: zero impacto em RAM/APK
     testImplementation("net.sf.kxml:kxml2:2.3.0") // XmlPullParser/XmlSerializer nos testes JVM do gpx (só teste)
+    testImplementation("org.json:json:20231013") // org.json real nos testes JVM (o android.jar mockado devolve null; só teste)
 }
