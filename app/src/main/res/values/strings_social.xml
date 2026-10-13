@@ -43,6 +43,14 @@
     <string name="soc_logout">Sign out</string>
     <string name="soc_logout_confirm">Sign out of this account on this device?</string>
 
+    <!-- libsignal (SignalLoader) -->
+    <string name="soc_signal_preparing">Preparing secure chat…</string>
+    <string name="soc_signal_progress">Preparing secure chat… %1$s / %2$s MB</string>
+    <string name="soc_signal_progress_unknown">Preparing secure chat… %s MB</string>
+    <string name="soc_signal_failed">Couldn\'t prepare secure chat.</string>
+    <string name="soc_signal_no_space">Not enough free space to prepare secure chat.</string>
+    <string name="soc_signal_unavailable">Secure chat is unavailable on this device.</string>
+
     <!-- Erros (Api.Error.code) -->
     <string name="soc_err_invalid_credentials">Wrong email or password.</string>
     <string name="soc_err_email_taken">This email is already in use.</string>

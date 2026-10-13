@@ -14,6 +14,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.base.StateView;
@@ -31,6 +32,7 @@ public final class FriendsActivity extends BaseActivity {
     private LinearLayout incoming, outgoing, friends;
     private String myCode;
     private Io.Task task;
+    private SignalProgress signal;
     private boolean busy;
 
     @Override
@@ -65,11 +67,14 @@ public final class FriendsActivity extends BaseActivity {
             load();
         });
         load();
+        signal = new SignalProgress(findViewById(R.id.soc_signal));
+        if (!SignalLoader.loaded()) signal.start();   // amigos funcionam sem a lib; o bloco só informa
     }
 
     @Override
     protected void onDestroy() {
         if (task != null) task.cancel();
+        if (signal != null) signal.detach();   // null: saiu no onCreate sem login
         super.onDestroy();
     }
 

@@ -16,9 +16,12 @@ import com.pokelocation.app.util.Ui;
 
 /** Login opcional: email/senha (entrar ou criar conta) ou Google no navegador (volta pela AuthCallbackActivity). */
 public final class LoginActivity extends BaseActivity {
+    private static final String SIGNAL_STARTED = "signal_started";
     private EditText email, password;
     private View progress, signIn, signUp, google;
     private Io.Task task;
+    private SignalProgress signal;
+    private boolean signalStarted;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +35,9 @@ public final class LoginActivity extends BaseActivity {
         signIn = findViewById(R.id.soc_login_sign_in);
         signUp = findViewById(R.id.soc_login_sign_up);
         google = findViewById(R.id.soc_login_google);
+        signal = new SignalProgress(findViewById(R.id.soc_signal));
+        // recriada (tema/idioma) no meio do download: reanexa; sem toque em Entrar nada é baixado
+        if (savedInstanceState != null && savedInstanceState.getBoolean(SIGNAL_STARTED)) startSignal();
         signIn.setOnClickListener(v -> submit(false));
         signUp.setOnClickListener(v -> submit(true));
         google.setOnClickListener(v -> openGoogle());
@@ -45,8 +51,15 @@ public final class LoginActivity extends BaseActivity {
     }
 
     @Override
+    protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        out.putBoolean(SIGNAL_STARTED, signalStarted);
+    }
+
+    @Override
     protected void onDestroy() {
         if (task != null) task.cancel();
+        signal.detach();
         super.onDestroy();
     }
 
@@ -57,6 +70,7 @@ public final class LoginActivity extends BaseActivity {
             return;
         }
         busy(true);
+        startSignal();   // em paralelo à autenticação (spec §3.1)
         Context app = getApplicationContext();
         task = Io.run(() -> {
             if (register) Api.register(app, e, p);
@@ -76,11 +90,17 @@ public final class LoginActivity extends BaseActivity {
     }
 
     private void openGoogle() {
+        startSignal();
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, Api.googleStart(this)));
         } catch (ActivityNotFoundException e) {
             Ui.toast(this, R.string.soc_no_browser);
         }
+    }
+
+    private void startSignal() {
+        signalStarted = true;
+        signal.start();
     }
 
     private void busy(boolean b) {

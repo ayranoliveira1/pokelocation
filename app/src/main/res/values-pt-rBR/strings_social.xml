@@ -39,6 +39,13 @@
     <string name="soc_logout">Sair</string>
     <string name="soc_logout_confirm">Sair desta conta neste aparelho?</string>
 
+    <string name="soc_signal_preparing">Preparando chat seguro…</string>
+    <string name="soc_signal_progress">Preparando chat seguro… %1$s / %2$s MB</string>
+    <string name="soc_signal_progress_unknown">Preparando chat seguro… %s MB</string>
+    <string name="soc_signal_failed">Não foi possível preparar o chat seguro.</string>
+    <string name="soc_signal_no_space">Sem espaço livre para preparar o chat seguro.</string>
+    <string name="soc_signal_unavailable">Chat seguro indisponível neste aparelho.</string>
+
     <string name="soc_err_invalid_credentials">Email ou senha incorretos.</string>
     <string name="soc_err_email_taken">Este email já está em uso.</string>
     <string name="soc_err_weak_password">Senha fraca. Use uma senha mais longa.</string>

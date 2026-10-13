@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bloco do SignalProgress (preparo da libsignal). Oculto até o 1º callback; <include> com android:id="@+id/soc_signal". -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/gap_large"
+    android:paddingTop="@dimen/gap"
+    android:paddingEnd="@dimen/gap"
+    android:paddingBottom="@dimen/gap"
+    android:visibility="gone">
+    <LinearLayout
+        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView android:id="@+id/soc_signal_text"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+        <ProgressBar android:id="@+id/soc_signal_bar" style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" android:indeterminate="true" android:max="1000" />
+    </LinearLayout>
+    <Button android:id="@+id/soc_signal_retry" style="@style/Widget.PokeLocation.PanelButton"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/retry" android:visibility="gone" />
+</LinearLayout>

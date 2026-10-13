@@ -8,6 +8,8 @@
 
     <include layout="@layout/base_toolbar" />
 
+    <include android:id="@+id/soc_signal" layout="@layout/soc_signal" />
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
