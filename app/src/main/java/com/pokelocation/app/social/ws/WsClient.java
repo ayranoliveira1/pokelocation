@@ -95,11 +95,13 @@ public final class WsClient {
         new Thread(this::drain, "pl-ws-w").start();
     }
 
-    /** Para de reconectar e fecha (close 1000 pela "pl-ws-w"). Não faz I/O aqui: pode chamar da main. Definitivo. */
+    /**
+     * Para de reconectar e fecha: a "pl-ws-w" escreve o que já estava na fila (ex.: LocationOff), manda o close 1000 e
+     * fecha. Não faz I/O aqui: pode chamar da main. Definitivo.
+     */
     public void stop() {
         stopped = true;
-        queue.clear();
-        queue.offer(STOP);
+        while (!queue.offer(STOP)) queue.poll(); // fila cheia: o STOP vale mais que o frame mais velho
         Thread t;
         synchronized (this) {
             t = thread;

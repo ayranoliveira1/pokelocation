@@ -5,6 +5,7 @@ import android.os.Build;
 import android.os.Process;
 import android.util.Log;
 
+import com.pokelocation.app.App;
 import com.pokelocation.app.BuildConfig;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.social.Session;
@@ -116,6 +117,16 @@ public final class SignalLoader {
         sThread.start();
     }
 
+    /** Principal: o flag do prefs. :overlay: o prefs dele pode estar velho → a sessão no banco (sob o social.lock). */
+    private static boolean loggedInNow(Context c) {
+        if (App.process() == App.PROC_MAIN) return Session.loggedIn(c);
+        try {
+            return Session.access(c) != null;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     /** Fim de uma passada: repete se pediram (e ainda faz sentido); senão libera o thread. */
     private static synchronized boolean again() {
         boolean more = sAgain && !sLoaded && !sUnavailable;
@@ -130,7 +141,8 @@ public final class SignalLoader {
      * No-op sem lib ou sem login. Keys fica em outra classe: nada de org.signal é resolvido antes do System.load.
      */
     public static void kick(Context c) {
-        if (!sLoaded || sKicked || !Session.loggedIn(c)) return;
+        // só o principal gera/envia chaves (Keys): no :overlay o loggedIn() do prefs pode estar velho
+        if (App.process() != App.PROC_MAIN || !sLoaded || sKicked || !Session.loggedIn(c)) return;
         sKicked = true;
         Context app = c.getApplicationContext();
         Io.run(() -> {
@@ -189,7 +201,7 @@ public final class SignalLoader {
             try {
                 if (round > 0) Thread.sleep(1000L << round);
                 sLoaded = fetchAndLoad(dir, pin[1], Long.parseLong(pin[2]), c.getFilesDir().getUsableSpace(), urls,
-                        SignalLoader::http, p, () -> Session.loggedIn(c), System::load);
+                        SignalLoader::http, p, () -> loggedInNow(c), System::load);
                 return;
             } catch (InterruptedException e) {
                 throw new IOException(e);
