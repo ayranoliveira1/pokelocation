@@ -70,7 +70,8 @@ public final class Prefs {
     public static final String SETUP_WIZARD_COMPLETED = "setup_wizard_completed";
     public static final String ELEVATION_LOOKUP_ENABLED = "elevation_lookup_enabled";
     public static final String MAP_TILE_SOURCE = "map_tile_source";                     // "osm" | "osm_de" (DECISIONS)
-    public static final String SHARE_LOCATION = "share_location";                       // social: amigos veem minha posição
+    /** Social: amigos veem minha posição. Mora em SHARE_FILE, não em "prefs" (ver shareLocation). */
+    public static final String SHARE_FILE = "social_share", SHARE_LOCATION = "share_location";
     // Bases das chaves por widget: widgetKey(base, id)
     public static final String WIDGET_ITEMS = "widget_items";                // String ""
     public static final String WIDGET_THEME = "widget_theme";                // String "system"
@@ -146,7 +147,6 @@ public final class Prefs {
         d.put(SETUP_WIZARD_COMPLETED, false);
         d.put(ELEVATION_LOOKUP_ENABLED, true);
         d.put(MAP_TILE_SOURCE, "osm");
-        d.put(SHARE_LOCATION, true);
     }
 
     private Prefs() {}
@@ -250,6 +250,25 @@ public final class Prefs {
         }
         Object d = DEFAULTS.get(key);
         return d instanceof Number ? ((Number) d).doubleValue() : Double.NaN;
+    }
+
+    /**
+     * Arquivo próprio, um só escritor (main, setShareLocation); o :overlay (A8) lê a cada tick. MULTI_PROCESS recarrega
+     * só se o arquivo mudou (um stat). Fora de "prefs" para o :overlay não recarregar as prefs do motor no meio da sessão.
+     */
+    @SuppressWarnings("deprecation")
+    public static boolean shareLocation(Context c) {
+        return shareLocation(c.getSharedPreferences(SHARE_FILE, Context.MODE_MULTI_PROCESS));
+    }
+
+    static boolean shareLocation(SharedPreferences p) {
+        return p.getBoolean(SHARE_LOCATION, true);
+    }
+
+    /** SÓ main. commit: o :overlay só vê depois de gravado no disco. */
+    @SuppressWarnings("deprecation")
+    public static void setShareLocation(Context c, boolean on) {
+        c.getSharedPreferences(SHARE_FILE, Context.MODE_MULTI_PROCESS).edit().putBoolean(SHARE_LOCATION, on).commit();
     }
 
     public static String widgetKey(String base, int appWidgetId) { return base + "_" + appWidgetId; }
