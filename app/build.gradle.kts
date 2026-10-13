@@ -51,6 +51,20 @@ android {
     testOptions { unitTests.isReturnDefaultValues = true }
 }
 
+// Orçamento de tamanho (spec §8): assembleQa/assembleRelease falham se o APK da própria variante passar de 2,5 MB.
+val apkDir = layout.buildDirectory.dir("outputs/apk")
+listOf("Qa", "Release").forEach { v ->
+    val check = tasks.register("checkApkSize$v") {
+        doLast {
+            val max = 2_500_000L
+            apkDir.get().dir(v.lowercase()).asFile.listFiles { f -> f.extension == "apk" }?.forEach {
+                if (it.length() > max) throw GradleException("checkApkSize: ${it.name} tem ${it.length()} B (> $max B)")
+            }
+        }
+    }
+    tasks.matching { it.name == "assemble$v" }.configureEach { finalizedBy(check) }
+}
+
 tasks.withType<JavaCompile>().configureEach { options.compilerArgs.addAll(listOf("-Xmaxerrs", "10000")) }
 
 dependencies {
