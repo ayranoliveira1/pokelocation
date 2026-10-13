@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/soc_login_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <include layout="@layout/base_toolbar" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/gap_large">
+            <TextView
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/gap_large" android:text="@string/soc_login_hint"
+                android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" />
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/gap" android:hint="@string/soc_email">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/soc_login_email"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:autofillHints="emailAddress" android:inputType="textEmailAddress" android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:hint="@string/soc_password" app:endIconMode="password_toggle">
+                <com.google.android.material.textfield.TextInputEditText android:id="@+id/soc_login_password"
+                    android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:autofillHints="password" android:imeOptions="actionDone"
+                    android:inputType="textPassword" android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <ProgressBar android:id="@+id/soc_login_progress" style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/gap" android:indeterminate="true" android:visibility="invisible" />
+            <Button android:id="@+id/soc_login_sign_in" style="@style/Widget.PokeLocation.PanelButton.Filled"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/gap" android:text="@string/soc_sign_in" />
+            <Button android:id="@+id/soc_login_sign_up" style="@style/Widget.PokeLocation.PanelButton"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/gap" android:text="@string/soc_sign_up" />
+            <TextView
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal" android:layout_marginTop="@dimen/gap_large"
+                android:text="@string/soc_or" android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" />
+            <Button android:id="@+id/soc_login_google" style="@style/Widget.PokeLocation.PanelButton"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/gap" android:text="@string/soc_google" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

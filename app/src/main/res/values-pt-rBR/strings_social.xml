@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="soc_friends">Amigos</string>
+    <string name="soc_account">Conta</string>
+
+    <string name="soc_login_title">Entrar</string>
+    <string name="soc_login_hint">A conta é opcional. Ela só é necessária para adicionar amigos.</string>
+    <string name="soc_email">Email</string>
+    <string name="soc_password">Senha</string>
+    <string name="soc_sign_in">Entrar</string>
+    <string name="soc_sign_up">Criar conta</string>
+    <string name="soc_or">ou</string>
+    <string name="soc_google">Continuar com o Google</string>
+    <string name="soc_fill_fields">Informe seu email e sua senha.</string>
+    <string name="soc_no_browser">Nenhum navegador encontrado.</string>
+
+    <string name="soc_my_code">Meu código de amigo</string>
+    <string name="soc_share_code">Me adicione no PokeLocation! Meu código de amigo: %s</string>
+    <string name="soc_add_friend">Adicionar amigo</string>
+    <string name="soc_code_hint">Código de amigo</string>
+    <string name="soc_add">Adicionar</string>
+    <string name="soc_invalid_code">Código inválido. Ele tem 8 letras e números.</string>
+    <string name="soc_request_sent">Pedido enviado!</string>
+    <string name="soc_incoming">Pedidos recebidos</string>
+    <string name="soc_outgoing">Pedidos enviados</string>
+    <string name="soc_your_friends">Seus amigos</string>
+    <string name="soc_no_friends">Nenhum amigo ainda. Compartilhe seu código!</string>
+    <string name="soc_pending">Aguardando resposta</string>
+    <string name="soc_accept">Aceitar</string>
+    <string name="soc_decline">Recusar</string>
+    <string name="soc_remove">Remover</string>
+    <string name="soc_block">Bloquear</string>
+    <string name="soc_remove_confirm">Remover %s dos seus amigos?</string>
+    <string name="soc_block_confirm">Bloquear %s? Essa pessoa não poderá te enviar pedidos.</string>
+
+    <string name="soc_account_row">Conta do PokeLocation</string>
+    <string name="soc_account_signed_out">Entre para adicionar amigos</string>
+    <string name="soc_account_signed_in">Conectado</string>
+    <string name="soc_logout">Sair</string>
+    <string name="soc_logout_confirm">Sair desta conta neste aparelho?</string>
+
+    <string name="soc_err_invalid_credentials">Email ou senha incorretos.</string>
+    <string name="soc_err_email_taken">Este email já está em uso.</string>
+    <string name="soc_err_weak_password">Senha fraca. Use uma senha mais longa.</string>
+    <string name="soc_err_invalid_email">Email inválido.</string>
+    <string name="soc_err_rate_limited">Muitas tentativas. Aguarde um minuto e tente de novo.</string>
+    <string name="soc_err_code_not_found">Ninguém tem este código.</string>
+    <string name="soc_err_self_request">Esse é o seu próprio código.</string>
+    <string name="soc_err_blocked">Não é possível adicionar este usuário.</string>
+    <string name="soc_err_already_friends">Vocês já são amigos.</string>
+    <string name="soc_err_unauthorized">Sua sessão expirou. Entre de novo.</string>
+    <string name="soc_err_network">Sem conexão com o servidor. Verifique sua internet.</string>
+    <string name="soc_err_generic">Algo deu errado. Tente de novo.</string>
+</resources>

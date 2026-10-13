@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Só o progresso (StateView começa em LOADING); o filho é o conteúdo vazio exigido pela StateView. -->
+<com.pokelocation.app.ui.base.StateView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <View android:layout_width="0dp" android:layout_height="0dp" />
+</com.pokelocation.app.ui.base.StateView>

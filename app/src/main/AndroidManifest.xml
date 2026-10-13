@@ -172,6 +172,23 @@
         <activity android:hardwareAccelerated="true" android:name=".ui.gpx.ExportActivity" android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
 
+        <!-- Social (processo principal; nada carregado sem login). Callback do Google por scheme próprio:
+             DeepLinkActivity (pokelocation://) roda no :overlay. -->
+        <activity android:hardwareAccelerated="true" android:name=".social.ui.LoginActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".social.ui.FriendsActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".social.ui.AuthCallbackActivity" android:exported="true"
+            android:noHistory="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pokelocationauth" android:host="callback" />
+            </intent-filter>
+        </activity>
+
         <activity android:hardwareAccelerated="true" android:name=".ui.settings.SettingsActivity" android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
         <activity android:hardwareAccelerated="true" android:name=".ui.setup.SetupWizardActivity" android:exported="false"

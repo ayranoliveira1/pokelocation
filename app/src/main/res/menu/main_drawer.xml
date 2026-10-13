@@ -6,6 +6,7 @@
         <item android:id="@+id/main_nav_favorites" android:icon="@drawable/ic_favorite" android:title="@string/favorites" />
         <item android:id="@+id/main_nav_routes" android:icon="@drawable/ic_route" android:title="@string/main_nav_routes" />
         <item android:id="@+id/main_nav_markers" android:icon="@drawable/ic_pin" android:title="@string/main_nav_markers" />
+        <item android:id="@+id/main_nav_friends" android:icon="@drawable/soc_ic_friends" android:title="@string/soc_friends" />
         <item android:id="@+id/main_nav_gpx" android:icon="@drawable/ic_download" android:title="@string/main_nav_gpx" />
         <item android:id="@+id/main_nav_widget" android:icon="@drawable/ic_widget" android:title="@string/main_nav_widget" />
     </group>

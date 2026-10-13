@@ -40,6 +40,9 @@ import com.pokelocation.app.model.Coord;
 import com.pokelocation.app.model.Folder;
 import com.pokelocation.app.model.MapOptions;
 import com.pokelocation.app.net.Elevation;
+import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.ui.FriendsActivity;
+import com.pokelocation.app.social.ui.LoginActivity;
 import com.pokelocation.app.ui.about.AboutActivity;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.favorites.FavoritesActivity;
@@ -271,6 +274,8 @@ public final class MainActivity extends BaseActivity {
             routesLauncher.launch(new Intent(this, RoutesActivity.class));
         } else if (id == R.id.main_nav_markers) {
             startActivity(new Intent(this, MarkerTypesActivity.class));
+        } else if (id == R.id.main_nav_friends) {
+            startActivity(new Intent(this, Session.loggedIn(this) ? FriendsActivity.class : LoginActivity.class));
         } else if (id == R.id.main_nav_gpx) {
             SelectPanel.show(this, getString(R.string.main_nav_gpx),
                     new CharSequence[]{getString(R.string.main_gpx_import), getString(R.string.main_gpx_export)},
