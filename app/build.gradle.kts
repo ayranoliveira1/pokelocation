@@ -22,6 +22,11 @@ android {
             "x86_64:7cf4b3990f6bae29259bfa5f72d39796411e2511f3812363c497344d16beae72:7825800\"")
     }
     buildFeatures { buildConfig = true }
+    // Com o sufixo, o app aparece como "PokeLocationTeste" (launcher, recentes, notificação): src/teste/res sobrepõe o
+    // app_name do main em todos os build types. Sem a propriedade, nada muda.
+    if (providers.gradleProperty("POKELOCATION_ID_SUFFIX").isPresent) {
+        sourceSets.configureEach { if (name in setOf("debug", "release", "qa")) res.srcDir("src/teste/res") }
+    }
     // Credenciais só em ~/.gradle/gradle.properties (fora do repo); sem elas o release sai sem assinatura.
     val storeFilePath = providers.gradleProperty("POKELOCATION_STORE_FILE").orNull
     if (storeFilePath != null) {

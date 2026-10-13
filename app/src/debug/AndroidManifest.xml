@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Só no debug: Login/Amigos abríveis por "adb shell am start -n", sem passar pela MainActivity/wizard. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <activity android:name="com.pokelocation.app.social.ui.LoginActivity" android:exported="true"
+            tools:replace="android:exported" />
+        <activity android:name="com.pokelocation.app.social.ui.FriendsActivity" android:exported="true"
+            tools:replace="android:exported" />
+    </application>
+</manifest>

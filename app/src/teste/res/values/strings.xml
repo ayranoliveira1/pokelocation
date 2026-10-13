@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Só com -PPOKELOCATION_ID_SUFFIX: diferencia a build de teste do app instalado. -->
+<resources>
+    <string name="app_name" translatable="false">PokeLocationTeste</string>
+</resources>
