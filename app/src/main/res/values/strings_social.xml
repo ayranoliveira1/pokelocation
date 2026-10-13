@@ -41,6 +41,8 @@
     <string name="soc_account_signed_out">Sign in to add friends</string>
     <string name="soc_account_signed_in">Signed in</string>
     <string name="soc_logout">Sign out</string>
+    <string name="soc_share_location">Share my location</string>
+    <string name="soc_share_location_summary">Friends see you on the map while the joystick is on.</string>
     <string name="soc_logout_confirm">Sign out of this account on this device?</string>
 
     <!-- libsignal (SignalLoader) -->

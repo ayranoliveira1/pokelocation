@@ -219,6 +219,13 @@ public final class SettingsActivity extends BaseActivity {
                     .show();
         });
         r.summary.setVisibility(View.VISIBLE);
+        // Só grava a pref; o LocationSharer do :overlay (A8) envia o LocationOff ao vê-la desligada
+        Row share = switchRow(Prefs.SHARE_LOCATION, R.string.soc_share_location, R.string.soc_share_location_summary);
+        Runnable checked = share.bind;
+        share.bind = () -> {
+            checked.run();
+            share.root.setVisibility(Session.loggedIn(this) ? View.VISIBLE : View.GONE);
+        };
         r.bind = () -> {
             boolean in = Session.loggedIn(this);
             if (!in) email[0] = null;

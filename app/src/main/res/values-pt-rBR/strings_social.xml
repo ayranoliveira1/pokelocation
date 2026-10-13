@@ -37,6 +37,8 @@
     <string name="soc_account_signed_out">Entre para adicionar amigos</string>
     <string name="soc_account_signed_in">Conectado</string>
     <string name="soc_logout">Sair</string>
+    <string name="soc_share_location">Compartilhar minha localização</string>
+    <string name="soc_share_location_summary">Seus amigos veem você no mapa enquanto o joystick estiver ligado.</string>
     <string name="soc_logout_confirm">Sair desta conta neste aparelho?</string>
 
     <string name="soc_signal_preparing">Preparando chat seguro…</string>

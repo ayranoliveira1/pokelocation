@@ -70,6 +70,7 @@ public final class Prefs {
     public static final String SETUP_WIZARD_COMPLETED = "setup_wizard_completed";
     public static final String ELEVATION_LOOKUP_ENABLED = "elevation_lookup_enabled";
     public static final String MAP_TILE_SOURCE = "map_tile_source";                     // "osm" | "osm_de" (DECISIONS)
+    public static final String SHARE_LOCATION = "share_location";                       // social: amigos veem minha posição
     // Bases das chaves por widget: widgetKey(base, id)
     public static final String WIDGET_ITEMS = "widget_items";                // String ""
     public static final String WIDGET_THEME = "widget_theme";                // String "system"
@@ -145,6 +146,7 @@ public final class Prefs {
         d.put(SETUP_WIZARD_COMPLETED, false);
         d.put(ELEVATION_LOOKUP_ENABLED, true);
         d.put(MAP_TILE_SOURCE, "osm");
+        d.put(SHARE_LOCATION, true);
     }
 
     private Prefs() {}
