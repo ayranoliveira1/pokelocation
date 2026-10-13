@@ -67,7 +67,7 @@ public class ApiTest {
             int k = i;
             ts[i] = new Thread(() -> {
                 try {
-                    got[k] = com.pokelocation.app.social.store.SocialDb.exclusive(lock, () -> Api.renewLocked(db, "a0", server));
+                    got[k] = Api.tokenLocked(lock, () -> Api.renewLocked(db, "a0", server));
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -99,6 +99,50 @@ public class ApiTest {
         Db none = new Db();
         none.access = null;
         assertNull(Api.renewLocked(none, "a0", rt -> { throw new AssertionError(); }));
+    }
+
+    @Test public void unb64RoundTrip() {
+        for (int n = 0; n < 7; n++) {
+            byte[] b = new byte[n];
+            for (int i = 0; i < n; i++) b[i] = (byte) (i * 77 - 3);
+            assertArrayEquals(b, Api.unb64(Api.b64(b, false)));
+        }
+        assertArrayEquals("foob".getBytes(), Api.unb64("Zm9vYg=="));
+    }
+
+    @Test(expected = IllegalArgumentException.class) public void unb64RejectsGarbage() { Api.unb64("Zm9v!g=="); }
+
+    @Test public void bundle() throws JSONException {
+        Api.Bundle b = Api.parseBundle("{\"registration_id\":7,\"identity_key\":\"aWQ=\","
+                + "\"signed_prekey\":{\"key_id\":1,\"public_key\":\"c3A=\",\"signature\":\"c3M=\"},"
+                + "\"kyber_prekey\":{\"key_id\":5,\"public_key\":\"a3A=\",\"signature\":\"a3M=\"},"
+                + "\"one_time_prekey\":{\"key_id\":9,\"public_key\":\"ZXA=\"}}");
+        assertEquals(7, b.registrationId);
+        assertArrayEquals("id".getBytes(), b.identity);
+        assertEquals(1, b.signed.id);
+        assertArrayEquals("ss".getBytes(), b.signed.sig);
+        assertEquals(5, b.kyber.id);
+        assertEquals(9, b.preKey.id);
+        assertNull(b.preKey.sig);
+        assertNull(Api.parseBundle("{\"registration_id\":7,\"identity_key\":\"aWQ=\","
+                + "\"signed_prekey\":{\"key_id\":1,\"public_key\":\"c3A=\",\"signature\":\"c3M=\"},"
+                + "\"kyber_prekey\":{\"key_id\":5,\"public_key\":\"a3A=\",\"signature\":\"a3M=\"}}").preKey);
+    }
+
+    @Test public void envelopesAndLocations() throws JSONException {
+        java.util.List<Api.Envelope> es = Api.parseEnvelopes("{\"envelopes\":[{\"id\":\"e1\",\"from\":\"u2\","
+                + "\"client_msg_id\":\"m\",\"payload\":\"AwkI\"}]}");
+        assertEquals(1, es.size());
+        assertEquals("e1", es.get(0).id);
+        assertEquals("u2", es.get(0).from);
+        assertArrayEquals(new byte[]{3, 9, 8}, es.get(0).payload);
+        assertEquals(0, Api.parseEnvelopes("{}").size());
+        java.util.List<Api.Location> ls = Api.parseLocations("{\"locations\":[{\"user_id\":\"u2\",\"friend_code\":\"AB12CD34\","
+                + "\"payload\":\"AwkI\"},{\"user_id\":\"u3\",\"payload\":\"AA==\"}]}");
+        assertEquals(2, ls.size());
+        assertEquals("AB12CD34", ls.get(0).friendCode);
+        assertNull(ls.get(1).friendCode);
+        assertArrayEquals(new byte[]{0}, ls.get(1).payload);
     }
 
     @Test public void b64std_padded() {

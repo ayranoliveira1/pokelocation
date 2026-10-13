@@ -22,7 +22,7 @@ import javax.crypto.AEADBadTagException;
 
 /**
  * Estado de login. Flag "in" e PKCE no prefs "social" (fora do "prefs" do app); access/refresh no social.db (tabela
- * session, selados pelo Vault): principal e :overlay leem o mesmo arquivo, e a renovação roda sob o social.lock
+ * session, selados pelo Vault): principal e :overlay leem o mesmo arquivo, e a renovação roda sob o token.lock
  * (decisão do maestro, Api.renew). Só loggedIn é API das telas; o resto é público só porque Api fica em social.net.
  */
 public final class Session {
@@ -87,7 +87,7 @@ public final class Session {
     /** SocialDb.sync: a geração mudou, o access em memória é da conta/sessão velha. */
     public static void forget() { sAccess = null; }
 
-    /** {access, refresh} do banco (null sem arquivo/linha), sob o social.lock. Atualiza o access em memória. */
+    /** {access, refresh} do banco (null sem arquivo/linha), sob o social.lock ou o token.lock. Atualiza o access em memória. */
     public static String[] readTokens(Context c) throws IOException {
         if (!SocialDb.exists(c)) return null; // não cria um social.db vazio sem login
         try (Cursor q = SocialDb.get(c).rawQuery("SELECT access, refresh FROM session", null)) {
@@ -99,7 +99,7 @@ public final class Session {
         }
     }
 
-    /** Grava a linha única, sob o social.lock (SocialDb.atomic). */
+    /** Grava a linha única, sob o social.lock (login) ou o token.lock (renovação). */
     public static void writeTokens(Context c, String access, String refresh) throws IOException {
         ContentValues v = new ContentValues(3);
         v.put("id", 0);

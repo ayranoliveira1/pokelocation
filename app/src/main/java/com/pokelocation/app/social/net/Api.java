@@ -13,11 +13,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -32,7 +35,8 @@ import java.util.List;
  * Error(401, "unauthorized").
  */
 public final class Api {
-    private static final int TIMEOUT_MS = 15_000, MAX_BODY = 65_536;
+    private static final int TIMEOUT_MS = 15_000, REFRESH_TIMEOUT_MS = 10_000, MAX_BODY = 65_536;
+    private static final Object TOKEN_LOCK = new Object();
     private static final String CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
     private static final char[] B64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".toCharArray();
     private static final char[] B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
@@ -152,6 +156,122 @@ public final class Api {
         call(c, "DELETE", "/v1/blocks/" + Uri.encode(userId), null);
     }
 
+    /** Pacote de chaves públicas de um amigo (para abrir sessão 1:1). preKey = one-time EC, null se esgotadas. */
+    public static final class Bundle { public int registrationId; public byte[] identity; public PreKey signed, kyber, preKey; }
+    /** Envelope 1:1 pendente na fila do servidor. */
+    public static final class Envelope { public String id, from; public byte[] payload; }
+    /** Última posição cifrada de um amigo (sender key loc:{userId}). */
+    public static final class Location { public String userId, friendCode; public byte[] payload; }
+
+    // ---- localização e envelopes (A8). JSON PROVISÓRIO (plano S6/S7, sem api.md): só esta classe muda. ----
+
+    public static Bundle keyBundle(Context c, String userId) throws IOException {
+        try {
+            return parseBundle(call(c, "GET", "/v1/keys/" + Uri.encode(userId), null));
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
+    /** Fila de envelopes 1:1 pendentes (1ª página; o resto vem nas próximas chamadas, depois do ack). */
+    public static List<Envelope> envelopes(Context c) throws IOException {
+        try {
+            return parseEnvelopes(call(c, "GET", "/v1/envelopes", null));
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
+    /** Apaga do servidor os envelopes já processados. */
+    public static void ack(Context c, List<String> ids) throws IOException {
+        if (ids.isEmpty()) return;
+        try {
+            call(c, "POST", "/v1/envelopes/ack", new JSONObject().put("ids", new JSONArray(ids)));
+        } catch (JSONException e) {
+            throw new IOException("bad request");
+        }
+    }
+
+    /** Última posição cifrada dos amigos online (MGET no Redis; some em 60 s). */
+    public static List<Location> locations(Context c) throws IOException {
+        try {
+            return parseLocations(call(c, "GET", "/v1/locations", null));
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
+    static Bundle parseBundle(String body) throws JSONException {
+        JSONObject o = new JSONObject(body);
+        Bundle b = new Bundle();
+        b.registrationId = o.getInt("registration_id");
+        b.identity = unb64(o.getString("identity_key"));
+        b.signed = parsePreKey(o.getJSONObject("signed_prekey"));
+        b.kyber = parsePreKey(o.getJSONObject("kyber_prekey"));
+        JSONObject ot = o.optJSONObject("one_time_prekey");
+        b.preKey = ot == null ? null : parsePreKey(ot);
+        return b;
+    }
+
+    private static PreKey parsePreKey(JSONObject o) throws JSONException {
+        PreKey k = new PreKey();
+        k.id = o.getInt("key_id");
+        k.pub = unb64(o.getString("public_key"));
+        k.sig = o.isNull("signature") ? null : unb64(o.getString("signature"));
+        return k;
+    }
+
+    static List<Envelope> parseEnvelopes(String body) throws JSONException {
+        JSONArray a = new JSONObject(body).optJSONArray("envelopes");
+        int n = a == null ? 0 : a.length();
+        List<Envelope> out = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            JSONObject j = a.getJSONObject(i);
+            Envelope e = new Envelope();
+            e.id = j.getString("id");
+            e.from = j.getString("from");
+            e.payload = unb64(j.getString("payload"));
+            out.add(e);
+        }
+        return out;
+    }
+
+    static List<Location> parseLocations(String body) throws JSONException {
+        JSONArray a = new JSONObject(body).optJSONArray("locations");
+        int n = a == null ? 0 : a.length();
+        List<Location> out = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            JSONObject j = a.getJSONObject(i);
+            Location l = new Location();
+            l.userId = j.getString("user_id");
+            l.friendCode = j.isNull("friend_code") ? null : j.getString("friend_code");
+            l.payload = unb64(j.getString("payload"));
+            out.add(l);
+        }
+        return out;
+    }
+
+    /** Base64 padrão (com ou sem '='); IllegalArgumentException se tiver caractere fora do alfabeto. */
+    static byte[] unb64(String s) {
+        int len = s.length();
+        while (len > 0 && s.charAt(len - 1) == '=') len--;
+        byte[] out = new byte[len * 3 / 4];
+        int acc = 0, bits = 0, o = 0;
+        for (int i = 0; i < len; i++) {
+            char ch = s.charAt(i);
+            int v = ch >= 'A' && ch <= 'Z' ? ch - 'A' : ch >= 'a' && ch <= 'z' ? ch - 'a' + 26
+                    : ch >= '0' && ch <= '9' ? ch - '0' + 52 : ch == '+' ? 62 : ch == '/' ? 63 : -1;
+            if (v < 0) throw new IllegalArgumentException("base64");
+            acc = acc << 6 | v;
+            bits += 6;
+            if (bits >= 8) {
+                bits -= 8;
+                out[o++] = (byte) (acc >> bits);
+            }
+        }
+        return out;
+    }
+
     // ---- chaves do Signal (A3). JSON provisório até o docs/api.md do servidor; só esta classe muda. ----
 
     public static void putKeys(Context c, KeyBundle k) throws IOException {
@@ -235,26 +355,31 @@ public final class Api {
     }
 
     /**
-     * Renovação sob o lock entre processos + transação do social.db (decisão do maestro): principal e :overlay nunca
-     * gastam o mesmo refresh. A rede fica dentro do lock de propósito (rara: ~1 vez a cada 15 min de uso).
-     * Sessão morta → limpa FORA do lock (o clear apaga o social.db).
+     * Renovação sob files/token.lock (decisão do maestro), SEPARADO do social.lock: um /refresh lento (até 10 s) nunca
+     * segura o estado Signal. Principal e :overlay nunca gastam o mesmo refresh (renewLocked relê do banco). Antes de
+     * reler, confere a geração no social.lock (relance curto): sem isso, um processo com o arquivo velho aberto leria
+     * tokens fantasmas e um 401 deles limparia a sessão nova. Ordem sempre token → social (nada pega o token.lock
+     * dentro do social.lock). Sessão morta → limpa FORA dos locks (o clear apaga o social.db).
      */
     private static String renew(Context c, String stale) throws IOException {
         String fresh;
         try {
-            fresh = SocialDb.atomic(c, () -> renewLocked(new Tokens() {
-                @Override public String[] read() throws IOException { return Session.readTokens(c); }
+            fresh = tokenLocked(new File(c.getFilesDir(), "token.lock"), () -> {
+                SocialDb.locked(c, () -> null); // geração: esquece caches/arquivo velhos; logout lá → IllegalStateException
+                return renewLocked(new Tokens() {
+                    @Override public String[] read() throws IOException { return Session.readTokens(c); }
 
-                @Override public void save(String access, String refresh) throws IOException {
-                    Session.writeTokens(c, access, refresh);
-                }
-            }, stale, rt -> {
-                try {
-                    return tokens(http(c, "POST", "/v1/auth/refresh", null, obj("refresh_token", rt)));
-                } catch (JSONException e) {
-                    throw new IOException("bad response"); // sem causa: o corpo tem os tokens
-                }
-            }));
+                    @Override public void save(String access, String refresh) throws IOException {
+                        Session.writeTokens(c, access, refresh);
+                    }
+                }, stale, rt -> {
+                    try {
+                        return tokens(http(c, "POST", "/v1/auth/refresh", null, obj("refresh_token", rt), REFRESH_TIMEOUT_MS));
+                    } catch (JSONException e) {
+                        throw new IOException("bad response"); // sem causa: o corpo tem os tokens
+                    }
+                });
+            });
         } catch (IOException e) {
             throw e;
         } catch (IllegalStateException e) {
@@ -265,6 +390,15 @@ public final class Api {
         if (fresh == null) throw unauthorized(c);
         SignalLoader.kick(c); // refresh = checagem periódica das prekeys (A3)
         return fresh;
+    }
+
+    /** files/token.lock: exclusivo entre processos (FileLock) e entre threads daqui (monitor). Não reentrante. */
+    static <T> T tokenLocked(File lock, SocialDb.Op<T> op) throws Exception {
+        synchronized (TOKEN_LOCK) {
+            try (RandomAccessFile f = new RandomAccessFile(lock, "rw"); FileLock ignored = f.getChannel().lock()) {
+                return op.run();
+            }
+        }
     }
 
     private static Error unauthorized(Context c) {
@@ -285,11 +419,16 @@ public final class Api {
 
     /** Uma ida ao servidor; status ≥ 400 vira Error. Devolve o corpo ("" se vazio). */
     private static String http(Context c, String method, String path, String token, JSONObject body) throws IOException {
+        return http(c, method, path, token, body, TIMEOUT_MS);
+    }
+
+    private static String http(Context c, String method, String path, String token, JSONObject body, int timeoutMs)
+            throws IOException {
         HttpURLConnection con = (HttpURLConnection) new URL(BuildConfig.SOCIAL_API + path).openConnection();
         // sem disconnect() no caminho feliz: corpo lido até o fim devolve a conexão ao pool (keep-alive, sem novo TLS)
         try {
-            con.setConnectTimeout(TIMEOUT_MS);
-            con.setReadTimeout(TIMEOUT_MS);
+            con.setConnectTimeout(timeoutMs);
+            con.setReadTimeout(timeoutMs);
             con.setInstanceFollowRedirects(false);
             con.setUseCaches(false);
             con.setRequestMethod(method);
