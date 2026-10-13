@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
 
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.net.Api;
@@ -54,14 +55,24 @@ final class Keys {
                     return null;
                 });
             }
-            // pendente = gerado e ainda não aceito pelo servidor (falha de rede antes): reenvia sem gerar de novo
-            Api.putKeys(c, SocialDb.atomic(c, () -> bundle(SocialDb.get(c))));
-            // ponytail: marca todas as up=0; certo porque só este método (Io do principal) gera chaves
-            SocialDb.atomic(c, () -> {
-                SQLiteDatabase db = SocialDb.get(c);
-                for (String t : new String[]{"identity", "prekeys", "kyber_prekeys"}) db.execSQL("UPDATE " + t + " SET up = 1 WHERE up = 0");
-                return null;
-            });
+            // pendente = gerado e ainda não aceito pelo servidor (falha de rede antes): reenvia sem gerar de novo, em lotes
+            // de até 100 por lista (api.md §4); o servidor acrescenta sem duplicar (ON CONFLICT DO NOTHING)
+            for (boolean more = true; more; ) {
+                Api.KeyBundle b = SocialDb.atomic(c, () -> bundle(SocialDb.get(c)));
+                try {
+                    Api.putKeys(c, b);
+                } catch (Api.Error e) {
+                    if (e.http != 400) throw e;
+                    // recusado (ex.: teto de 200 por tipo no servidor): marca o lote e sai do laço; tentar de novo
+                    // falharia igual e o keyCount/refill nunca rodaria. As próximas checagens de count repõem.
+                    Log.w("Keys", "put: " + e.code);
+                }
+                more = SocialDb.atomic(c, () -> {
+                    SQLiteDatabase db = SocialDb.get(c);
+                    markSent(db, b);
+                    return pending(db);
+                });
+            }
         } catch (IOException e) {
             throw e;
         } catch (GeneralSecurityException e) {
@@ -165,9 +176,27 @@ final class Keys {
         }
         b.signed = keys(db, "SELECT id, pub, sig FROM prekeys WHERE signed = 1 ORDER BY id DESC LIMIT 1").get(0);
         b.lastResort = keys(db, "SELECT id, pub, sig FROM kyber_prekeys WHERE last_resort = 1 ORDER BY id DESC LIMIT 1").get(0);
-        b.ec = keys(db, "SELECT id, pub, sig FROM prekeys WHERE signed = 0 AND up = 0");
-        b.kyber = keys(db, "SELECT id, pub, sig FROM kyber_prekeys WHERE last_resort = 0 AND up = 0");
+        b.ec = keys(db, "SELECT id, pub, sig FROM prekeys WHERE signed = 0 AND up = 0 ORDER BY id LIMIT " + Api.MAX_KEYS_PER_PUT);
+        b.kyber = keys(db, "SELECT id, pub, sig FROM kyber_prekeys WHERE last_resort = 0 AND up = 0 ORDER BY id LIMIT "
+                + Api.MAX_KEYS_PER_PUT);
         return b;
+    }
+
+    /**
+     * Marca o lote que o servidor aceitou. O lote são as pendentes de MENOR id (ORDER BY id LIMIT), então "id <= maior
+     * enviado" pega exatamente ele; ids novos são sempre maiores (MAX+1) e só este método, no Io do principal, gera.
+     */
+    private static void markSent(SQLiteDatabase db, Api.KeyBundle b) {
+        db.execSQL("UPDATE identity SET up = 1");
+        db.execSQL("UPDATE prekeys SET up = 1 WHERE signed = 1");
+        db.execSQL("UPDATE kyber_prekeys SET up = 1 WHERE last_resort = 1");
+        if (!b.ec.isEmpty()) {
+            db.execSQL("UPDATE prekeys SET up = 1 WHERE signed = 0 AND up = 0 AND id <= ?", new Object[]{b.ec.get(b.ec.size() - 1).id});
+        }
+        if (!b.kyber.isEmpty()) {
+            db.execSQL("UPDATE kyber_prekeys SET up = 1 WHERE last_resort = 0 AND up = 0 AND id <= ?",
+                    new Object[]{b.kyber.get(b.kyber.size() - 1).id});
+        }
     }
 
     private static List<Api.PreKey> keys(SQLiteDatabase db, String sql) {

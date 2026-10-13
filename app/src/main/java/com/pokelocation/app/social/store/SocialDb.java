@@ -20,6 +20,7 @@ import java.nio.channels.FileLock;
  * v2 (A7): sessions/identities/sender_keys, blob = Envelope.seal(chave-envelope, registro, endereço da linha);
  * envelope = a chave-envelope selada pelo Vault (Keystore só ao abrir); kyber_base_keys = base keys já vistas na last resort.
  * v3 (A1b): session = access/refresh selados pelo Vault (linha única).
+ * v4 (A-api): seen_envelopes = dedup de envelopes por (remetente, client_msg_id).
  *
  * Multiprocesso (decisão do maestro; principal: chat/FCM, :overlay: localização): o arquivo é a ÚNICA fonte da verdade e
  * toda operação Signal que lê e grava estado roda inteira em atomic(): files/social.lock (FileLock, entre processos) e
@@ -40,7 +41,7 @@ public final class SocialDb extends SQLiteOpenHelper {
     public interface Op<T> { T run() throws Exception; }
 
     private SocialDb(Context c) {
-        super(c.getApplicationContext(), NAME, null, 3);
+        super(c.getApplicationContext(), NAME, null, 4);
         setWriteAheadLoggingEnabled(true);
     }
 
@@ -197,12 +198,21 @@ public final class SocialDb extends SQLiteOpenHelper {
                 + " sig BLOB NOT NULL, up INTEGER NOT NULL DEFAULT 0, blob BLOB NOT NULL)");
         createV2(db);
         createV3(db);
+        createV4(db);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion < 2) createV2(db);
         if (oldVersion < 3) createV3(db);
+        if (oldVersion < 4) createV4(db);
+    }
+
+    /** v4 (A-api): envelopes já processados, por (remetente, client_msg_id): o WS do :overlay e o REST do principal
+     *  podem trazer o mesmo antes do ack. Podado depois de 31 dias (a fila do servidor expira em 30). */
+    private static void createV4(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE seen_envelopes(sender TEXT NOT NULL, msg_id TEXT NOT NULL, at INTEGER NOT NULL,"
+                + " PRIMARY KEY(sender, msg_id)) WITHOUT ROWID");
     }
 
     /** v3 (A1b): access/refresh selados pelo Vault, linha única; fora do prefs para os dois processos verem o mesmo. */

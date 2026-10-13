@@ -19,7 +19,9 @@ import com.pokelocation.app.social.ws.Frames;
 import com.pokelocation.app.social.ws.WsClient;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -50,10 +52,12 @@ public final class LocationSharer {
     private boolean sharing, open;
     private double lastLat = Double.NaN, lastLng = Double.NaN;
     private int ticks;
-    // ponytail: SKDM 1 vez por amigo por conexão do WS (em memória); quem recebe processa repetida sem problema.
+    // ponytail: SKDM 1 vez por amigo por sessão do joystick (em memória), confirmada pelo Ack S→C do servidor (gravou:
+    // entrega garantida pela fila dele); sem Ack até cair, reenvia na próxima conexão.
     // ponytail: a sender key loc:{meuId} não rotaciona ao remover/bloquear um amigo (ele guarda a chave; hoje só o
     // servidor deixa de entregar). Rotacionar = nova distribuição + SKDM aos que ficam (o chat/grupos do subprojeto 3).
     private final Set<String> skdmSent = new HashSet<>();
+    private final Map<String, String> skdmPending = new HashMap<>(); // client_msg_id → amigo, até o Ack S→C
 
     public LocationSharer(Context c, MockEngine engine) {
         app = c.getApplicationContext();
@@ -143,6 +147,7 @@ public final class LocationSharer {
         stopWs();
         myId = null;
         skdmSent.clear();
+        skdmPending.clear();
     }
 
     private void stopWs() {
@@ -162,8 +167,7 @@ public final class LocationSharer {
                             if (ws != self[0]) return;
                             open = true;
                             ticks = 0; // distribui a SKDM já no próximo tick
-                            // send() true é só "enfileirado": se a conexão caiu antes de escrever, a SKDM se perdeu
-                            skdmSent.clear();
+                            skdmPending.clear(); // sem Ack na conexão velha: manda de novo
                         });
                     }
 
@@ -185,7 +189,7 @@ public final class LocationSharer {
             if (f.type == Frames.ENVELOPE) { // SKDM de um amigo online: guarda a sender key dele e confirma
                 try {
                     Locations.atomic(app, () -> {
-                        Locations.receive(app, f.peer, f.payload);
+                        Locations.receive(app, f.peer, f.msgId, f.payload);
                         return null;
                     });
                 } catch (Api.Error e) {
@@ -196,6 +200,9 @@ public final class LocationSharer {
                     Log.w(TAG, "envelope: " + e.getClass().getSimpleName());
                 }
                 ws.send(Frames.ack(f.peer, f.msgId));
+            } else if (f.type == Frames.ACK) { // S→C (api.md §6): o servidor gravou meu envelope
+                String to = skdmPending.remove(f.msgId);
+                if (to != null) skdmSent.add(to);
             } else if (f.type == Frames.ERROR && "unauthorized".equals(f.code)) {
                 Api.me(app); // REST: o 401 renova o access (token.lock); a reconexão do WS usa o novo
             }
@@ -211,7 +218,7 @@ public final class LocationSharer {
     private void distribute() throws IOException {
         String me = myId;
         for (Api.Friend f : Api.friends(app).accepted) {
-            if (skdmSent.contains(f.userId)) continue;
+            if (skdmSent.contains(f.userId) || skdmPending.containsValue(f.userId)) continue;
             String to = f.userId;
             try {
                 byte[] env = Locations.atomic(app, () -> Locations.skdmFor(app, me, to, null));
@@ -219,7 +226,9 @@ public final class LocationSharer {
                     Api.Bundle b = Api.keyBundle(app, to);
                     env = Locations.atomic(app, () -> Locations.skdmFor(app, me, to, b));
                 }
-                if (ws != null && ws.send(Frames.envelope(to, UUID.randomUUID().toString(), env))) skdmSent.add(to);
+                String id = UUID.randomUUID().toString();
+                // só conta como entregue no Ack S→C (o servidor gravou); enfileirado não basta
+                if (ws != null && ws.send(Frames.envelope(to, id, env))) skdmPending.put(id, to);
             } catch (Api.Error e) {
                 if (e.http == 401) throw e;
                 Log.w(TAG, "skdm: " + e.code); // um amigo sem chaves no servidor não segura os outros

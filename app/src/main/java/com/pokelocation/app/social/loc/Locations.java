@@ -1,6 +1,8 @@
 package com.pokelocation.app.social.loc;
 
+import android.content.ContentValues;
 import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.pokelocation.app.social.net.Api;
@@ -45,6 +47,7 @@ public final class Locations {
     static final int KIND_SKDM = 1;
     private static final int DEVICE = 1;
     private static final String TAG = "Locations";
+    private static final long SEEN_TTL_MS = 31L * 24 * 3600 * 1000;
     /**
      * Último payload decifrado por amigo: o GET /v1/locations devolve a MESMA mensagem por até 60 s, e decifrar de novo
      * dá DuplicateMessageException. Texto claro só no processo principal, podado a cada fetch.
@@ -119,15 +122,17 @@ public final class Locations {
         }
     }
 
-    /** Fila 1:1 pendente (SKDMs dos amigos): baixa, processa sob o lock e só depois apaga do servidor. */
+    /** Fila 1:1 pendente (SKDMs dos amigos; 1 página por fetch): baixa, processa sob o lock e só depois apaga do servidor. */
     static void drain(Context c) throws IOException {
         List<Api.Envelope> es = Api.envelopes(c);
         if (es.isEmpty()) return;
         List<String> done = atomic(c, () -> {
+            SocialDb.get(c).delete("seen_envelopes", "at < ?",
+                    new String[]{String.valueOf(System.currentTimeMillis() - SEEN_TTL_MS)});
             List<String> ids = new ArrayList<>(es.size());
             for (Api.Envelope e : es) {
                 try {
-                    receive(c, e.from, e.payload);
+                    receive(c, e.from, e.clientMsgId, e.payload);
                 } catch (Exception x) {
                     // ponytail: apaga mesmo assim (ilegível não melhora); o remetente reenvia a SKDM a cada sessão do joystick
                     Log.w(TAG, "envelope: " + x.getClass().getSimpleName());
@@ -140,10 +145,17 @@ public final class Locations {
     }
 
     /**
-     * Envelope 1:1 de um amigo, DENTRO de SocialDb.atomic: decifra e, se for SKDM, guarda a sender key dele.
+     * Envelope 1:1 de um amigo, DENTRO de SocialDb.atomic: decifra e, se for SKDM, guarda a sender key dele. O mesmo
+     * envelope pode vir pelo WS (:overlay) e pelo REST (principal) antes do ack: o 2º é ignorado (dedup por
+     * (from, client_msg_id), decisão do Tear) — decifrar de novo falharia e avançaria nada.
      * ponytail: só existe o kind SKDM; o chat (subprojeto 3) transforma isto num inbox que despacha por kind.
      */
-    static void receive(Context c, String from, byte[] payload) throws Exception {
+    static void receive(Context c, String from, String msgId, byte[] payload) throws Exception {
+        ContentValues seen = new ContentValues(3);
+        seen.put("sender", from);
+        seen.put("msg_id", msgId);
+        seen.put("at", System.currentTimeMillis());
+        if (SocialDb.get(c).insertWithOnConflict("seen_envelopes", null, seen, SQLiteDatabase.CONFLICT_IGNORE) == -1) return;
         SignalStore st = new SignalStore(c);
         SignalProtocolAddress a = address(from);
         SessionCipher sc = new SessionCipher(st, a);

@@ -29,7 +29,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * REST do pokelocation-server (padrão de net/Elevation). BLOQUEANTE: chamar só dentro de Io.run.
+ * REST do pokelocation-server (padrão de net/Elevation), conforme pokelocation-server/docs/api.md. BLOQUEANTE: fora da
+ * main (Io para ações do usuário; rede periódica numa thread do social).
  * Único lugar que conhece o JSON do servidor (parse em métodos estáticos puros, testados em ApiTest).
  * 401 numa chamada autenticada → renova o access token uma vez e repete; refresh morto → limpa a sessão e lança
  * Error(401, "unauthorized").
@@ -159,7 +160,7 @@ public final class Api {
     /** Pacote de chaves públicas de um amigo (para abrir sessão 1:1). preKey = one-time EC, null se esgotadas. */
     public static final class Bundle { public int registrationId; public byte[] identity; public PreKey signed, kyber, preKey; }
     /** Envelope 1:1 pendente na fila do servidor. */
-    public static final class Envelope { public String id, from; public byte[] payload; }
+    public static final class Envelope { public String id, from, clientMsgId; public byte[] payload; }
     /** Última posição cifrada de um amigo (sender key loc:{userId}). */
     public static final class Location { public String userId, friendCode; public byte[] payload; }
 
@@ -230,6 +231,7 @@ public final class Api {
             Envelope e = new Envelope();
             e.id = j.getString("id");
             e.from = j.getString("from");
+            e.clientMsgId = j.getString("client_msg_id");
             e.payload = unb64(j.getString("payload"));
             out.add(e);
         }
@@ -513,7 +515,11 @@ public final class Api {
         return sb.toString();
     }
 
+    /** api.md §4: até 100 por lista por PUT /v1/keys. */
+    public static final int MAX_KEYS_PER_PUT = 100;
+
     static JSONObject keysJson(KeyBundle k) throws JSONException {
+        if (k.ec.size() > MAX_KEYS_PER_PUT || k.kyber.size() > MAX_KEYS_PER_PUT) throw new IllegalArgumentException("> 100");
         JSONArray ec = new JSONArray(), ky = new JSONArray();
         for (PreKey p : k.ec) ec.put(preKey(p));
         for (PreKey p : k.kyber) ky.put(preKey(p));
