@@ -12,6 +12,12 @@ android {
         // Servidor social; sobrescreva com -PPOKELOCATION_SOCIAL_API=... (ex.: servidor local).
         buildConfigField("String", "SOCIAL_API",
             "\"" + (providers.gradleProperty("POKELOCATION_SOCIAL_API").orNull ?: "https://api.pokelocation.app") + "\"")
+        // libsignal baixada (spec §3.1): abi:sha256:bytes do .so descomprimido, saída de tools/libsignal/prepare.sh.
+        buildConfigField("String", "LIBSIGNAL_VERSION", "\"0.86.5\"")
+        buildConfigField("String", "LIBSIGNAL_SO", "\"" +
+            "arm64-v8a:2b9188dcbbfbb6716f31e09b54f97e2732e1d3085594fdcf90a8fa222b56e71e:6707408," +
+            "armeabi-v7a:008381906eadde5ef97e6d7dcb45842e65fde78ebd0d461aaacb64134f02d276:4942304," +
+            "x86_64:7cf4b3990f6bae29259bfa5f72d39796411e2511f3812363c497344d16beae72:7825800\"")
     }
     buildFeatures { buildConfig = true }
     // Credenciais só em ~/.gradle/gradle.properties (fora do repo); sem elas o release sai sem assinatura.
@@ -46,8 +52,20 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true // a libsignal usa java.time (checkAarMetadata exige)
     }
-    androidResources { localeFilters += listOf("en", "pt-rBR") }
+    // libsignal (spec §3.1): o .so real é baixado no login; no APK fica só o stub de src/main/jniLibs, que vence o
+    // lib/<abi>/libsignal_jni.so do AAR (x86 tem stub só para o app instalar; sem .so baixado, o social fica indisponível).
+    // Fora: a lib de teste e os nativos de desktop do jar.
+    packaging {
+        jniLibs.excludes += "**/libsignal_jni_testing.so"
+        resources.excludes += listOf("**/*.dylib", "**/*.dll", "**/libsignal_jni*.so")
+    }
+    androidResources {
+        localeFilters += listOf("en", "pt-rBR")
+        // Padrão do aapt + a versão -testing; assets/acknowledgments/libsignal.md fica (atribuição de licenças, obrigação legal).
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~:!libsignal-testing.md"
+    }
     testOptions { unitTests.isReturnDefaultValues = true }
 }
 
@@ -72,6 +90,8 @@ dependencies {
     implementation("com.google.android.material:material:1.13.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("org.osmdroid:osmdroid-android:6.1.20")
+    implementation("org.signal:libsignal-android:0.86.5") // parte Java; o nativo é baixado (spec §3.1)
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     testImplementation("junit:junit:4.13.2") // só teste JVM: zero impacto em RAM/APK
     testImplementation("net.sf.kxml:kxml2:2.3.0") // XmlPullParser/XmlSerializer nos testes JVM do gpx (só teste)
     testImplementation("org.json:json:20231013") // org.json real nos testes JVM (o android.jar mockado devolve null; só teste)

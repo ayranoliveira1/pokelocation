@@ -15,3 +15,4 @@ apks/*.bak
 docs/
 IMPLEMENTATION_SUMMARY.md
 docs-social/
+tools/libsignal/out/
