@@ -41,6 +41,27 @@ public class LocationsTest {
         assertNotEquals(Locations.distribution("u1"), Locations.distribution("u2"));
     }
 
+    /**
+     * A8b (Granito/api.md): Ack só depois de processar ou se for ilegível para sempre; falha transitória (lock,
+     * Keystore, banco) ou kind que este processo não trata → sem Ack, o servidor entrega de novo.
+     */
+    @Test public void ackCriteria() {
+        assertTrue(Locations.ack(null)); // SKDM aplicada, ou duplicado já visto (dedup)
+        assertTrue(Locations.ack(new java.io.IOException("signal",
+                new org.signal.libsignal.protocol.InvalidMessageException("corrompida"))));
+        assertTrue(Locations.ack(new java.io.IOException("signal",
+                new org.signal.libsignal.protocol.DuplicateMessageException("já decifrada"))));
+        assertTrue(Locations.ack(new java.io.IOException("signal",
+                new org.signal.libsignal.protocol.NoSessionException("sem sessão"))));
+        assertFalse(Locations.ack(new java.io.IOException("keystore", new java.security.GeneralSecurityException())));
+        assertFalse(Locations.ack(new java.io.IOException("signal",
+                new IllegalStateException("vault", new java.security.GeneralSecurityException()))));
+        assertFalse(Locations.ack(new java.io.IOException("signal", new Locations.UnhandledKind(2))));
+        assertFalse(Locations.ack(new java.io.IOException("lock")));
+        // payload malformado (vazio/curto) de um cliente alterado: ilegível para sempre, senão 50 deles travam a fila
+        assertTrue(Locations.ack(new java.io.IOException("signal", new IllegalArgumentException("vazio"))));
+    }
+
     @Test public void sendsOnlyAfterMovingMoreThan5m() {
         assertTrue(LocationSharer.moved(Double.NaN, Double.NaN, -23.5, -46.6));     // nada enviado ainda
         assertFalse(LocationSharer.moved(-23.5, -46.6, -23.50003, -46.6));          // ~3,3 m

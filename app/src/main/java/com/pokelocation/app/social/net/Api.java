@@ -36,7 +36,9 @@ import java.util.List;
  * Error(401, "unauthorized").
  */
 public final class Api {
-    private static final int TIMEOUT_MS = 15_000, REFRESH_TIMEOUT_MS = 10_000, MAX_BODY = 65_536;
+    private static final int TIMEOUT_MS = 15_000, REFRESH_TIMEOUT_MS = 10_000;
+    /** Limite de leitura por chamada (A-api2): 64 KiB em geral; GET /v1/locations 256 KiB (o servidor corta em 192). */
+    static final int MAX_BODY = 64 * 1024, LOCATIONS_MAX_BODY = 256 * 1024;
     private static final Object TOKEN_LOCK = new Object();
     private static final String CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
     private static final char[] B64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".toCharArray();
@@ -196,7 +198,7 @@ public final class Api {
     /** Última posição cifrada dos amigos online (MGET no Redis; some em 60 s). */
     public static List<Location> locations(Context c) throws IOException {
         try {
-            return parseLocations(call(c, "GET", "/v1/locations", null));
+            return parseLocations(call(c, "GET", "/v1/locations", null, LOCATIONS_MAX_BODY));
         } catch (JSONException e) {
             throw new IOException("bad response");
         }
@@ -341,15 +343,19 @@ public final class Api {
 
     /** Chamada autenticada com renovação única em 401. */
     private static String call(Context c, String method, String path, JSONObject body) throws IOException {
+        return call(c, method, path, body, MAX_BODY);
+    }
+
+    private static String call(Context c, String method, String path, JSONObject body, int maxBody) throws IOException {
         String token = Session.access(c);
         if (token == null) throw unauthorized(c);
         try {
-            return http(c, method, path, token, body);
+            return http(c, method, path, token, body, TIMEOUT_MS, maxBody);
         } catch (Error e) {
             if (e.http != 401) throw e;
         }
         try {
-            return http(c, method, path, renew(c, token), body);
+            return http(c, method, path, renew(c, token), body, TIMEOUT_MS, maxBody);
         } catch (Error e) {
             if (e.http == 401) throw unauthorized(c);
             throw e;
@@ -376,7 +382,8 @@ public final class Api {
                     }
                 }, stale, rt -> {
                     try {
-                        return tokens(http(c, "POST", "/v1/auth/refresh", null, obj("refresh_token", rt), REFRESH_TIMEOUT_MS));
+                        return tokens(http(c, "POST", "/v1/auth/refresh", null, obj("refresh_token", rt), REFRESH_TIMEOUT_MS,
+                                MAX_BODY));
                     } catch (JSONException e) {
                         throw new IOException("bad response"); // sem causa: o corpo tem os tokens
                     }
@@ -403,6 +410,17 @@ public final class Api {
         }
     }
 
+    /**
+     * Renova agora, mesmo com o access ainda válido (o JWT é stateless: vale até 15 min depois de logout/revogação).
+     * Para o WS: Error "unauthorized" + 1008 (logout, reuso do refresh, vínculo Google) → refresh revogado → 401 →
+     * quem chama para, sem laço de reconexão; refresh bom (access só venceu) → token novo para a reconexão.
+     */
+    public static void renewNow(Context c) throws IOException {
+        String a = Session.access(c);
+        if (a == null) throw unauthorized(c);
+        renew(c, a);
+    }
+
     private static Error unauthorized(Context c) {
         Session.clear(c);
         return new Error(401, "unauthorized");
@@ -421,11 +439,11 @@ public final class Api {
 
     /** Uma ida ao servidor; status ≥ 400 vira Error. Devolve o corpo ("" se vazio). */
     private static String http(Context c, String method, String path, String token, JSONObject body) throws IOException {
-        return http(c, method, path, token, body, TIMEOUT_MS);
+        return http(c, method, path, token, body, TIMEOUT_MS, MAX_BODY);
     }
 
-    private static String http(Context c, String method, String path, String token, JSONObject body, int timeoutMs)
-            throws IOException {
+    private static String http(Context c, String method, String path, String token, JSONObject body, int timeoutMs,
+                               int maxBody) throws IOException {
         HttpURLConnection con = (HttpURLConnection) new URL(BuildConfig.SOCIAL_API + path).openConnection();
         // sem disconnect() no caminho feliz: corpo lido até o fim devolve a conexão ao pool (keep-alive, sem novo TLS)
         try {
@@ -447,7 +465,7 @@ public final class Api {
                 }
             }
             int status = con.getResponseCode();
-            String text = read(status < 400 ? con.getInputStream() : con.getErrorStream());
+            String text = read(status < 400 ? con.getInputStream() : con.getErrorStream(), maxBody);
             if (status >= 400) throw new Error(status, errorCode(text));
             return text;
         } catch (Error e) {
@@ -458,14 +476,15 @@ public final class Api {
         }
     }
 
-    private static String read(InputStream in) throws IOException {
+    /** Corpo até max bytes (o buffer cresce com o real; nada pré-alocado). */
+    static String read(InputStream in, int max) throws IOException {
         if (in == null) return "";
         ByteArrayOutputStream bo = new ByteArrayOutputStream(256);
         try (InputStream i = in) {
             byte[] b = new byte[1024];
             int r;
             while ((r = i.read(b)) > 0) {
-                if (bo.size() + r > MAX_BODY) throw new IOException("response too large");
+                if (bo.size() + r > max) throw new IOException("response too large");
                 bo.write(b, 0, r);
             }
         }

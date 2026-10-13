@@ -9,7 +9,13 @@ import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.store.SignalStore;
 import com.pokelocation.app.social.store.SocialDb;
 
+import org.signal.libsignal.protocol.DuplicateMessageException;
 import org.signal.libsignal.protocol.IdentityKey;
+import org.signal.libsignal.protocol.InvalidKeyException;
+import org.signal.libsignal.protocol.InvalidKeyIdException;
+import org.signal.libsignal.protocol.InvalidMessageException;
+import org.signal.libsignal.protocol.InvalidVersionException;
+import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.NoSessionException;
 import org.signal.libsignal.protocol.SessionBuilder;
 import org.signal.libsignal.protocol.SessionCipher;
@@ -122,33 +128,69 @@ public final class Locations {
         }
     }
 
-    /** Fila 1:1 pendente (SKDMs dos amigos; 1 página por fetch): baixa, processa sob o lock e só depois apaga do servidor. */
+    /**
+     * Fila 1:1 pendente (SKDMs dos amigos; 1 página por fetch): baixa, processa cada envelope no seu atomic (uma falha
+     * desfaz só ele: transação aninhada no Android não volta parcial) e apaga do servidor só o que ack() aceita.
+     */
     static void drain(Context c) throws IOException {
         List<Api.Envelope> es = Api.envelopes(c);
         if (es.isEmpty()) return;
-        List<String> done = atomic(c, () -> {
-            SocialDb.get(c).delete("seen_envelopes", "at < ?",
-                    new String[]{String.valueOf(System.currentTimeMillis() - SEEN_TTL_MS)});
-            List<String> ids = new ArrayList<>(es.size());
-            for (Api.Envelope e : es) {
-                try {
+        atomic(c, () -> SocialDb.get(c).delete("seen_envelopes", "at < ?",
+                new String[]{String.valueOf(System.currentTimeMillis() - SEEN_TTL_MS)}));
+        List<String> ids = new ArrayList<>(es.size());
+        for (Api.Envelope e : es) {
+            Throwable fail = null;
+            try {
+                atomic(c, () -> {
                     receive(c, e.from, e.clientMsgId, e.payload);
-                } catch (Exception x) {
-                    // ponytail: apaga mesmo assim (ilegível não melhora); o remetente reenvia a SKDM a cada sessão do joystick
-                    Log.w(TAG, "envelope: " + x.getClass().getSimpleName());
-                }
-                ids.add(e.id);
+                    return null;
+                });
+            } catch (Api.Error x) {
+                throw x; // 401: sessão morta
+            } catch (IOException x) {
+                fail = x;
             }
-            return ids;
-        });
-        Api.ack(c, done);
+            if (ack(fail)) ids.add(e.id);
+            else Log.w(TAG, "envelope sem ack: " + rootName(fail));
+        }
+        Api.ack(c, ids);
+    }
+
+    /** Kind que este processo ainda não trata: lançado DENTRO do atomic para o rollback desfazer o avanço do ratchet. */
+    static final class UnhandledKind extends Exception {
+        UnhandledKind(int kind) { super("kind " + kind); }
+    }
+
+    /**
+     * Pura (A8b, LocationsTest): confirmar (Ack) o envelope ao servidor? Sim se processado (failure null, inclui o
+     * duplicado já visto) ou ilegível para sempre (erro de mensagem da libsignal na cadeia de causas). Não se a falha
+     * for transitória (lock, Keystore, banco, timeout) ou o kind não for tratado aqui (o chat grava antes do Ack):
+     * o servidor entrega de novo.
+     */
+    static boolean ack(Throwable failure) {
+        if (failure == null) return true;
+        for (Throwable t = failure; t != null; t = t.getCause()) {
+            if (t instanceof UnhandledKind) return false;
+            if (t instanceof IllegalArgumentException // payload/registro malformado (cliente alterado): não melhora
+                    || t instanceof InvalidMessageException || t instanceof InvalidKeyException || t instanceof InvalidKeyIdException
+                    || t instanceof InvalidVersionException || t instanceof LegacyMessageException
+                    || t instanceof DuplicateMessageException || t instanceof NoSessionException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static String rootName(Throwable t) {
+        while (t.getCause() != null) t = t.getCause();
+        return t.getClass().getSimpleName();
     }
 
     /**
      * Envelope 1:1 de um amigo, DENTRO de SocialDb.atomic: decifra e, se for SKDM, guarda a sender key dele. O mesmo
      * envelope pode vir pelo WS (:overlay) e pelo REST (principal) antes do ack: o 2º é ignorado (dedup por
-     * (from, client_msg_id), decisão do Tear) — decifrar de novo falharia e avançaria nada.
-     * ponytail: só existe o kind SKDM; o chat (subprojeto 3) transforma isto num inbox que despacha por kind.
+     * (from, client_msg_id), decisão do Tear) — decifrar de novo falharia e avançaria nada. Qualquer exceção desfaz
+     * tudo (o atomic volta): marca de dedup e ratchet. Kind ≠ SKDM → UnhandledKind (sem Ack; o chat A13/A14 trata).
      */
     static void receive(Context c, String from, String msgId, byte[] payload) throws Exception {
         ContentValues seen = new ContentValues(3);
@@ -156,13 +198,20 @@ public final class Locations {
         seen.put("msg_id", msgId);
         seen.put("at", System.currentTimeMillis());
         if (SocialDb.get(c).insertWithOnConflict("seen_envelopes", null, seen, SQLiteDatabase.CONFLICT_IGNORE) == -1) return;
+        // malformado (o servidor não tem tamanho mínimo): marcado como visto e confirmado; sem Ack, 50 deles travariam a
+        // página do GET /v1/envelopes (mais antigos primeiro) por 30 dias
+        if (payload.length < 2) return;
         SignalStore st = new SignalStore(c);
         SignalProtocolAddress a = address(from);
         SessionCipher sc = new SessionCipher(st, a);
         byte[] ct = body(payload);
         byte[] plain = kind(payload) == CiphertextMessage.PREKEY_TYPE
                 ? sc.decrypt(new PreKeySignalMessage(ct)) : sc.decrypt(new SignalMessage(ct));
-        if (kind(plain) == KIND_SKDM) new GroupSessionBuilder(st).process(a, new SenderKeyDistributionMessage(body(plain)));
+        if (plain.length == 0) return; // vazio: ilegível para sempre (marcado e confirmado)
+        // ponytail (A14): depois do chat, kind desconhecido (versões misturadas) também precisa de Ack ou gravar+Ack,
+        // senão a mesma trava da fila aparece
+        if (kind(plain) != KIND_SKDM) throw new UnhandledKind(kind(plain)); // rollback: decifrável de novo pelo chat
+        new GroupSessionBuilder(st).process(a, new SenderKeyDistributionMessage(body(plain)));
     }
 
     /**
@@ -209,7 +258,9 @@ public final class Locations {
         } catch (IOException e) {
             throw e;
         } catch (IllegalStateException e) {
-            throw new Api.Error(401, "unauthorized"); // geração nova sem arquivo; quem limpa é só o principal
+            // só o "logged out" do SocialDb (geração nova sem arquivo) é sessão morta; o resto é falha do store
+            if ("logged out".equals(e.getMessage())) throw new Api.Error(401, "unauthorized");
+            throw new IOException("signal", e);
         } catch (Exception e) {
             throw new IOException("signal", e);
         }

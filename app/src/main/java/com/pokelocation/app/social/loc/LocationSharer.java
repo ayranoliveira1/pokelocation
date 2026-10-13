@@ -187,24 +187,27 @@ public final class LocationSharer {
         if (ws != from) return;
         try {
             if (f.type == Frames.ENVELOPE) { // SKDM de um amigo online: guarda a sender key dele e confirma
+                Throwable fail = null;
                 try {
                     Locations.atomic(app, () -> {
                         Locations.receive(app, f.peer, f.msgId, f.payload);
                         return null;
                     });
                 } catch (Api.Error e) {
-                    throw e; // 401: sem ack, o principal processa da fila
+                    throw e; // 401: sem ack; volta na próxima entrega
                 } catch (IOException e) {
-                    // ponytail: confirma mesmo assim (como o drain do principal): ilegível não melhora e o remetente
-                    // reenvia a SKDM a cada sessão do joystick
-                    Log.w(TAG, "envelope: " + e.getClass().getSimpleName());
+                    fail = e;
                 }
-                ws.send(Frames.ack(f.peer, f.msgId));
+                // A8b: Ack só se processado ou ilegível para sempre; transitório/kind não tratado → o servidor reentrega
+                if (Locations.ack(fail)) ws.send(Frames.ack(f.peer, f.msgId));
+                else Log.w(TAG, "envelope sem ack: " + Locations.rootName(fail));
             } else if (f.type == Frames.ACK) { // S→C (api.md §6): o servidor gravou meu envelope
                 String to = skdmPending.remove(f.msgId);
                 if (to != null) skdmSent.add(to);
             } else if (f.type == Frames.ERROR && "unauthorized".equals(f.code)) {
-                Api.me(app); // REST: o 401 renova o access (token.lock); a reconexão do WS usa o novo
+                // logout/reuso/vínculo Google derrubam o WS: renova já (não só se o JWT venceu); refresh revogado → 401 →
+                // halt sem laço; refresh bom → a reconexão usa o token novo
+                Api.renewNow(app);
             }
             // LocationUpdate: quem desenha é o mapa no principal (Locations.fetch); aqui só se envia
         } catch (Api.Error e) {

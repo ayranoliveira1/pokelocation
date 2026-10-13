@@ -101,6 +101,19 @@ public class ApiTest {
         assertNull(Api.renewLocked(none, "a0", rt -> { throw new AssertionError(); }));
     }
 
+    /** A-api2: o limite de leitura é parâmetro por chamada; só o GET /v1/locations lê até 256 KiB (500 amigos ≈ 128 KB). */
+    @Test public void bodyLimitPerCall() throws java.io.IOException {
+        assertEquals(256 * 1024, Api.LOCATIONS_MAX_BODY);
+        assertEquals(64 * 1024, Api.MAX_BODY);
+        byte[] big = new byte[200 * 1024];
+        assertEquals(big.length, Api.read(new java.io.ByteArrayInputStream(big), Api.LOCATIONS_MAX_BODY).length());
+        try {
+            Api.read(new java.io.ByteArrayInputStream(big), Api.MAX_BODY);
+            org.junit.Assert.fail();
+        } catch (java.io.IOException expected) {
+        }
+    }
+
     @Test public void unb64RoundTrip() {
         for (int n = 0; n < 7; n++) {
             byte[] b = new byte[n];
