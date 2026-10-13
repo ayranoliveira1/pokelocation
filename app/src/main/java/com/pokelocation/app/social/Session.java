@@ -26,7 +26,7 @@ import javax.crypto.AEADBadTagException;
  * (decisão do maestro, Api.renew). Só loggedIn é API das telas; o resto é público só porque Api fica em social.net.
  */
 public final class Session {
-    private static final String FILE = "social", IN = "in", VERIFIER = "pv", STATE = "ps";
+    private static final String FILE = "social", IN = "in", VERIFIER = "pv", STATE = "ps", RETURN_TO = "pr";
     /** Último access lido/gravado no banco por este processo; num 401 a Api relê do banco sob o lock. */
     private static volatile String sAccess;
 
@@ -140,10 +140,14 @@ public final class Session {
     }
 
     /** Verifier e state do PKCE cifrados pelo Vault (Io: o Keystore pode bloquear). IOException = Keystore falhou. */
-    public static void savePkce(Context c, String verifier, String state) throws IOException {
+    public static void savePkce(Context c, String verifier, String state, String returnTo) throws IOException {
         try {
             // sem gravar, a volta do navegador daria invalid_state sem explicação
-            if (!sp(c).edit().putString(VERIFIER, seal(verifier)).putString(STATE, seal(state)).commit()) throw new IOException("prefs");
+            // returnTo (origem do Login, A4d) não é sensível: em claro, só para o destino depois do Google
+            if (!sp(c).edit().putString(VERIFIER, seal(verifier)).putString(STATE, seal(state)).putString(RETURN_TO, returnTo)
+                    .commit()) {
+                throw new IOException("prefs");
+            }
         } catch (GeneralSecurityException e) {
             throw new IOException("keystore", e);
         }
@@ -159,6 +163,14 @@ public final class Session {
         if (v == null || state == null || !state.equals(open(p.getString(STATE, null)))) return null;
         p.edit().remove(VERIFIER).remove(STATE).commit();
         return v;
+    }
+
+    /** Origem do Login guardada no googleStart; lida (e apagada) ao fim do googleFinish. null = Main. */
+    public static String takeReturnTo(Context c) {
+        SharedPreferences p = sp(c);
+        String r = p.getString(RETURN_TO, null);
+        p.edit().remove(RETURN_TO).apply();
+        return r;
     }
 
     private static String seal(String s) throws GeneralSecurityException {

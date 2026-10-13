@@ -275,7 +275,8 @@ public final class MainActivity extends BaseActivity {
         } else if (id == R.id.main_nav_markers) {
             startActivity(new Intent(this, MarkerTypesActivity.class));
         } else if (id == R.id.main_nav_friends) {
-            startActivity(new Intent(this, Session.loggedIn(this) ? FriendsActivity.class : LoginActivity.class));
+            startActivity(Session.loggedIn(this) ? new Intent(this, FriendsActivity.class) : new Intent(this, LoginActivity.class)
+                    .putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_FRIENDS));
         } else if (id == R.id.main_nav_gpx) {
             SelectPanel.show(this, getString(R.string.main_nav_gpx),
                     new CharSequence[]{getString(R.string.main_gpx_import), getString(R.string.main_gpx_export)},

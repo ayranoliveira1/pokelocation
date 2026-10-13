@@ -196,7 +196,7 @@ public final class SettingsActivity extends BaseActivity {
         });
         Row r = row(R.string.soc_account_row, 0, v -> {
             if (!Session.loggedIn(this)) {
-                startActivity(new Intent(this, LoginActivity.class));
+                startActivity(new Intent(this, LoginActivity.class).putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_BACK));
                 return;
             }
             new MaterialAlertDialogBuilder(this)

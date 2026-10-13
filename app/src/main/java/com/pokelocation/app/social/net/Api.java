@@ -84,9 +84,9 @@ public final class Api {
     }
 
     /** Gera PKCE (verifier S256) + state, guarda, devolve a URL para abrir no navegador (ACTION_VIEW). Bloqueia (Keystore): chamar no Io. */
-    public static Uri googleStart(Context c) throws IOException {
+    public static Uri googleStart(Context c, String returnTo) throws IOException {
         String verifier = random(32), state = random(16);
-        Session.savePkce(c, verifier, state);
+        Session.savePkce(c, verifier, state, returnTo);
         return Uri.parse(BuildConfig.SOCIAL_API + "/v1/auth/google/start").buildUpon()
                 .appendQueryParameter("code_challenge", challenge(verifier))
                 .appendQueryParameter("code_challenge_method", "S256")

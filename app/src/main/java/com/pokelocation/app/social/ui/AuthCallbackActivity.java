@@ -1,7 +1,6 @@
 package com.pokelocation.app.social.ui;
 
 import android.content.Context;
-import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 
@@ -12,7 +11,10 @@ import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.util.Ui;
 
-/** Recebe pokelocationauth://callback do Google (via servidor), troca o code e abre Amigos. Só mostra progresso. */
+/**
+ * Recebe pokelocationauth://callback do Google (via servidor), troca o code e vai para o destino da origem do Login
+ * (guardada com o PKCE: Amigos, de volta ou a Main). Só mostra progresso.
+ */
 public final class AuthCallbackActivity extends BaseActivity {
     private Io.Task task;
 
@@ -28,14 +30,13 @@ public final class AuthCallbackActivity extends BaseActivity {
         Context app = getApplicationContext();
         task = Io.run(() -> {
             Api.googleFinish(app, data);
-            return Boolean.TRUE;
-        }, new Io.Callback<Boolean>() {
-            @Override public void onResult(Boolean ok) {
-                startActivity(new Intent(AuthCallbackActivity.this, FriendsActivity.class));
-                finish();
+            return Session.takeReturnTo(app);
+        }, new Io.Callback<String>() {
+            @Override public void onResult(String returnTo) {
+                LoginActivity.afterLogin(AuthCallbackActivity.this, returnTo);
             }
             @Override public void onError(Throwable t) {
-                if (Session.loggedIn(app)) onResult(Boolean.TRUE);   // recriada: a 1ª instância já trocou o code
+                if (Session.loggedIn(app)) onResult(null);   // recriada: a 1ª instância já trocou o code (volta à Main)
                 else if (Errors.cancelled(t)) finish();   // cancelou no Google: volta ao Login (na pilha), sem toast
                 else {
                     Ui.toast(app, Errors.message(t));

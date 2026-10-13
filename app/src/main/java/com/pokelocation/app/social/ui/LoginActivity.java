@@ -1,5 +1,6 @@
 package com.pokelocation.app.social.ui;
 
+import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -11,13 +12,42 @@ import android.widget.EditText;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.ui.base.BaseActivity;
+import com.pokelocation.app.ui.main.MainActivity;
 import com.pokelocation.app.util.Ui;
 
 /** Login opcional: email/senha (entrar ou criar conta) ou Google no navegador (volta pela AuthCallbackActivity). */
 public final class LoginActivity extends BaseActivity {
     private static final String SIGNAL_STARTED = "signal_started";
+    /** Quem abre o Login diz para onde ir depois do sucesso (A4d). Sem o extra: volta à MainActivity. */
+    public static final String EXTRA_RETURN_TO = "return_to", RETURN_MAIN = "main", RETURN_FRIENDS = "friends",
+            RETURN_BACK = "back";
+    private String returnTo;
+
+    /** Pura (LoginRouteTest): tela a abrir depois do login; null = só fechar o Login (a de baixo atualiza no onResume). */
+    static Class<?> next(String returnTo) {
+        if (RETURN_FRIENDS.equals(returnTo)) return FriendsActivity.class;
+        if (RETURN_BACK.equals(returnTo)) return null;
+        return MainActivity.class;
+    }
+
+    /**
+     * Sucesso do login (aqui ou na AuthCallbackActivity, para o Google): carrega a libsignal já (antes isso vinha do
+     * onCreate de Amigos; sem ela o Keys.ensure/A3 não roda) e vai para o destino da origem.
+     */
+    static void afterLogin(Activity a, String returnTo) {
+        SignalLoader.start(a.getApplicationContext(), null);
+        Class<?> to = next(returnTo);
+        if (to == MainActivity.class) {
+            // a Main já existente vem para a frente (sem recriar a pilha); o handleIntent ignora intent sem action
+            a.startActivity(new Intent(a, to).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+        } else if (to != null) {
+            a.startActivity(new Intent(a, to));
+        }
+        a.finish();
+    }
     private EditText email, password;
     private View progress, signIn, signUp, google;
     private Io.Task task;
@@ -27,6 +57,7 @@ public final class LoginActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        returnTo = getIntent().getStringExtra(EXTRA_RETURN_TO);
         setContentView(R.layout.soc_login);
         setupToolbar(getString(R.string.soc_login_title), true);
         applyInsets(findViewById(R.id.soc_login_root));
@@ -44,7 +75,7 @@ public final class LoginActivity extends BaseActivity {
         google.setOnClickListener(v -> openGoogle());
     }
 
-    /** O Google termina na AuthCallbackActivity, que abre Amigos por cima desta: ao voltar, já logado, sai. */
+    /** O Google termina na AuthCallbackActivity, que vai para o destino da origem: se voltar aqui já logado, sai. */
     @Override
     protected void onResume() {
         super.onResume();
@@ -79,8 +110,7 @@ public final class LoginActivity extends BaseActivity {
             return Boolean.TRUE;
         }, new Io.Callback<Boolean>() {
             @Override public void onResult(Boolean ok) {
-                startActivity(new Intent(LoginActivity.this, FriendsActivity.class));
-                finish();
+                afterLogin(LoginActivity.this, returnTo);
             }
             @Override public void onError(Throwable t) {
                 task = null;
@@ -95,7 +125,8 @@ public final class LoginActivity extends BaseActivity {
         startSignal();
         busy(true);
         Context app = getApplicationContext();
-        task = Io.run(() -> Api.googleStart(app), new Io.Callback<Uri>() {
+        String rt = returnTo;
+        task = Io.run(() -> Api.googleStart(app, rt), new Io.Callback<Uri>() {
             @Override public void onResult(Uri url) {
                 task = null;
                 busy(false);

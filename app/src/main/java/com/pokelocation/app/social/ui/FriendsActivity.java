@@ -207,7 +207,7 @@ public final class FriendsActivity extends BaseActivity {
     }
 
     private void toLogin() {
-        startActivity(new Intent(this, LoginActivity.class));
+        startActivity(new Intent(this, LoginActivity.class).putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_FRIENDS));
         finish();
     }
 }

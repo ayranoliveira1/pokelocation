@@ -51,9 +51,18 @@
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal" android:layout_marginTop="@dimen/gap_large"
                 android:text="@string/soc_or" android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" />
-            <Button android:id="@+id/soc_login_google" style="@style/Widget.PokeLocation.PanelButton"
+            <!-- Sign in with Google (diretrizes de marca): "G" oficial à esquerda do texto, fundo/borda/texto do
+                 tema (values/values-night soc_colors), texto sem caixa alta, toque ≥ 48 dp. -->
+            <com.google.android.material.button.MaterialButton android:id="@+id/soc_login_google"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/gap" android:text="@string/soc_google" />
+                android:layout_marginTop="@dimen/gap" android:minHeight="48dp"
+                android:text="@string/soc_google" android:textAllCaps="false"
+                android:textColor="@color/soc_google_on" android:textSize="14sp"
+                app:backgroundTint="@color/soc_google_bg" app:strokeColor="@color/soc_google_stroke"
+                app:strokeWidth="1dp" app:cornerRadius="4dp"
+                app:icon="@drawable/soc_ic_google" app:iconTint="@null" app:iconGravity="textStart"
+                app:iconSize="20dp" app:iconPadding="10dp" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>
