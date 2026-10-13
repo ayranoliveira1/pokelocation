@@ -4,8 +4,9 @@ import com.pokelocation.app.R;
 import com.pokelocation.app.social.net.Api;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 
-/** Erro de Api → string. Api.Error.code conhecido tem mensagem própria; IOException comum é rede. */
+/** Erro de Api → string. Api.Error.code conhecido tem mensagem própria; IOException comum é rede; Keystore e o resto, genérica. */
 final class Errors {
     private Errors() {}
 
@@ -27,7 +28,9 @@ final class Errors {
                 default: return R.string.soc_err_generic;
             }
         }
-        return t instanceof IOException ? R.string.soc_err_network : R.string.soc_err_generic;
+        // Keystore falhou agora (contrato com o Quartzo: IOException com causa GeneralSecurityException): não é rede
+        if (t instanceof IOException && !(t.getCause() instanceof GeneralSecurityException)) return R.string.soc_err_network;
+        return R.string.soc_err_generic;
     }
 
     /** Sessão morreu (a Api já limpou): a tela volta ao login. */

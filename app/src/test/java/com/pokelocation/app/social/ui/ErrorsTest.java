@@ -39,6 +39,12 @@ public class ErrorsTest {
     }
 
     @Test
+    public void keystoreFailureIsGenericNotNetwork() {
+        IOException ks = new IOException("keystore", new java.security.GeneralSecurityException("busy"));
+        assertEquals(R.string.soc_err_generic, Errors.message(ks));
+    }
+
+    @Test
     public void unauthorizedOnlyForThatCode() {
         assertTrue(Errors.unauthorized(new Api.Error(401, "unauthorized")));
         assertFalse(Errors.unauthorized(new Api.Error(401, "invalid_credentials")));
