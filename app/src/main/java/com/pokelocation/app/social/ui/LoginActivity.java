@@ -3,6 +3,7 @@ package com.pokelocation.app.social.ui;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
@@ -89,13 +90,27 @@ public final class LoginActivity extends BaseActivity {
         });
     }
 
+    /** googleStart cifra o PKCE no Keystore (pode bloquear): Io. Falha do Keystore → mensagem genérica (Errors). */
     private void openGoogle() {
         startSignal();
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Api.googleStart(this)));
-        } catch (ActivityNotFoundException e) {
-            Ui.toast(this, R.string.soc_no_browser);
-        }
+        busy(true);
+        Context app = getApplicationContext();
+        task = Io.run(() -> Api.googleStart(app), new Io.Callback<Uri>() {
+            @Override public void onResult(Uri url) {
+                task = null;
+                busy(false);
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, url));
+                } catch (ActivityNotFoundException e) {
+                    Ui.toast(LoginActivity.this, R.string.soc_no_browser);
+                }
+            }
+            @Override public void onError(Throwable t) {
+                task = null;
+                busy(false);
+                Ui.toast(LoginActivity.this, Errors.message(t));
+            }
+        });
     }
 
     private void startSignal() {

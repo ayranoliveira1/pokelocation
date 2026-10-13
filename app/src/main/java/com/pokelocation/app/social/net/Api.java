@@ -75,8 +75,8 @@ public final class Api {
         store(c, http(c, "POST", "/v1/auth/login", null, obj("email", email, "password", password)));
     }
 
-    /** Gera PKCE (verifier S256) + state, guarda, devolve a URL para abrir no navegador (ACTION_VIEW). Não bloqueia. */
-    public static Uri googleStart(Context c) {
+    /** Gera PKCE (verifier S256) + state, guarda, devolve a URL para abrir no navegador (ACTION_VIEW). Bloqueia (Keystore): chamar no Io. */
+    public static Uri googleStart(Context c) throws IOException {
         String verifier = random(32), state = random(16);
         Session.savePkce(c, verifier, state);
         return Uri.parse(BuildConfig.SOCIAL_API + "/v1/auth/google/start").buildUpon()

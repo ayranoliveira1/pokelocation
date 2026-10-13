@@ -59,15 +59,23 @@ public final class Session {
         Vault.wipe();
     }
 
-    public static void savePkce(Context c, String verifier, String state) {
-        sp(c).edit().putString(VERIFIER, verifier).putString(STATE, state).apply(); // main (clique do login)
+    /** Verifier e state do PKCE cifrados pelo Vault (Io: o Keystore pode bloquear). IOException = Keystore falhou. */
+    public static void savePkce(Context c, String verifier, String state) throws IOException {
+        try {
+            sp(c).edit().putString(VERIFIER, seal(verifier)).putString(STATE, seal(state)).commit();
+        } catch (GeneralSecurityException e) {
+            throw new IOException("keystore", e);
+        }
     }
 
-    /** Verifier do PKCE pendente, consumido (uso único) só se state bater; null se não houver ou não bater. */
-    public static String takePkce(Context c, String state) {
+    /**
+     * Verifier do PKCE pendente, consumido (uso único) só se state bater; null se não houver, não bater ou estiver
+     * ilegível para sempre. IOException = Keystore falhou agora (o pendente fica para tentar de novo).
+     */
+    public static String takePkce(Context c, String state) throws IOException {
         SharedPreferences p = sp(c);
-        String v = p.getString(VERIFIER, null);
-        if (v == null || state == null || !state.equals(p.getString(STATE, null))) return null;
+        String v = open(p.getString(VERIFIER, null));
+        if (v == null || state == null || !state.equals(open(p.getString(STATE, null)))) return null;
         p.edit().remove(VERIFIER).remove(STATE).commit();
         return v;
     }
