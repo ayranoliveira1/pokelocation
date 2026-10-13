@@ -41,6 +41,9 @@
     <string name="soc_share_location_summary">Seus amigos veem você no mapa enquanto o joystick estiver ligado.</string>
     <string name="soc_logout_confirm">Sair desta conta neste aparelho?</string>
 
+    <string name="soc_friend_tap">%1$s · %2$s · visto há %3$d s</string>
+    <string name="soc_friend_tap_nodist">%1$s · visto há %2$d s</string>
+
     <string name="soc_signal_preparing">Preparando chat seguro…</string>
     <string name="soc_signal_progress">Preparando chat seguro… %1$s / %2$s MB</string>
     <string name="soc_signal_progress_unknown">Preparando chat seguro… %s MB</string>

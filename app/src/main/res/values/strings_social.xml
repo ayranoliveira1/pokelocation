@@ -45,6 +45,10 @@
     <string name="soc_share_location_summary">Friends see you on the map while the joystick is on.</string>
     <string name="soc_logout_confirm">Sign out of this account on this device?</string>
 
+    <!-- Mapa (A9): código · distância · idade -->
+    <string name="soc_friend_tap">%1$s · %2$s · seen %3$d s ago</string>
+    <string name="soc_friend_tap_nodist">%1$s · seen %2$d s ago</string>
+
     <!-- libsignal (SignalLoader) -->
     <string name="soc_signal_preparing">Preparing secure chat…</string>
     <string name="soc_signal_progress">Preparing secure chat… %1$s / %2$s MB</string>

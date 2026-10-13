@@ -30,6 +30,8 @@ import com.pokelocation.app.model.MapOptions;
 import com.pokelocation.app.model.MarkerType;
 import com.pokelocation.app.model.Route;
 import com.pokelocation.app.net.Elevation;
+import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.ui.FriendLayer;
 import com.pokelocation.app.ui.panel.ItemListPanel;
 import com.pokelocation.app.ui.panel.NameFolderPanel;
 import com.pokelocation.app.ui.panel.PanelHost;
@@ -102,6 +104,7 @@ public class RouteMapView extends FrameLayout {
     private Marker startMarker, currentMarker, nextOnlyMarker;
     private final ArrayList<Marker> wpMarkers = new ArrayList<>();
     private MarkerLayer layer;
+    private FriendLayer friends;   // social (A9): só no MODE_MAIN e com login; null = nada carregado
     private final ArrayList<GeoPoint> linePts = new ArrayList<>();
     private boolean lineSimplified;
 
@@ -341,11 +344,15 @@ public class RouteMapView extends FrameLayout {
     public void onResume() {
         resumed = true;
         if (mv != null) mv.onResume();
+        // login feito depois do mapa criado (Amigos → login → volta): cria aqui
+        if (friends == null && mode == MODE_MAIN && mv != null && Session.loggedIn(getContext())) friends = new FriendLayer(getContext(), mv);
+        if (friends != null) friends.resume();
     }
 
     public void onPause() {
         resumed = false;
         if (mv != null) mv.onPause();
+        if (friends != null) friends.pause();
     }
 
     /** Os marcadores customizados já são só os do viewport; aqui basta o cache de tiles. */
@@ -364,6 +371,8 @@ public class RouteMapView extends FrameLayout {
         closePanel();
         if (layer != null) layer.destroy();
         layer = null;
+        if (friends != null) friends.destroy();
+        friends = null;
         if (mv != null) {
             mv.removeMapListener(scroll);
             MapHelper.destroy(mv);
@@ -418,6 +427,10 @@ public class RouteMapView extends FrameLayout {
         layer = new MarkerLayer(c, mv, layerClick);
         mv.addMapListener(scroll);
         MapHelper.onIdle(mv, () -> { if (layer != null) layer.refresh(); });
+        if (mode == MODE_MAIN && Session.loggedIn(c)) {
+            friends = new FriendLayer(c, mv);
+            if (resumed) friends.resume();
+        }
         if (!model.hasStart()) {
             Coord s = current != null ? current : Prefs.lastPosition(c);
             if (s != null) model.setStart(s.lat, s.lng, s.alt);
