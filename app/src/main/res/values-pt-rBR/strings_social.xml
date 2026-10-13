@@ -61,6 +61,8 @@
     <string name="soc_err_blocked">Não é possível adicionar este usuário.</string>
     <string name="soc_err_already_friends">Vocês já são amigos.</string>
     <string name="soc_err_unauthorized">Sua sessão expirou. Entre de novo.</string>
+    <string name="soc_err_invalid_grant">O login com o Google expirou. Tente de novo.</string>
+    <string name="soc_err_unavailable">Servidor indisponível no momento. Tente de novo em instantes.</string>
     <string name="soc_err_network">Sem conexão com o servidor. Verifique sua internet.</string>
     <string name="soc_err_generic">Algo deu errado. Tente de novo.</string>
 </resources>

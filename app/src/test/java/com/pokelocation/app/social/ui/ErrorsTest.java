@@ -27,6 +27,20 @@ public class ErrorsTest {
     }
 
     @Test
+    public void googleExpiredAndServerDownHaveOwnMessage() {
+        assertEquals(R.string.soc_err_invalid_grant, Errors.message(new Api.Error(400, "invalid_grant")));
+        assertEquals(R.string.soc_err_unavailable, Errors.message(new Api.Error(503, "unavailable")));
+        assertEquals(R.string.soc_err_generic, Errors.message(new Api.Error(400, "google_failed")));
+    }
+
+    @Test
+    public void accessDeniedIsUserCancel() {
+        assertTrue(Errors.cancelled(new Api.Error(400, "access_denied")));
+        assertFalse(Errors.cancelled(new Api.Error(400, "google_failed")));
+        assertFalse(Errors.cancelled(new IOException()));
+    }
+
+    @Test
     public void unknownServerCodeIsGeneric() {
         assertEquals(R.string.soc_err_generic, Errors.message(new Api.Error(500, "internal")));
         assertEquals(R.string.soc_err_generic, Errors.message(new Api.Error(500, null)));

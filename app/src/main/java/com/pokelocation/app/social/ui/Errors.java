@@ -25,12 +25,19 @@ final class Errors {
                 case "blocked": return R.string.soc_err_blocked;
                 case "already_friends": return R.string.soc_err_already_friends;
                 case "unauthorized": return R.string.soc_err_unauthorized;
+                case "invalid_grant": return R.string.soc_err_invalid_grant;
+                case "unavailable": return R.string.soc_err_unavailable;
                 default: return R.string.soc_err_generic;
             }
         }
         // Keystore falhou agora (contrato com o Quartzo: IOException com causa GeneralSecurityException): não é rede
         if (t instanceof IOException && !(t.getCause() instanceof GeneralSecurityException)) return R.string.soc_err_network;
         return R.string.soc_err_generic;
+    }
+
+    /** O próprio usuário cancelou no Google (callback error=access_denied): sem mensagem nenhuma. */
+    static boolean cancelled(Throwable t) {
+        return t instanceof Api.Error && "access_denied".equals(((Api.Error) t).code);
     }
 
     /** Sessão morreu (a Api já limpou): a tela volta ao login. */

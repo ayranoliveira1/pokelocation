@@ -36,6 +36,7 @@ public final class AuthCallbackActivity extends BaseActivity {
             }
             @Override public void onError(Throwable t) {
                 if (Session.loggedIn(app)) onResult(Boolean.TRUE);   // recriada: a 1ª instância já trocou o code
+                else if (Errors.cancelled(t)) finish();   // cancelou no Google: volta ao Login (na pilha), sem toast
                 else {
                     Ui.toast(app, Errors.message(t));
                     finish();
