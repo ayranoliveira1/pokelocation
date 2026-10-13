@@ -118,29 +118,25 @@ public final class WsClient {
         try {
             while (true) {
                 byte[] f = queue.take();
+                OutputStream o = out;
                 if (f == STOP) {
                     try {
-                        write(CLOSE, new byte[]{0x03, (byte) 0xe8});
+                        if (o != null) send(o, writeLock, CLOSE, new byte[]{0x03, (byte) 0xe8});
                     } catch (IOException | RuntimeException ignored) {
                     }
                     close(); // acorda o read da "pl-ws", que vê stopped e sai
                     return;
                 }
+                if (o == null) continue; // caiu/reconectando: descarta (não fecha o socket que o connect() monta)
                 try {
-                    write(BIN, f);
+                    send(o, writeLock, BIN, f);
                 } catch (IOException | RuntimeException e) {
-                    close(); // a "pl-ws" vê a queda e reconecta
+                    if (out == o) close(); // a "pl-ws" vê a queda e reconecta
                 }
             }
         } catch (InterruptedException e) {
             close();
         }
-    }
-
-    private void write(int op, byte[] payload) throws IOException {
-        OutputStream o = out;
-        if (o == null) throw new IOException("closed");
-        send(o, writeLock, op, payload);
     }
 
     private void close() {
@@ -173,7 +169,13 @@ public final class WsClient {
                 why = new IOException(e);
             }
             close();
-            if (stopped) return;
+            // o que sobrou era da conexão velha (posições velhas não saem na nova); um stop() concorrente pode ter
+            // tido o STOP limpo aqui: devolve
+            queue.clear();
+            if (stopped) {
+                queue.offer(STOP);
+                return;
+            }
             try {
                 listener.onClosed(why);
             } catch (RuntimeException ignored) {
@@ -221,8 +223,8 @@ public final class WsClient {
         o.flush();
         checkHandshake(head(s.getInputStream()), key);
         s.setSoTimeout(READ_TIMEOUT_MS);
+        send(o, writeLock, BIN, Frames.auth(t)); // Auth antes de publicar o out: nenhum send() passa na frente dele
         out = o;
-        write(BIN, Frames.auth(t));
     }
 
     /** Cabeçalho da resposta até \r\n\r\n, byte a byte (nada do 1º frame é consumido), teto de 8 KB. */
