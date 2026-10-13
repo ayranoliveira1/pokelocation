@@ -15,7 +15,7 @@ import javax.crypto.spec.GCMParameterSpec;
 
 /**
  * AES-256-GCM com chave não exportável do AndroidKeyStore. Blob = IV(12) || cifrado+tag(16).
- * Só usar com login (cria a chave na 1ª chamada). wipe() no logout torna todo blob antigo ilegível.
+ * Chave criada no 1º uso social (PKCE do Google ou login). wipe() no logout torna todo blob antigo ilegível.
  */
 public final class Vault {
     private static final String ALIAS = "pl_social", KS = "AndroidKeyStore", AES = "AES/GCM/NoPadding";
@@ -40,6 +40,9 @@ public final class Vault {
         c.init(Cipher.DECRYPT_MODE, key(false), new GCMParameterSpec(TAG_BITS, blob, 0, IV));
         return c.doFinal(blob, IV, blob.length - IV);
     }
+
+    /** Esquece a chave em cache (o outro processo pode ter apagado/recriado a do Keystore: SocialDb.sync). */
+    public static void forget() { sKey = null; }
 
     /** Apaga a chave: blobs antigos viram lixo. Melhor esforço. */
     public static synchronized void wipe() {

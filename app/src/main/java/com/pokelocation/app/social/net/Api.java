@@ -5,6 +5,8 @@ import android.net.Uri;
 
 import com.pokelocation.app.BuildConfig;
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.crypto.SignalLoader;
+import com.pokelocation.app.social.store.SocialDb;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -17,7 +19,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -187,6 +188,35 @@ public final class Api {
 
     // ---- transporte ----
 
+    /** Linha de tokens no social.db (sob o lock). */
+    interface Tokens {
+        String[] read() throws Exception;
+        void save(String access, String refresh) throws Exception;
+    }
+
+    /** POST /v1/auth/refresh → {access, refresh}. */
+    interface Refresher { String[] refresh(String refreshToken) throws IOException; }
+
+    /**
+     * Puro (ApiTest), já com o lock entre processos: RELÊ do banco; se outro processo já renovou (access diferente do
+     * velho), usa o novo sem chamar /refresh, porque reusar o refresh revoga a família. null = sessão morta.
+     */
+    static String renewLocked(Tokens t, String stale, Refresher r) throws Exception {
+        String[] cur = t.read();
+        if (cur == null) return null;
+        if (!cur[0].equals(stale)) return cur[0];
+        String[] fresh;
+        try {
+            fresh = r.refresh(cur[1]);
+        } catch (Error e) {
+            // 4xx = refresh revogado/expirado; 429 e 5xx não matam a sessão
+            if (e.http >= 400 && e.http < 500 && e.http != 429) return null;
+            throw e;
+        }
+        t.save(fresh[0], fresh[1]);
+        return fresh[0];
+    }
+
     /** Chamada autenticada com renovação única em 401. */
     private static String call(Context c, String method, String path, JSONObject body) throws IOException {
         String token = Session.access(c);
@@ -204,19 +234,37 @@ public final class Api {
         }
     }
 
-    /** synchronized + compara com o token velho: duas threads com 401 não gastam o refresh duas vezes (reuso revoga a família). */
-    private static synchronized String renew(Context c, String stale) throws IOException {
-        String cur = Session.access(c);
-        if (cur != null && !cur.equals(stale)) return cur;
-        String refresh = Session.refresh(c);
-        if (refresh == null) throw unauthorized(c);
+    /**
+     * Renovação sob o lock entre processos + transação do social.db (decisão do maestro): principal e :overlay nunca
+     * gastam o mesmo refresh. A rede fica dentro do lock de propósito (rara: ~1 vez a cada 15 min de uso).
+     * Sessão morta → limpa FORA do lock (o clear apaga o social.db).
+     */
+    private static String renew(Context c, String stale) throws IOException {
+        String fresh;
         try {
-            return store(c, http(c, "POST", "/v1/auth/refresh", null, obj("refresh_token", refresh)));
-        } catch (Error e) {
-            // 4xx = refresh revogado/expirado; 429 e 5xx não matam a sessão
-            if (e.http >= 400 && e.http < 500 && e.http != 429) throw unauthorized(c);
+            fresh = SocialDb.atomic(c, () -> renewLocked(new Tokens() {
+                @Override public String[] read() throws IOException { return Session.readTokens(c); }
+
+                @Override public void save(String access, String refresh) throws IOException {
+                    Session.writeTokens(c, access, refresh);
+                }
+            }, stale, rt -> {
+                try {
+                    return tokens(http(c, "POST", "/v1/auth/refresh", null, obj("refresh_token", rt)));
+                } catch (JSONException e) {
+                    throw new IOException("bad response"); // sem causa: o corpo tem os tokens
+                }
+            }));
+        } catch (IOException e) {
             throw e;
+        } catch (IllegalStateException e) {
+            fresh = null; // o outro processo fez logout (SocialDb sem o arquivo)
+        } catch (Exception e) {
+            throw new IOException("renew", e);
         }
+        if (fresh == null) throw unauthorized(c);
+        SignalLoader.kick(c); // refresh = checagem periódica das prekeys (A3)
+        return fresh;
     }
 
     private static Error unauthorized(Context c) {
@@ -224,17 +272,15 @@ public final class Api {
         return new Error(401, "unauthorized");
     }
 
-    /** Grava os tokens da resposta; devolve o access token. */
-    private static String store(Context c, String body) throws IOException {
+    /** Login: grava os tokens da resposta. */
+    private static void store(Context c, String body) throws IOException {
+        String[] t;
         try {
-            String[] t = tokens(body);
-            Session.save(c, t[0], t[1]);
-            return t[0];
+            t = tokens(body);
         } catch (JSONException e) {
             throw new IOException("bad response"); // sem causa: o corpo tem os tokens e o Io.run loga a stack
-        } catch (GeneralSecurityException e) {
-            throw new IOException("keystore", e);
         }
+        Session.save(c, t[0], t[1]);
     }
 
     /** Uma ida ao servidor; status ≥ 400 vira Error. Devolve o corpo ("" se vazio). */

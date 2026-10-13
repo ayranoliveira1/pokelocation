@@ -33,6 +33,74 @@ public class ApiTest {
         assertEquals("Zm9vYg", Api.b64url("foob".getBytes()));
     }
 
+    /** social.db falso: a linha única de tokens, compartilhada pelos dois "processos". */
+    private static final class Db implements Api.Tokens {
+        String access = "a0", refresh = "r0";
+
+        @Override public synchronized String[] read() { return access == null ? null : new String[]{access, refresh}; }
+
+        @Override public synchronized void save(String a, String r) {
+            access = a;
+            refresh = r;
+        }
+    }
+
+    /** Decisão do maestro: dois processos com o mesmo access vencido → exatamente UM /refresh (reuso revoga a família). */
+    @Test public void concurrentRenewCallsRefreshOnce() throws Exception {
+        java.io.File lock = java.io.File.createTempFile("social", ".lock");
+        lock.deleteOnExit();
+        Db db = new Db();
+        java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
+        Api.Refresher server = rt -> {
+            int n = calls.incrementAndGet();
+            assertEquals("r0", rt); // nunca o refresh já usado
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new java.io.IOException(e);
+            }
+            return new String[]{"a" + n, "r" + n};
+        };
+        String[] got = new String[2];
+        Thread[] ts = new Thread[2];
+        for (int i = 0; i < 2; i++) {
+            int k = i;
+            ts[i] = new Thread(() -> {
+                try {
+                    got[k] = com.pokelocation.app.social.store.SocialDb.exclusive(lock, () -> Api.renewLocked(db, "a0", server));
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            ts[i].start();
+        }
+        for (Thread t : ts) t.join();
+        assertEquals(1, calls.get());
+        assertEquals("a1", got[0]);
+        assertEquals("a1", got[1]);
+        assertEquals("r1", db.refresh);
+    }
+
+    @Test public void otherProcessAlreadyRenewed() throws Exception {
+        Db db = new Db();
+        db.access = "a5";
+        assertEquals("a5", Api.renewLocked(db, "a0", rt -> { throw new AssertionError("não pode chamar /refresh"); }));
+    }
+
+    @Test public void deadRefreshIsNullButRateLimitIsTransient() throws Exception {
+        assertNull(Api.renewLocked(new Db(), "a0", rt -> { throw new Api.Error(401, "unauthorized"); }));
+        assertNull(Api.renewLocked(new Db(), "a0", rt -> { throw new Api.Error(400, "invalid"); }));
+        try {
+            Api.renewLocked(new Db(), "a0", rt -> { throw new Api.Error(429, "rate_limited"); });
+            org.junit.Assert.fail();
+        } catch (Api.Error e) {
+            assertEquals(429, e.http);
+        }
+        Db none = new Db();
+        none.access = null;
+        assertNull(Api.renewLocked(none, "a0", rt -> { throw new AssertionError(); }));
+    }
+
     @Test public void b64std_padded() {
         assertEquals("", Api.b64(new byte[0], false));
         assertEquals("+/8=", Api.b64(new byte[]{(byte) 0xfb, (byte) 0xff}, false));

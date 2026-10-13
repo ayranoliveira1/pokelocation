@@ -29,8 +29,10 @@ import java.util.UUID;
 
 /**
  * Stores do Signal (A7) sobre o social.db. Sessões, identidades dos amigos e sender keys: Envelope (software, chave em
- * memória); prekeys e a identity própria: Vault (raros). SÓ no thread do Io do processo, com login e
- * SignalLoader.loaded() (o nativo chama estes métodos por JNI; a regra *Store do proguard os mantém).
+ * memória); prekeys e a identity própria: Vault (raros). Com login e SignalLoader.loaded() (o nativo chama estes
+ * métodos por JNI; a regra *Store do proguard os mantém). Toda operação que usa este store (encrypt, decrypt,
+ * bundle/SKDM) roda inteira dentro de SocialDb.atomic (regra multiprocesso): fora dele, db() lança.
+ * Em memória só o imutável na vida do login (chave-envelope aberta, identity própria); registros sempre do arquivo.
  * Falha de cripto/registro dentro de um callback do nativo vira IllegalStateException (as interfaces não declaram).
  */
 public final class SignalStore implements SignalProtocolStore {
@@ -42,7 +44,10 @@ public final class SignalStore implements SignalProtocolStore {
 
     public SignalStore(Context c) { app = c.getApplicationContext(); }
 
-    private SQLiteDatabase db() { return SocialDb.get(app); }
+    private SQLiteDatabase db() {
+        if (!SocialDb.inAtomic()) throw new IllegalStateException("SignalStore fora de SocialDb.atomic");
+        return SocialDb.get(app);
+    }
 
     /** Logout (SocialDb.delete): esquece o que está em memória. */
     static void forget() {

@@ -37,24 +37,38 @@ final class Keys {
 
     private Keys() {}
 
+    /** Banco sob SocialDb.atomic (regra multiprocesso); rede fora do lock (um PUT lento não trava o :overlay). */
     static void ensure(Context c) throws IOException {
         if (!SignalLoader.loaded() || !Session.loggedIn(c)) return;
-        SQLiteDatabase db = SocialDb.get(c);
         try {
-            if (DatabaseUtils.queryNumEntries(db, "identity") == 0) {
-                create(db);
-            } else if (!pending(db)) {
+            boolean pending = SocialDb.atomic(c, () -> {
+                SQLiteDatabase db = SocialDb.get(c);
+                if (DatabaseUtils.queryNumEntries(db, "identity") == 0) create(db);
+                return pending(db);
+            });
+            if (!pending) {
                 int[] n = Api.keyCount(c);
-                if (n[0] < LOW || n[1] < LOW) refill(db, n[0] < LOW, n[1] < LOW);
+                if (n[0] >= LOW && n[1] >= LOW) return;
+                SocialDb.atomic(c, () -> {
+                    refill(SocialDb.get(c), n[0] < LOW, n[1] < LOW);
+                    return null;
+                });
             }
             // pendente = gerado e ainda não aceito pelo servidor (falha de rede antes): reenvia sem gerar de novo
-            if (pending(db)) {
-                Api.putKeys(c, bundle(db));
+            Api.putKeys(c, SocialDb.atomic(c, () -> bundle(SocialDb.get(c))));
+            // ponytail: marca todas as up=0; certo porque só este método (Io do principal) gera chaves
+            SocialDb.atomic(c, () -> {
+                SQLiteDatabase db = SocialDb.get(c);
                 for (String t : new String[]{"identity", "prekeys", "kyber_prekeys"}) db.execSQL("UPDATE " + t + " SET up = 1 WHERE up = 0");
-            }
+                return null;
+            });
+        } catch (IOException e) {
+            throw e;
         } catch (GeneralSecurityException e) {
             throw new IOException("keystore", e);
         } catch (InvalidKeyException e) {
+            throw new IOException("keys", e);
+        } catch (Exception e) {
             throw new IOException("keys", e);
         }
     }
