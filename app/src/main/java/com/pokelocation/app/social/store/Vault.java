@@ -20,6 +20,8 @@ import javax.crypto.spec.GCMParameterSpec;
 public final class Vault {
     private static final String ALIAS = "pl_social", KS = "AndroidKeyStore", AES = "AES/GCM/NoPadding";
     private static final int IV = 12, TAG_BITS = 128;
+    /** Cache: sem ele cada seal/open faria 2 IPCs a mais ao keystore (getInstance+load+getKey). */
+    private static volatile SecretKey sKey;
 
     private Vault() {}
 
@@ -41,6 +43,7 @@ public final class Vault {
 
     /** Apaga a chave: blobs antigos viram lixo. Melhor esforço. */
     public static synchronized void wipe() {
+        sKey = null;
         try {
             KeyStore ks = KeyStore.getInstance(KS);
             ks.load(null);
@@ -51,11 +54,12 @@ public final class Vault {
 
     /** create só no seal: open sem chave (após wipe) não deixa chave órfã no Keystore. */
     private static synchronized SecretKey key(boolean create) throws GeneralSecurityException {
+        if (sKey != null) return sKey;
         try {
             KeyStore ks = KeyStore.getInstance(KS);
             ks.load(null);
             Key k = ks.getKey(ALIAS, null); // chave ilegível → UnrecoverableKeyException (permanente para o Session)
-            if (k instanceof SecretKey) return (SecretKey) k;
+            if (k instanceof SecretKey) return sKey = (SecretKey) k;
         } catch (java.io.IOException e) {
             throw new GeneralSecurityException(e);
         }
@@ -66,6 +70,6 @@ public final class Vault {
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setKeySize(256)
                 .build());
-        return g.generateKey();
+        return sKey = g.generateKey();
     }
 }

@@ -34,6 +34,7 @@ public final class Api {
     private static final int TIMEOUT_MS = 15_000, MAX_BODY = 65_536;
     private static final String CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
     private static final char[] B64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".toCharArray();
+    private static final char[] B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
 
     /** Erro do servidor. code = campo "error" do JSON ("unknown" se não houver); http = status. */
     public static final class Error extends IOException {
@@ -51,6 +52,16 @@ public final class Api {
     public static final class Friend { public String userId, friendCode; }
     public static final class Request { public String id, userId, friendCode; public long createdAt; /* epoch ms */ }
     public static final class Friends { public List<Friend> accepted; public List<Request> incoming, outgoing; }
+
+    /** Chave pública do Signal para o servidor. sig = assinatura pela identity (null nas one-time EC). */
+    public static final class PreKey { public int id; public byte[] pub, sig; }
+    /** Pacote de chaves públicas do aparelho (A3). ec/kyber = one-time ainda não enviadas. */
+    public static final class KeyBundle {
+        public int registrationId;
+        public byte[] identity;
+        public PreKey signed, lastResort;
+        public List<PreKey> ec, kyber;
+    }
 
     private Api() {}
 
@@ -138,6 +149,25 @@ public final class Api {
 
     public static void unblock(Context c, String userId) throws IOException {
         call(c, "DELETE", "/v1/blocks/" + Uri.encode(userId), null);
+    }
+
+    // ---- chaves do Signal (A3). JSON provisório até o docs/api.md do servidor; só esta classe muda. ----
+
+    public static void putKeys(Context c, KeyBundle k) throws IOException {
+        try {
+            call(c, "PUT", "/v1/keys", keysJson(k));
+        } catch (JSONException e) {
+            throw new IOException("bad request");
+        }
+    }
+
+    /** {ec, kyber}: one-time prekeys que o servidor ainda tem deste aparelho. */
+    public static int[] keyCount(Context c) throws IOException {
+        try {
+            return parseKeyCount(call(c, "GET", "/v1/keys/count", null));
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
     }
 
     /** Crockford base32, 8 chars: maiúsculas, I/L→1, O→0, remove espaços e '-'. null se inválido. Puro, sem rede. */
@@ -282,15 +312,43 @@ public final class Api {
         }
     }
 
-    /** Base64url sem padding (RFC 4648 §5). Manual: java.util.Base64 é API 26 e android.util.Base64 não roda na JVM. */
-    static String b64url(byte[] b) {
-        StringBuilder sb = new StringBuilder((b.length * 4 + 2) / 3);
+    static String b64url(byte[] b) { return b64(b, true); }
+
+    /** RFC 4648: url = §5 sem padding (PKCE); senão §4 com padding ([]byte do Go). Manual: java.util.Base64 é API 26
+     *  e android.util.Base64 não roda na JVM. */
+    static String b64(byte[] b, boolean url) {
+        char[] abc = url ? B64URL : B64;
+        StringBuilder sb = new StringBuilder((b.length + 2) / 3 * 4);
         for (int i = 0; i < b.length; i += 3) {
             int left = Math.min(3, b.length - i);
             int n = (b[i] & 0xff) << 16 | (left > 1 ? (b[i + 1] & 0xff) << 8 : 0) | (left > 2 ? b[i + 2] & 0xff : 0);
-            for (int j = 0; j <= left; j++) sb.append(B64URL[n >> (18 - 6 * j) & 63]);
+            for (int j = 0; j <= left; j++) sb.append(abc[n >> (18 - 6 * j) & 63]);
+            if (!url) for (int j = left; j < 3; j++) sb.append('=');
         }
         return sb.toString();
+    }
+
+    static JSONObject keysJson(KeyBundle k) throws JSONException {
+        JSONArray ec = new JSONArray(), ky = new JSONArray();
+        for (PreKey p : k.ec) ec.put(preKey(p));
+        for (PreKey p : k.kyber) ky.put(preKey(p));
+        return new JSONObject()
+                .put("registration_id", k.registrationId)
+                .put("identity_key", b64(k.identity, false))
+                .put("signed_prekey", preKey(k.signed))
+                .put("kyber_last_resort", preKey(k.lastResort))
+                .put("one_time_prekeys", ec)
+                .put("kyber_prekeys", ky);
+    }
+
+    private static JSONObject preKey(PreKey p) throws JSONException {
+        JSONObject o = new JSONObject().put("key_id", p.id).put("public_key", b64(p.pub, false));
+        return p.sig == null ? o : o.put("signature", b64(p.sig, false));
+    }
+
+    static int[] parseKeyCount(String body) throws JSONException {
+        JSONObject o = new JSONObject(body);
+        return new int[]{o.getInt("ec"), o.getInt("kyber")};
     }
 
     /** {access_token, refresh_token}; JSONException se faltar. */

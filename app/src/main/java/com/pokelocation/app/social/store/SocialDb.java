@@ -7,7 +7,9 @@ import android.database.sqlite.SQLiteOpenHelper;
 /**
  * Banco do social (chaves do Signal, A3), separado do pokelocation.db: fica FORA do DbBackup (restaurar ratchet/prekeys
  * velhos corrompe sessões; os blobs dependem da chave do Keystore, que não viaja). Só aberto com login; logout apaga o arquivo.
- * blob = Vault.seal(registro serializado).
+ * Acesso SÓ no Io (single-thread): Session.clear fecha o helper, e outra thread com o db aberto quebraria.
+ * blob = Vault.seal(registro serializado); pub/sig = parte pública em claro (vai ao servidor sem abrir o Vault);
+ * up = já enviado no PUT /v1/keys.
  */
 public final class SocialDb extends SQLiteOpenHelper {
     public static final String NAME = "social.db";
@@ -32,11 +34,12 @@ public final class SocialDb extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE identity(id INTEGER PRIMARY KEY, blob BLOB NOT NULL)");
-        db.execSQL("CREATE TABLE prekeys(id INTEGER NOT NULL, signed INTEGER NOT NULL, blob BLOB NOT NULL,"
-                + " PRIMARY KEY(signed, id)) WITHOUT ROWID");
-        db.execSQL("CREATE TABLE kyber_prekeys(id INTEGER PRIMARY KEY, last_resort INTEGER NOT NULL,"
-                + " used INTEGER NOT NULL DEFAULT 0, blob BLOB NOT NULL)");
+        db.execSQL("CREATE TABLE identity(id INTEGER PRIMARY KEY CHECK(id = 0), reg_id INTEGER NOT NULL, pub BLOB NOT NULL,"
+                + " up INTEGER NOT NULL DEFAULT 0, blob BLOB NOT NULL)");
+        db.execSQL("CREATE TABLE prekeys(id INTEGER NOT NULL, signed INTEGER NOT NULL, pub BLOB NOT NULL, sig BLOB,"
+                + " up INTEGER NOT NULL DEFAULT 0, blob BLOB NOT NULL, PRIMARY KEY(signed, id)) WITHOUT ROWID");
+        db.execSQL("CREATE TABLE kyber_prekeys(id INTEGER PRIMARY KEY, last_resort INTEGER NOT NULL, pub BLOB NOT NULL,"
+                + " sig BLOB NOT NULL, up INTEGER NOT NULL DEFAULT 0, blob BLOB NOT NULL)");
     }
 
     @Override

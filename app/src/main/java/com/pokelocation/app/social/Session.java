@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.util.Base64;
 
+import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.store.SocialDb;
 import com.pokelocation.app.social.store.Vault;
 
@@ -35,6 +36,7 @@ public final class Session {
         boolean ok = sp(c).edit().putString(ACCESS, seal(access)).putString(REFRESH, seal(refresh)).putBoolean(IN, true).commit();
         if (!ok) throw new GeneralSecurityException("prefs");
         sAccess = access;
+        SignalLoader.kick(c);
     }
 
     /**

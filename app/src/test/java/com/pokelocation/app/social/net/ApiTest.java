@@ -33,6 +33,49 @@ public class ApiTest {
         assertEquals("Zm9vYg", Api.b64url("foob".getBytes()));
     }
 
+    @Test public void b64std_padded() {
+        assertEquals("", Api.b64(new byte[0], false));
+        assertEquals("+/8=", Api.b64(new byte[]{(byte) 0xfb, (byte) 0xff}, false));
+        assertEquals("Zm9vYg==", Api.b64("foob".getBytes(), false));
+        assertEquals("Zm9vYmFy", Api.b64("foobar".getBytes(), false));
+    }
+
+    private static Api.PreKey pk(int id, String pub, String sig) {
+        Api.PreKey k = new Api.PreKey();
+        k.id = id;
+        k.pub = pub.getBytes();
+        k.sig = sig == null ? null : sig.getBytes();
+        return k;
+    }
+
+    @Test public void keysJson() throws JSONException {
+        Api.KeyBundle b = new Api.KeyBundle();
+        b.registrationId = 42;
+        b.identity = "id".getBytes();
+        b.signed = pk(1, "sp", "ss");
+        b.lastResort = pk(1, "lp", "ls");
+        b.ec = java.util.Collections.singletonList(pk(7, "ep", null));
+        b.kyber = java.util.Collections.singletonList(pk(8, "kp", "ks"));
+        org.json.JSONObject o = new org.json.JSONObject(Api.keysJson(b).toString());
+        assertEquals(42, o.getInt("registration_id"));
+        assertEquals("aWQ=", o.getString("identity_key"));
+        assertEquals(1, o.getJSONObject("signed_prekey").getInt("key_id"));
+        assertEquals("c3A=", o.getJSONObject("signed_prekey").getString("public_key"));
+        assertEquals("c3M=", o.getJSONObject("signed_prekey").getString("signature"));
+        assertEquals("bHA=", o.getJSONObject("kyber_last_resort").getString("public_key"));
+        org.json.JSONObject ec = o.getJSONArray("one_time_prekeys").getJSONObject(0);
+        assertEquals(7, ec.getInt("key_id"));
+        assertEquals("ZXA=", ec.getString("public_key"));
+        assertEquals(false, ec.has("signature"));
+        org.json.JSONObject ky = o.getJSONArray("kyber_prekeys").getJSONObject(0);
+        assertEquals(8, ky.getInt("key_id"));
+        assertEquals("a3M=", ky.getString("signature"));
+    }
+
+    @Test public void keyCount() throws JSONException {
+        assertArrayEquals(new int[]{19, 100}, Api.parseKeyCount("{\"ec\":19,\"kyber\":100}"));
+    }
+
     @Test public void tokens() throws JSONException {
         assertArrayEquals(new String[]{"a", "r"},
                 Api.tokens("{\"access_token\":\"a\",\"refresh_token\":\"r\",\"expires_in\":900}"));
