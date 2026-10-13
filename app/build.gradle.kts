@@ -22,10 +22,11 @@ android {
             "x86_64:7cf4b3990f6bae29259bfa5f72d39796411e2511f3812363c497344d16beae72:7825800\"")
     }
     buildFeatures { buildConfig = true }
+
     // Com o sufixo, o app aparece como "PokeLocationTeste" (launcher, recentes, notificação): src/teste/res sobrepõe o
     // app_name do main em todos os build types. Sem a propriedade, nada muda.
     if (providers.gradleProperty("POKELOCATION_ID_SUFFIX").isPresent) {
-        sourceSets.configureEach { if (name in setOf("debug", "release", "qa")) res.srcDir("src/teste/res") }
+        sourceSets.configureEach { if (name in setOf("debug", "release", "qa", "r8test")) res.srcDir("src/teste/res") }
     }
     // Credenciais só em ~/.gradle/gradle.properties (fora do repo); sem elas o release sai sem assinatura.
     val storeFilePath = providers.gradleProperty("POKELOCATION_STORE_FILE").orNull
@@ -53,6 +54,14 @@ android {
         create("qa") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
+        // Só teste local: idêntico ao qa (R8 com ofuscação; debuggable desligaria a renomeação, que é o que quebra os
+        // *Store da libsignal) + src/r8test, que confia na CA local do Caddy para falar com o servidor local.
+        // Nunca distribuído; fora do checkApkSize.
+        create("r8test") {
+            initWith(getByName("qa"))
+            applicationIdSuffix = ".r8test" // nunca o pacote do app do usuário (assinado com a chave debug)
             matchingFallbacks += listOf("release")
         }
     }
