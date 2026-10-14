@@ -37,7 +37,7 @@ public final class SocialDb extends SQLiteOpenHelper {
     public interface Op<T> { T run() throws Exception; }
 
     private SocialDb(Context c) {
-        super(c.getApplicationContext(), NAME, null, 4);
+        super(c.getApplicationContext(), NAME, null, 5);
         setWriteAheadLoggingEnabled(true);
     }
 
@@ -194,6 +194,7 @@ public final class SocialDb extends SQLiteOpenHelper {
         createV2(db);
         createV3(db);
         createV4(db);
+        db.execSQL(SEEN_ENVELOPES_AT);
     }
 
     @Override
@@ -201,14 +202,17 @@ public final class SocialDb extends SQLiteOpenHelper {
         if (oldVersion < 2) createV2(db);
         if (oldVersion < 3) createV3(db);
         if (oldVersion < 4) createV4(db);
+        if (oldVersion < 5) db.execSQL(SEEN_ENVELOPES_AT);
     }
 
     /** O WS do :overlay e o REST do principal podem trazer o mesmo envelope antes do ack. Podado após 31 dias (a fila
      *  do servidor expira em 30). */
-    private static void createV4(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE seen_envelopes(sender TEXT NOT NULL, msg_id TEXT NOT NULL, at INTEGER NOT NULL,"
-                + " PRIMARY KEY(sender, msg_id)) WITHOUT ROWID");
-    }
+    static final String SEEN_ENVELOPES = "CREATE TABLE seen_envelopes(sender TEXT NOT NULL, msg_id TEXT NOT NULL,"
+            + " at INTEGER NOT NULL, PRIMARY KEY(sender, msg_id)) WITHOUT ROWID";
+    /** A poda por data roda a cada envelope recebido; sem o índice percorre a tabela inteira. */
+    static final String SEEN_ENVELOPES_AT = "CREATE INDEX IF NOT EXISTS seen_envelopes_at ON seen_envelopes(at)";
+
+    private static void createV4(SQLiteDatabase db) { db.execSQL(SEEN_ENVELOPES); }
 
     /** Fora do prefs para os dois processos verem os mesmos tokens. */
     private static void createV3(SQLiteDatabase db) {
