@@ -29,7 +29,6 @@ public class FriendsActivityTest {
         assertEquals("?", FriendsActivity.initial(null, null));
     }
 
-    /** Até 15 s desde a última posição: online; depois, "visto há X s" (a posição some do servidor em 60 s). */
     @Test
     public void onlineUpTo15Seconds() {
         assertTrue(FriendsActivity.online(15));

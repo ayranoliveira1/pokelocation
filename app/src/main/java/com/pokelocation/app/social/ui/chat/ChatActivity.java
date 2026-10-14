@@ -55,7 +55,6 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
     private static final int MENU_SAFETY = 1, MENU_MEMBERS = 2;
 
     private Pager pager = new Pager();
-    /** Uma thread só do banco do chat, que morre ociosa como o Io. */
     static final ThreadPoolExecutor READ = new ThreadPoolExecutor(1, 1, 10, TimeUnit.SECONDS, new LinkedBlockingQueue<>(),
             r -> new Thread(() -> {
                 Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
@@ -84,7 +83,6 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
                 .putExtra(EXTRA_GROUP, group);
     }
 
-    /** 1:1 com o amigo: o convId sai do Chat.openDirect (banco) fora da main, já aqui dentro. label: "@nome" ou o código. */
     public static Intent friend(Context c, String userId, String label) {
         return new Intent(c, ChatActivity.class).putExtra(EXTRA_FRIEND, userId).putExtra(EXTRA_TITLE, label);
     }
@@ -108,7 +106,7 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         rv = findViewById(R.id.soc_chat_rv);
         input = findViewById(R.id.soc_chat_input);
         newChip = findViewById(R.id.soc_chat_new);
-        lm = new LinearLayoutManager(this, RecyclerView.VERTICAL, true);   // reverseLayout: posição 0 = mais nova, embaixo
+        lm = new LinearLayoutManager(this, RecyclerView.VERTICAL, true);
         lm.setStackFromEnd(true);
         rv.setLayoutManager(lm);
         adapter = new MsgAdapter(this, group, this::onTap);
@@ -344,7 +342,6 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
                 .show();
     }
 
-    /** Fim da live ativa mais longa da conversa (minha ou de outro membro); 0 = nenhuma. */
     static long liveUntil(Chat.Conv c, long now) {
         if (c == null) return 0;
         long until = Math.max(c.myLiveUntil, c.liveUntil);
@@ -360,7 +357,6 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         }, null);
     }
 
-    /** Selo "ao vivo" na toolbar; some sozinho quando a live expira. */
     private void showLive() {
         Io.main().removeCallbacks(liveTick);
         long now = System.currentTimeMillis(), until = liveUntil(conv, now);
@@ -407,7 +403,6 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         }, null);
     }
 
-    /** "123451234512345…" → blocos de 5 dígitos, perLine por linha. */
     static String blocks(String digits, int perLine) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < digits.length(); i += 5) {
@@ -469,17 +464,15 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
                 .show();
     }
 
-    /** Ações (envio, rede): no Io do app. */
     private <T> void io(Callable<T> work, Consumer<T> ok, Consumer<Throwable> err) {
         go(false, work, ok, err);
     }
 
-    /** Banco do chat: na READ, para a página não esperar um envio ou uma chamada de rede no Io. */
+    /** Na READ: a página não espera um envio ou uma chamada de rede no Io. */
     private <T> void read(Callable<T> work, Consumer<T> ok, Consumer<Throwable> err) {
         go(true, work, ok, err);
     }
 
-    /** Cancelado no onDestroy. err null: aviso padrão (ou login, se a sessão morreu). */
     private <T> void go(boolean db, Callable<T> work, Consumer<T> ok, Consumer<Throwable> err) {
         Io.Task[] t = new Io.Task[1];
         Io.Callback<T> cb = new Io.Callback<T>() {
@@ -497,7 +490,6 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         tasks.add(t[0]);
     }
 
-    /** O Io.run, mas na READ. */
     static <T> Io.Task read(Callable<T> work, Io.Callback<T> cb) {
         Io.Task t = new Io.Task();
         READ.execute(() -> {

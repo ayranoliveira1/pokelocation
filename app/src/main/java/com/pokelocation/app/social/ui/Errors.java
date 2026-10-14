@@ -44,12 +44,10 @@ public final class Errors {
         return t instanceof Api.Error && "access_denied".equals(((Api.Error) t).code);
     }
 
-    /** Conta sem @nome: a tela abre "Escolha seu @nome" (UsernameActivity). */
     public static boolean usernameRequired(Throwable t) {
         return t instanceof Api.Error && "username_required".equals(((Api.Error) t).code);
     }
 
-    /** Erro do próprio @nome digitado: vai no campo, não num toast. */
     static boolean aboutUsername(Throwable t) {
         if (!(t instanceof Api.Error)) return false;
         String c = ((Api.Error) t).code;

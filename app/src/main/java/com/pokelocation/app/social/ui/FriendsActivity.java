@@ -51,7 +51,7 @@ public final class FriendsActivity extends BaseActivity {
     private LinearLayout list, outgoing;
     private Api.Me me;
     private Api.Friends data;
-    private Map<String, Long> seen = Collections.emptyMap();   // userId → hora da última posição
+    private Map<String, Long> seen = Collections.emptyMap();
     private Io.Task task;
     private SignalProgress signal;
     private BottomSheetDialog sheet;
@@ -91,7 +91,7 @@ public final class FriendsActivity extends BaseActivity {
         if (!SignalLoader.loaded()) signal.start();   // amigos funcionam sem a lib; o bloco só informa
     }
 
-    /** Voltando (ex.: trocou o @nome nas Configurações): Me e pedidos podem ter mudado. */
+    /** O @nome pode ter sido trocado na tela Conta. */
     @Override
     protected void onRestart() {
         super.onRestart();
@@ -126,7 +126,6 @@ public final class FriendsActivity extends BaseActivity {
         return code != null && code.length() == 8 ? code.substring(0, 4) + "-" + code.substring(4) : code;
     }
 
-    /** Como a pessoa aparece: "@nome", ou o código enquanto ela não tem nome. */
     public static String label(String username, String code) {
         if (username != null) return "@" + username;
         return code != null ? pretty(code) : "";
@@ -175,7 +174,7 @@ public final class FriendsActivity extends BaseActivity {
                     toLogin();
                 } else if (Errors.usernameRequired(t)) {
                     requireUsername();
-                } else if (data == null) {   // 1ª carga: tela de erro com retry; depois, só um aviso e a lista antiga
+                } else if (data == null) {
                     state.setErrorText(getString(Errors.message(t)));
                     state.setState(StateView.ERROR);
                 } else {
@@ -265,7 +264,6 @@ public final class FriendsActivity extends BaseActivity {
         btn.setVisibility(View.VISIBLE);
     }
 
-    /** "+": adicionar por @nome ou código; embaixo, meu @nome e meu código para passar adiante. */
     private void openSheet() {
         if (sheet != null && sheet.isShowing()) return;
         View root = getLayoutInflater().inflate(R.layout.soc_friends_sheet, null);
@@ -317,7 +315,7 @@ public final class FriendsActivity extends BaseActivity {
                 .show();
     }
 
-    /** Uma ação por vez; no sucesso avisa (doneRes ≠ 0), fecha o "+" e recarrega. As lambdas usam o app context, nunca a Activity. */
+    /** Uma ação por vez; no sucesso avisa (doneRes ≠ 0) e recarrega. As lambdas usam o app context, nunca a Activity. */
     private void act(Callable<Void> work, int doneRes) {
         if (busy) return;
         busy(true);

@@ -29,7 +29,6 @@ public final class LoginActivity extends BaseActivity {
             RETURN_BACK = "back";
     private String returnTo;
 
-    /** Conta sem @nome escolhe o nome antes de qualquer destino. */
     static Class<?> first(String returnTo, boolean hasUsername) {
         return hasUsername ? next(returnTo) : UsernameActivity.class;
     }
@@ -55,7 +54,6 @@ public final class LoginActivity extends BaseActivity {
         }
     }
 
-    /** Vai para o destino da origem do Login (ou só fecha). */
     static void go(Activity a, String returnTo) {
         Class<?> to = next(returnTo);
         if (to == MainActivity.class) {
@@ -67,7 +65,7 @@ public final class LoginActivity extends BaseActivity {
         a.finish();
     }
 
-    /** Depois do login: o Api.me grava o @nome na sessão. Falhou: segue, e a tela social que receber username_required pede o nome. */
+    /** Falhou: segue; a tela social que receber username_required pede o nome. */
     static boolean hasUsername(Context app) {
         try {
             return Api.me(app).username != null;
@@ -135,7 +133,7 @@ public final class LoginActivity extends BaseActivity {
         }
         String u;
         if (register) {
-            if (usernameBox.getVisibility() != View.VISIBLE) {   // 1º toque em Criar conta: pede o @nome
+            if (usernameBox.getVisibility() != View.VISIBLE) {
                 usernameBox.setVisibility(View.VISIBLE);
                 username.requestFocus();
                 Ui.toast(this, R.string.soc_username_needed);

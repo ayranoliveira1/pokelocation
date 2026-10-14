@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Set;
 
 public class PagerTest {
-    /** Banco falso com a mesma consulta keyset do Chat.page: (ts, id) < cursor, ts DESC, id DESC. */
     private final List<Chat.Msg> db = new ArrayList<>();
     private long nextId = 1;
 
@@ -67,7 +66,7 @@ public class PagerTest {
         items = loadNext(p);
         assertEquals(120, items.size());
         assertTrue(p.end());
-        assertFalse(p.begin(119));   // fim do histórico: não dispara de novo
+        assertFalse(p.begin(119));
         assertNewestFirstNoDup(items);
     }
 
@@ -91,7 +90,7 @@ public class PagerTest {
         loadNext(p);
         assertFalse(p.begin(0));
         assertFalse(p.begin(38));
-        assertTrue(p.begin(40));   // faltam 10 para o topo
+        assertTrue(p.begin(40));
     }
 
     @Test
@@ -102,7 +101,7 @@ public class PagerTest {
         assertFalse(p.begin(-1));
         loadNext(p);
         assertTrue(p.begin(49));
-        assertFalse(p.begin(49));   // ainda carregando
+        assertFalse(p.begin(49));
         p.failed();
         assertTrue(p.begin(49));
     }
@@ -115,9 +114,9 @@ public class PagerTest {
         List<Chat.Msg> items = loadNext(p);
         long ts = 5000;
         while (!p.end()) {
-            for (int k = 0; k < 7; k++) {   // chegam no banco e pelo Listener entre um lote e outro
+            for (int k = 0; k < 7; k++) {
                 List<Chat.Msg> after = p.upsert(insert(ts++));
-                assertEquals(0, after.indexOf(db.get(db.size() - 1)));   // entra embaixo
+                assertEquals(0, after.indexOf(db.get(db.size() - 1)));
             }
             assertTrue(p.begin(items.size() - 1));
             items = loadNext(p);
@@ -132,7 +131,7 @@ public class PagerTest {
         Pager p = new Pager();
         p.begin(-1);
         int before = loadNext(p).size();
-        Chat.Msg late = insert(1);   // fora de ordem: mais antiga que o lote carregado
+        Chat.Msg late = insert(1);
         assertNull(p.upsert(late));
         p.begin(before - 1);
         List<Chat.Msg> items = loadNext(p);
@@ -148,7 +147,7 @@ public class PagerTest {
         p.begin(-1);
         Chat.Msg mine = insert(2000);
         mine.state = Chat.SENDING;
-        p.upsert(mine);   // chegou antes da 1ª página terminar e também vem nela
+        p.upsert(mine);
         List<Chat.Msg> items = loadNext(p);
         assertEquals(11, items.size());
         assertNewestFirstNoDup(items);

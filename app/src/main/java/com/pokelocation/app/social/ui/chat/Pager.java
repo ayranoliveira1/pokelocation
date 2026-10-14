@@ -6,10 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * Estado da paginação keyset do chat, sem Android: itens da mais nova para a mais antiga (posição 0 = embaixo no
- * reverseLayout). Cada mudança devolve uma lista nova para o ListAdapter (o DiffUtil compara com a anterior).
- */
+/** Mais nova primeiro (0 = embaixo no reverseLayout); toda mudança devolve lista nova para o DiffUtil. */
 final class Pager {
     static final int PAGE = 50, PREFETCH = 10;
     static final Comparator<Chat.Msg> NEWEST_FIRST = (a, b) -> a.ts != b.ts ? Long.compare(b.ts, a.ts) : Long.compare(b.id, a.id);
@@ -19,7 +16,7 @@ final class Pager {
     private long beforeTs = Long.MAX_VALUE, beforeId = Long.MAX_VALUE;
     private boolean loading, end, started;
 
-    /** true = buscar o próximo lote agora (marca carregando). lastVisible: maior posição visível (topo da tela). */
+    /** lastVisible: maior posição visível, que no reverseLayout é o topo. */
     boolean begin(int lastVisible) {
         if (loading || end || (started && lastVisible < items.size() - PREFETCH)) return false;
         loading = started = true;
@@ -48,7 +45,7 @@ final class Pager {
 
     void failed() { loading = false; }
 
-    /** Nova ou mudou de estado. null = ignorada: é mais antiga que o lote carregado e virá na página dela. */
+    /** null = ignorada: mais antiga que o lote carregado, virá na página dela. */
     List<Chat.Msg> upsert(Chat.Msg m) {
         if (beforeTs != Long.MAX_VALUE && !end && NEWEST_FIRST.compare(m, cursor()) > 0) return null;
         ArrayList<Chat.Msg> next = new ArrayList<>(items);
@@ -71,7 +68,6 @@ final class Pager {
         return -1;
     }
 
-    /** id estável do RecyclerView a partir do client_msg_id (FNV-1a 64 bits). */
     static long stableId(String clientMsgId) {
         long h = 0xcbf29ce484222325L;
         for (int i = 0; i < clientMsgId.length(); i++) {

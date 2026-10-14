@@ -19,7 +19,7 @@ public class ChatActivityTest {
         long now = 1000;
         assertEquals(0, ChatActivity.liveUntil(null, now));
         assertEquals(0, ChatActivity.liveUntil(conv(0, 0), now));
-        assertEquals(0, ChatActivity.liveUntil(conv(999, 1000), now));   // expiradas
+        assertEquals(0, ChatActivity.liveUntil(conv(999, 1000), now));
         assertEquals(2000, ChatActivity.liveUntil(conv(2000, 0), now));
         assertEquals(3000, ChatActivity.liveUntil(conv(2000, 3000), now));
         assertEquals(2000, ChatActivity.liveUntil(conv(2000, 500), now));

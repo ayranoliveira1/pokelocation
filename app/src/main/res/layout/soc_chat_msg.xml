@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Linha da mensagem: a gravidade do balão (minha à direita, do amigo à esquerda, aviso no centro) vem do adapter. -->
+<!-- layout_gravity do balão vem do adapter. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"

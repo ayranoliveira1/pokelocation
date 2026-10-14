@@ -20,12 +20,11 @@ public class LoginRouteTest {
         assertEquals(FriendsActivity.class, LoginActivity.next(LoginActivity.RETURN_FRIENDS));
     }
 
-    /** Linha "Conta" das Configurações → só fecha o Login (a tela de baixo atualiza no onResume). */
+    /** Item "Conta" sem login → só fecha o Login (a tela de baixo atualiza no onResume). */
     @Test public void backOriginJustCloses() {
         assertNull(LoginActivity.next(LoginActivity.RETURN_BACK));
     }
 
-    /** Conta sem @nome (1º login com o Google ou conta antiga): escolhe o nome antes de qualquer destino. */
     @Test public void missingUsernameGoesToChooseItFirst() {
         assertEquals(UsernameActivity.class, LoginActivity.first(LoginActivity.RETURN_FRIENDS, false));
         assertEquals(UsernameActivity.class, LoginActivity.first(LoginActivity.RETURN_BACK, false));

@@ -210,7 +210,6 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
         return Math.max(0, now - at) / 1000;
     }
 
-    /** Rótulo dentro do círculo: começo do @nome, ou do código enquanto não houver nome. */
     static String marker(String username, String code) {
         return username == null ? initials(code) : username.length() <= 4 ? username : username.substring(0, 4);
     }

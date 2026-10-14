@@ -17,10 +17,6 @@ import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.util.Ui;
 
-/**
- * "Escolha seu @nome": depois do 1º login sem nome, quando uma tela social recebe username_required, ou para trocar
- * (linha Conta). Salvo, segue para o destino da origem como o Login.
- */
 public final class UsernameActivity extends BaseActivity {
     private static final String EXTRA_CURRENT = "current";
 
@@ -30,7 +26,7 @@ public final class UsernameActivity extends BaseActivity {
     private String returnTo, current;
     private Io.Task task;
 
-    /** current: o @nome atual (sem '@') para trocar; null para escolher. */
+    /** current: o @nome atual sem '@', ou null. */
     public static Intent intent(Context c, String returnTo, String current) {
         return new Intent(c, UsernameActivity.class).putExtra(LoginActivity.EXTRA_RETURN_TO, returnTo)
                 .putExtra(EXTRA_CURRENT, current);
@@ -69,7 +65,7 @@ public final class UsernameActivity extends BaseActivity {
         super.onDestroy();
     }
 
-    /** Erro de formato já na digitação (o servidor valida de novo; nome em uso/reservado só ele sabe). */
+    /** Só o formato: nome em uso ou reservado só o servidor sabe. */
     static void validateLive(EditText input, TextInputLayout box) {
         input.addTextChangedListener(new Watcher(() -> {
             String raw = input.getText().toString();

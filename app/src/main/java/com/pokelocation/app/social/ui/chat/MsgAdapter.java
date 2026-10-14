@@ -59,7 +59,6 @@ final class MsgAdapter extends ListAdapter<Chat.Msg, MsgAdapter.VH> {
         danger = MaterialColors.getColor(c, androidx.appcompat.R.attr.colorError, 0);
     }
 
-    /** userId → rótulo pronto dos membros do grupo (quem mandou). */
     void setLabels(Map<String, String> labels) {
         this.labels = labels;
         if (group) notifyItemRangeChanged(0, getItemCount());

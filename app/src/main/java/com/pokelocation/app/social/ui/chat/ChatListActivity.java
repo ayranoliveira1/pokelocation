@@ -69,7 +69,7 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
         if (state == null) return;
         listening = true;
         Chat.listen(getApplicationContext(), this);
-        load();   // voltando do chat: não lidas e prévia mudaram
+        load();
     }
 
     @Override
@@ -123,7 +123,6 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
         return true;
     }
 
-    /** Amigos (rede) → escolher membros → nome → criar e abrir. */
     private void newGroup() {
         if (groupTask != null) return;
         Context app = getApplicationContext();
@@ -212,7 +211,6 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
         finish();
     }
 
-    /** soc_row: título (@nome, código ou nome do grupo) e prévia com as não lidas. */
     private final class Rows extends RecyclerView.Adapter<Rows.VH> {
         private List<Chat.Conv> items = Collections.emptyList();
 

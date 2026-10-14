@@ -38,7 +38,6 @@
                     android:autofillHints="password" android:imeOptions="actionDone"
                     android:inputType="textPassword" android:maxLines="1" />
             </com.google.android.material.textfield.TextInputLayout>
-            <!-- Só no cadastro: aparece no 1º toque em Criar conta. -->
             <com.google.android.material.textfield.TextInputLayout android:id="@+id/soc_login_username_box"
                 android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/gap" android:hint="@string/soc_username"
