@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="soc_chat_title">Conversas</string>
+    <string name="soc_chat_empty">Nenhuma conversa ainda. Toque num amigo para começar.</string>
+    <string name="soc_chat_unread">(%1$d) %2$s</string>
+    <string name="soc_chat_open">Abrir chat</string>
+    <string name="soc_chat_hint">Mensagem</string>
+    <string name="soc_chat_send">Enviar</string>
+    <string name="soc_chat_new_messages">Novas mensagens</string>
+    <string name="soc_chat_sending">Enviando…</string>
+    <string name="soc_chat_failed">Não enviada · toque para reenviar</string>
+    <string name="soc_chat_unreadable">Não foi possível ler esta mensagem</string>
+    <string name="soc_chat_identity_changed">O código de segurança mudou</string>
+
+    <string name="soc_chat_location">Localização</string>
+    <string name="soc_chat_loc_current">Localização atual</string>
+    <string name="soc_chat_loc_live">Localização em tempo real por %s</string>
+    <string name="soc_chat_loc_stop">Parar a localização em tempo real</string>
+    <string name="soc_chat_no_position">Ainda sem posição. Inicie o joystick ou escolha um local antes.</string>
+    <string name="soc_chat_teleport_confirm">Teleportar para esta localização? Respeite o tempo de espera (cooldown).</string>
+    <string name="soc_chat_teleport">Teleportar</string>
+    <string name="soc_chat_live">Ao vivo</string>
+    <string name="soc_chat_live_until">Ao vivo até %s</string>
+    <string name="soc_chat_msg_live">Localização em tempo real · até %s</string>
+    <string name="soc_chat_msg_live_ended">Localização em tempo real encerrada</string>
+    <string name="soc_chat_msg_live_stop">Parou de compartilhar a localização em tempo real</string>
+
+    <string name="soc_chat_safety">Código de segurança</string>
+    <string name="soc_chat_safety_hint">Compare este código com o do seu amigo. Se forem iguais, esta conversa tem criptografia de ponta a ponta.</string>
+
+    <string name="soc_chat_new_group">Novo grupo</string>
+    <string name="soc_chat_pick_friends">Escolha os amigos</string>
+    <string name="soc_chat_no_friends">Adicione amigos primeiro.</string>
+    <string name="soc_chat_group_name">Nome do grupo</string>
+    <string name="soc_chat_next">Avançar</string>
+    <string name="soc_chat_create">Criar</string>
+    <string name="soc_chat_members">Membros</string>
+    <string name="soc_chat_add_member">Adicionar</string>
+    <string name="soc_chat_remove_member_confirm">Remover %s do grupo?</string>
+    <string name="soc_chat_leave">Sair do grupo</string>
+    <string name="soc_chat_leave_confirm">Sair deste grupo?</string>
+</resources>

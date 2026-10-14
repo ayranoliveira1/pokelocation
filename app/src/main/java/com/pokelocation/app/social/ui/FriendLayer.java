@@ -10,6 +10,7 @@ import android.os.Process;
 import android.util.Log;
 import android.view.MotionEvent;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.data.Prefs;
@@ -20,6 +21,7 @@ import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.loc.Locations;
 import com.pokelocation.app.social.loc.Locations.FriendLoc;
+import com.pokelocation.app.social.ui.chat.ChatActivity;
 import com.pokelocation.app.util.Ui;
 
 import org.osmdroid.util.GeoPoint;
@@ -180,9 +182,13 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
         String code = FriendsActivity.pretty(hit.friendCode);
         long age = ageSeconds(hit.at, now);
         Coord me = Prefs.lastPosition(app);
-        Ui.toast(app, me == null ? app.getString(R.string.soc_friend_tap_nodist, code, age)
+        String info = me == null ? app.getString(R.string.soc_friend_tap_nodist, code, age)
                 : app.getString(R.string.soc_friend_tap, code,
-                        Cooldown.formatDistance(Geo.distance(me.lat, me.lng, hit.lat, hit.lng)), age));
+                        Cooldown.formatDistance(Geo.distance(me.lat, me.lng, hit.lat, hit.lng)), age);
+        FriendLoc f = hit;
+        Snackbar.make(map, info, Snackbar.LENGTH_LONG)
+                .setAction(R.string.soc_chat_open, v -> v.getContext().startActivity(ChatActivity.friend(v.getContext(), f.userId, f.friendCode)))
+                .show();
         return true;
     }
 

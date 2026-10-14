@@ -7,10 +7,10 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 /** Erro de Api → string. Api.Error.code conhecido tem mensagem própria; IOException comum é rede; Keystore e o resto, genérica. */
-final class Errors {
+public final class Errors {
     private Errors() {}
 
-    static int message(Throwable t) {
+    public static int message(Throwable t) {
         if (t instanceof Api.Error) {
             String code = ((Api.Error) t).code;
             if (code == null) return R.string.soc_err_generic;
@@ -41,7 +41,7 @@ final class Errors {
     }
 
     /** Sessão morreu (a Api já limpou): a tela volta ao login. */
-    static boolean unauthorized(Throwable t) {
+    public static boolean unauthorized(Throwable t) {
         return t instanceof Api.Error && "unauthorized".equals(((Api.Error) t).code);
     }
 }

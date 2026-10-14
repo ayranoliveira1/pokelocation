@@ -191,6 +191,11 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
         <activity android:hardwareAccelerated="true" android:name=".social.ui.FriendsActivity" android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".social.ui.chat.ChatListActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".social.ui.chat.ChatActivity" android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
         <activity android:hardwareAccelerated="true" android:name=".social.ui.AuthCallbackActivity" android:exported="true"
             android:noHistory="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize">

@@ -3,6 +3,8 @@ package com.pokelocation.app.social.ui;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
@@ -10,12 +12,16 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.net.Api;
+import com.pokelocation.app.social.ui.chat.ChatActivity;
+import com.pokelocation.app.social.ui.chat.ChatListActivity;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.base.StateView;
 import com.pokelocation.app.util.Ui;
@@ -24,6 +30,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 public final class FriendsActivity extends BaseActivity {
+    private static final int MENU_CHATS = 1;
     private StateView state;
     private View busyBar;
     private TextView code;
@@ -77,8 +84,21 @@ public final class FriendsActivity extends BaseActivity {
         super.onDestroy();
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu m) {
+        m.add(0, MENU_CHATS, 0, R.string.soc_chat_title).setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() != MENU_CHATS) return super.onOptionsItemSelected(item);
+        startActivity(new Intent(this, ChatListActivity.class));
+        return true;
+    }
+
     /** "ABCD1234" → "ABCD-1234" para leitura; o normalizeCode remove o '-' na volta. */
-    static String pretty(String code) {
+    public static String pretty(String code) {
         return code != null && code.length() == 8 ? code.substring(0, 4) + "-" + code.substring(4) : code;
     }
 
@@ -120,10 +140,11 @@ public final class FriendsActivity extends BaseActivity {
         for (Api.Request r : f.outgoing) row(outgoing, r.friendCode, R.string.soc_pending, 0, null, 0, null);
         friends.removeAllViews();
         for (Api.Friend fr : f.accepted) {
-            row(friends, fr.friendCode, 0, R.string.soc_remove, v -> confirm(R.string.soc_remove_confirm, R.string.soc_remove, fr,
+            View r = row(friends, fr.friendCode, 0, R.string.soc_remove, v -> confirm(R.string.soc_remove_confirm, R.string.soc_remove, fr,
                     () -> Api.removeFriend(app, fr.userId)),
                     R.string.soc_block, v -> confirm(R.string.soc_block_confirm, R.string.soc_block, fr,
                     () -> Api.block(app, fr.userId)));
+            r.setOnClickListener(v -> startActivity(ChatActivity.friend(this, fr.userId, fr.friendCode)));
         }
         visible(R.id.soc_friends_incoming_h, !f.incoming.isEmpty());
         visible(R.id.soc_friends_outgoing_h, !f.outgoing.isEmpty());
@@ -131,7 +152,7 @@ public final class FriendsActivity extends BaseActivity {
         state.setState(StateView.CONTENT);
     }
 
-    private void row(LinearLayout parent, String friendCode, int subRes, int aRes, View.OnClickListener a,
+    private View row(LinearLayout parent, String friendCode, int subRes, int aRes, View.OnClickListener a,
                      int bRes, View.OnClickListener b) {
         View v = getLayoutInflater().inflate(R.layout.soc_row, parent, false);
         ((TextView) v.findViewById(R.id.soc_row_title)).setText(pretty(friendCode));
@@ -143,6 +164,7 @@ public final class FriendsActivity extends BaseActivity {
         action(v.findViewById(R.id.soc_row_a), aRes, a);
         action(v.findViewById(R.id.soc_row_b), bRes, b);
         parent.addView(v);
+        return v;
     }
 
     private static void action(Button btn, int textRes, View.OnClickListener click) {
