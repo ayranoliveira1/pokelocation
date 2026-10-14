@@ -198,7 +198,10 @@ public final class OverlayService extends Service
             @Override public void onReceive(Context c, Intent i) {
                 if (ui == null) return;
                 if (i.getBooleanExtra(Intents.EXTRA_LOGGED_OUT, false)) ui.setChatEnabled(false);
-                else ui.setUnread(i.getIntExtra(Intents.EXTRA_UNREAD, 0));
+                else {
+                    ui.setUnread(i.getIntExtra(Intents.EXTRA_UNREAD, 0));
+                    ui.chatChanged();
+                }
             }
         };
         IntentFilter f = new IntentFilter(Intents.INT_CHAT_UNREAD);

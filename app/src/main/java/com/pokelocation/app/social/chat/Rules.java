@@ -32,6 +32,20 @@ final class Rules {
     /** Reenvia o mesmo client_msg_id: o servidor deduplica. */
     static boolean resend(int tries) { return tries < MAX_TRIES; }
 
+    static final int OUT_KEEP = 0, OUT_DONE = 1, OUT_GIVE_UP = 2;
+    static final long OUTBOX_GRACE_MS = 120_000;
+
+    /**
+     * WS do :overlay pedido pelo chat: com o painel fechado ele só fica até a outbox sair (manda e fecha é o uso comum);
+     * sem conseguir em 2 min, a outbox vira FAILED e o pedido acaba.
+     */
+    static int overlayOutbox(boolean wanted, boolean panelOpen, boolean sending, long sinceClosedMs) {
+        if (!wanted) return OUT_DONE;
+        if (panelOpen) return OUT_KEEP;
+        if (!sending) return OUT_DONE;
+        return sinceClosedMs > OUTBOX_GRACE_MS ? OUT_GIVE_UP : OUT_KEEP;
+    }
+
     static final int WS_OPEN = 0, WS_LOAD_LIB = 1, WS_NEED_NAME = 2, WS_GIVE_UP = 3;
 
     /** Processo novo aberto direto no chat: ninguém mais carregou a lib, e esperar por ela seria para sempre. */

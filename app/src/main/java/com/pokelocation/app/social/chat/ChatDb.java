@@ -182,6 +182,10 @@ final class ChatDb {
         }
     }
 
+    static void failSending(Context c) {
+        db(c).execSQL("UPDATE messages SET state = " + Chat.FAILED + " WHERE sender = '' AND state = " + Chat.SENDING);
+    }
+
     static void leave(Context c, String groupId) {
         String[] a = {groupId};
         db(c).execSQL("UPDATE conversations SET gone = 1, key_ok = 0, my_live_until = 0 WHERE id = ?", a);

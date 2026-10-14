@@ -104,9 +104,9 @@ public final class LocationSharer {
                 return;
             }
             boolean share = Prefs.shareLocation(app); // MULTI_PROCESS: lido aqui, fora da main
-            boolean live = Live.maybeActive(app, System.currentTimeMillis()), panel = ChatSocket.panelOpen();
-            if (!share) shareOff(live || panel);
-            if (!share && !live && !panel) {
+            boolean live = Live.maybeActive(app, System.currentTimeMillis()), chat = ChatSocket.overlayWsNeeded(app);
+            if (!share) shareOff(live || chat);
+            if (!share && !live && !chat) {
                 releaseDb();
                 return;
             }

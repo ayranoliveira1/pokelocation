@@ -261,6 +261,10 @@ public final class OverlayView implements View.OnClickListener {
         if (!on) flows.closeChat();
     }
 
+    public void chatChanged() {
+        if (chat) flows.refreshChat();
+    }
+
     public void setUnread(int n) {
         unread = n;
         if (chatBadge == null) return;

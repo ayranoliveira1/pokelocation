@@ -42,11 +42,19 @@ public final class ChatPanel implements Chat.Listener {
     private final Map<String, View> shown = new HashMap<>();
     private Chat.Conv conv;
     private Io.Task task;
+    private boolean pending;
     private final List<Io.Task> acts = new ArrayList<>();
 
     /** teleport: recebe "lat, lng" e abre o TeleportPanel preenchido. */
     public static void show(Context overlayCtx, Consumer<String> teleport) {
         new ChatPanel(overlayCtx, teleport).open();
+    }
+
+    /** INT_CHAT_UNREAD com o painel aberto: sem WS no :overlay, é assim que chega o que o principal gravou. */
+    public static void refreshOpen() {
+        if (open == null || open.host == null) return;
+        if (open.task != null) open.pending = true;
+        else open.refresh();
     }
 
     public static void dismissOpen() {
@@ -105,6 +113,10 @@ public final class ChatPanel implements Chat.Listener {
         title.setText(R.string.soc_chat_title);
         back.setVisibility(View.GONE);
         compose.setVisibility(View.GONE);
+        loadList();
+    }
+
+    private void loadList() {
         load(() -> Chat.conversations(app), convs -> {
             list.removeAllViews();
             LayoutInflater inf = LayoutInflater.from(ctx);
@@ -147,18 +159,57 @@ public final class ChatPanel implements Chat.Listener {
             }
             list.removeAllViews();
             shown.clear();
-            for (int i = msgs.size() - 1; i >= 0; i--) {
-                View row = bubbles.create(list);
-                bubbles.bind(row, msgs.get(i));
-                list.addView(row);
-                shown.put(msgs.get(i).clientMsgId, row);
+            merge(msgs);
+            scrollToEndOnLayout();
+        });
+    }
+
+    /**
+     * markRead manda INT_CHAT_UNREAD, que volta aqui: só quando a conversa aberta tem não lidas (gravadas pelo
+     * principal, onde o viewing do :overlay não vale); a releitura seguinte vem com 0 e para.
+     */
+    private void refresh() {
+        if (conv == null) {
+            loadList();
+            return;
+        }
+        String id = conv.id;
+        load(() -> {
+            Chat.Conv c = Chat.conversation(app, id);
+            if (c != null && c.unread > 0) Chat.markRead(app, id);
+            return Chat.page(app, id, Long.MAX_VALUE, Long.MAX_VALUE, MSGS);
+        }, msgs -> {
+            boolean atEnd = scroll.getScrollY() + scroll.getHeight() >= list.getHeight();
+            merge(msgs);
+            if (atEnd) scrollToEndOnLayout();
+        });
+    }
+
+    /**
+     * msgs: mais nova primeiro. Remonta na ordem da página reaproveitando as Views já na tela (sem piscar: tudo no
+     * mesmo frame); só as da página ficam, então o painel aberto por horas não cresce.
+     */
+    private void merge(List<Chat.Msg> msgs) {
+        Map<String, View> next = new HashMap<>();
+        list.removeAllViews();
+        for (int i = msgs.size() - 1; i >= 0; i--) {
+            Chat.Msg m = msgs.get(i);
+            View row = shown.remove(m.clientMsgId);
+            if (row == null) row = bubbles.create(list);
+            bubbles.bind(row, m);
+            list.addView(row);
+            next.put(m.clientMsgId, row);
+        }
+        shown.clear();
+        shown.putAll(next);
+    }
+
+    private void scrollToEndOnLayout() {
+        list.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                v.removeOnLayoutChangeListener(this);
+                scroll.scrollTo(0, v.getHeight());
             }
-            list.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
-                @Override public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
-                    v.removeOnLayoutChangeListener(this);
-                    scroll.scrollTo(0, v.getHeight());
-                }
-            });
         });
     }
 
@@ -197,7 +248,8 @@ public final class ChatPanel implements Chat.Listener {
         if (conv == null || !conv.id.equals(m.convId)) return;
         View row = shown.get(m.clientMsgId);
         if (row != null) bubbles.bind(row, m);   // live (até 24/min) e estado: só a bolha, sem reler a página
-        else loadConv();
+        else if (task != null) pending = true;
+        else refresh();
     }
 
     @Override
@@ -212,11 +264,21 @@ public final class ChatPanel implements Chat.Listener {
         task = Io.run(work::run, new Io.Callback<T>() {
             @Override public void onResult(T v) {
                 task = null;
-                if (host != null) ok.accept(v);
+                if (host == null) return;
+                ok.accept(v);
+                if (pending) {
+                    pending = false;
+                    refresh();
+                }
             }
             @Override public void onError(Throwable t) {
                 task = null;
-                if (host != null) Ui.toast(app, Errors.message(t));
+                if (host == null) return;
+                Ui.toast(app, Errors.message(t));
+                if (pending) {
+                    pending = false;
+                    refresh();
+                }
             }
         });
     }

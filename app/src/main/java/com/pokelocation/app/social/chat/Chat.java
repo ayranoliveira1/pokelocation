@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import com.pokelocation.app.App;
 import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.ipc.Intents;
 import com.pokelocation.app.model.Coord;
@@ -96,6 +97,7 @@ public final class Chat {
 
     public static Msg retry(Context c, long msgId) throws IOException {
         if (!SocialDb.useIfHeld()) throw new Rules.Unsent("closed");
+        if (App.process() != App.PROC_MAIN) ChatSocket.wantWs();
         try {
             Msg m = Locations.atomic(c, () -> {
                 ChatDb.setState(c, msgId, SENDING);
@@ -179,6 +181,27 @@ public final class Chat {
         if (convId != null) markRead(c, convId);
     }
 
+    static boolean hasOutbox(Context c) {
+        SocialDb.use();
+        try {
+            return db(c, () -> !ChatDb.sendingIds(c).isEmpty(), false);
+        } finally {
+            SocialDb.release();
+        }
+    }
+
+    static void failOutbox(Context c) {
+        SocialDb.use();
+        try {
+            db(c, () -> {
+                ChatDb.failSending(c);
+                return null;
+            }, null);
+        } finally {
+            SocialDb.release();
+        }
+    }
+
     /** Na subida do :overlay, sem painel aberto: abre e fecha sozinho. */
     public static int unreadTotal(Context c) {
         SocialDb.use();
@@ -226,6 +249,7 @@ public final class Chat {
         m.state = SENDING;
         m.ts = System.currentTimeMillis();
         if (!SocialDb.useIfHeld()) throw new Rules.Unsent("closed");
+        if (App.process() != App.PROC_MAIN) ChatSocket.wantWs();
         try {
             Locations.atomic(c, () -> ChatDb.insert(c, m));
             transmit(c, m);

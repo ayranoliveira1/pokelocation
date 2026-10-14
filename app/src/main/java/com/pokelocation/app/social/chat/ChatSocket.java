@@ -83,15 +83,32 @@ public final class ChatSocket {
     static boolean listening() { return !LISTENERS.isEmpty(); }
 
     static volatile String viewing;
-    private static volatile boolean panel;
+    private static volatile boolean wsWanted;
+    private static volatile long panelClosedAt;
 
     static void panel(Chat.Listener l, boolean opened) {
         if (opened) LISTENERS.add(l);
         else LISTENERS.remove(l);
-        panel = !LISTENERS.isEmpty();
+        if (LISTENERS.isEmpty()) panelClosedAt = System.currentTimeMillis();
     }
 
-    public static boolean panelOpen() { return panel; }
+    public static boolean overlayWsNeeded(Context app) {
+        if (!wsWanted) return false;
+        boolean panelOpen = !LISTENERS.isEmpty();
+        int d = Rules.overlayOutbox(true, panelOpen, !panelOpen && Chat.hasOutbox(app), System.currentTimeMillis() - panelClosedAt);
+        if (d == Rules.OUT_KEEP) return true;
+        if (d == Rules.OUT_GIVE_UP) Chat.failOutbox(app);
+        wsWanted = false;
+        return false;
+    }
+
+    /** Abrir e ler o painel não paga libsignal/TLS: só o envio pede o WS do :overlay (até a outbox sair). */
+    static void wantWs() {
+        if (LISTENERS.isEmpty()) panelClosedAt = System.currentTimeMillis();
+        wsWanted = true;
+    }
+
+    public static boolean wsWanted() { return wsWanted; }
 
     /** :overlay: o chat usa o WS do LocationSharer enquanto ele estiver aberto; h = a thread dele. */
     public static synchronized void bind(Context app, WsClient w, Handler h) {

@@ -3,6 +3,7 @@ package com.pokelocation.app.social.net;
 import android.content.Context;
 import android.net.Uri;
 
+import com.pokelocation.app.App;
 import com.pokelocation.app.BuildConfig;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.crypto.SignalLoader;
@@ -600,6 +601,8 @@ public final class Api {
             con.setRequestMethod(method);
             con.setRequestProperty("User-Agent", c.getPackageName() + "/" + BuildConfig.VERSION_NAME);
             con.setRequestProperty("Accept", "application/json");
+            // :overlay: sem conexão parada no pool (TLS + buffers) depois de uma chamada avulsa
+            if (App.process() != App.PROC_MAIN) con.setRequestProperty("Connection", "close");
             if (token != null) con.setRequestProperty("Authorization", "Bearer " + token);
             if (body != null || "POST".equals(method)) {
                 byte[] b = body == null ? new byte[0] : body.toString().getBytes(StandardCharsets.UTF_8);

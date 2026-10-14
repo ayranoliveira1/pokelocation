@@ -55,6 +55,10 @@ final class OverlayFlows {
         openTeleport(text, null);
     }
 
+    void refreshChat() {
+        ChatPanel.refreshOpen();
+    }
+
     void closeChat() {
         ChatPanel.dismissOpen();
     }
