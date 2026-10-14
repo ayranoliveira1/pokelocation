@@ -371,6 +371,8 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         Context app = getApplicationContext();
         String id = convId;
         read(() -> Chat.conversation(app, id), c -> {
+            if (!group && c != null && c.title != null && (conv == null || !c.title.equals(conv.title)))
+                adapter.setIdentity(c.title, m -> showSafety(), m -> resend());
             conv = c;
             if (c != null && c.title != null && getSupportActionBar() != null) getSupportActionBar().setTitle(c.title);
             boolean left = c != null && c.left;
