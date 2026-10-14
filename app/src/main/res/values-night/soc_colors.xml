@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botão "Continuar com o Google" (diretrizes de marca do Sign in with Google, tema escuro). -->
+<resources>
+    <color name="soc_google_bg">#131314</color>
+    <color name="soc_google_stroke">#8E918F</color>
+    <color name="soc_google_text">#E3E3E3</color>
+</resources>

@@ -19,7 +19,7 @@ public class MockEngineImplTest {
     private static EngineConfig cfg(int processMs, boolean suspended, boolean saveLocation, boolean noisy) {
         float n = noisy ? 1f : 0f;
         return EngineConfig.forTest(processMs, 1000, 1000, 0.25 * n, 5 * n, n, 3 * n, 2, 5, 6, 10, 10, 40, 75,
-                saveLocation, suspended, false, true, 5, false);
+                saveLocation, suspended, false, true, 5, false, false);
     }
 
     private static EngineConfig cfg() { return cfg(1000, false, false, false); }

@@ -15,6 +15,7 @@ import com.pokelocation.app.data.RouteDao;
 import com.pokelocation.app.engine.EngineConfig;
 import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.engine.MockEngineImpl;
+import com.pokelocation.app.social.loc.LocationSharer;
 import com.pokelocation.app.geo.CoordParser;
 import com.pokelocation.app.ipc.Intents;
 import com.pokelocation.app.mapoverlay.MapOverlayService;
@@ -40,6 +41,7 @@ public final class OverlayService extends Service
     private OverlayNotification notif;
     private MockEngineImpl engine;
     private OverlayView ui;
+    private LocationSharer sharer; // social (A8): só age com login + Compartilhar ligado
     private Intent mockIntent;
 
     private boolean fgFailed, running, hidden, mapOpen, sessionSent, destroyed;
@@ -140,6 +142,11 @@ public final class OverlayService extends Service
         engine.start(lat, lng, alt);
         ui.setVisible(!hidden);
         running = true;
+        // sem login nenhuma classe social carrega (só um stat); login no meio vale a partir da próxima sessão do joystick
+        if (getDatabasePath("social.db").exists()) {
+            sharer = new LocationSharer(this, engine);
+            sharer.start();
+        }
         notif.setHidden(hidden);
         Intents.broadcastSpoofState(this, true, null);
         if (Double.isNaN(alt)) fetchElevation(lat, lng);
@@ -179,6 +186,7 @@ public final class OverlayService extends Service
         sendSession(); // parada pelo sistema/stopService externo: a sessão não se perde
         running = false;
         notif.release();
+        if (sharer != null) sharer.stop();
         if (engine != null) engine.shutdown();
         if (ui != null) ui.destroy();
         try {

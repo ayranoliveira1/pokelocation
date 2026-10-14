@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Social (contas e amigos). Prefixo soc_. -->
+<resources>
+    <string name="soc_friends">Friends</string>
+    <string name="soc_account">Account</string>
+
+    <!-- Login -->
+    <string name="soc_login_title">Sign in</string>
+    <string name="soc_login_hint">An account is optional. You only need one to add friends.</string>
+    <string name="soc_email">Email</string>
+    <string name="soc_password">Password</string>
+    <string name="soc_sign_in">Sign in</string>
+    <string name="soc_sign_up">Create account</string>
+    <string name="soc_or">or</string>
+    <string name="soc_google">Continue with Google</string>
+    <string name="soc_fill_fields">Enter your email and password.</string>
+    <string name="soc_no_browser">No browser found.</string>
+
+    <!-- Amigos -->
+    <string name="soc_my_code">My friend code</string>
+    <string name="soc_share_code">Add me on PokeLocation! My friend code: %s</string>
+    <string name="soc_add_friend">Add friend</string>
+    <string name="soc_code_hint">Friend code</string>
+    <string name="soc_add">Add</string>
+    <string name="soc_invalid_code">Invalid code. It has 8 letters and numbers.</string>
+    <string name="soc_request_sent">Request sent!</string>
+    <string name="soc_incoming">Requests received</string>
+    <string name="soc_outgoing">Requests sent</string>
+    <string name="soc_your_friends">Your friends</string>
+    <string name="soc_no_friends">No friends yet. Share your code!</string>
+    <string name="soc_pending">Waiting for a reply</string>
+    <string name="soc_accept">Accept</string>
+    <string name="soc_decline">Decline</string>
+    <string name="soc_remove">Remove</string>
+    <string name="soc_block">Block</string>
+    <string name="soc_remove_confirm">Remove %s from your friends?</string>
+    <string name="soc_block_confirm">Block %s? They won\'t be able to send you requests.</string>
+
+    <!-- Conta (Configurações) -->
+    <string name="soc_account_row">PokeLocation account</string>
+    <string name="soc_account_signed_out">Sign in to add friends</string>
+    <string name="soc_account_signed_in">Signed in</string>
+    <string name="soc_logout">Sign out</string>
+    <string name="soc_share_location">Share my location</string>
+    <string name="soc_share_location_summary">Friends see you on the map while the joystick is on.</string>
+    <string name="soc_logout_confirm">Sign out of this account on this device?</string>
+
+    <!-- Mapa (A9): código · distância · idade -->
+    <string name="soc_friend_tap">%1$s · %2$s · seen %3$d s ago</string>
+    <string name="soc_friend_tap_nodist">%1$s · seen %2$d s ago</string>
+
+    <!-- libsignal (SignalLoader) -->
+    <string name="soc_signal_preparing">Preparing secure chat…</string>
+    <string name="soc_signal_progress">Preparing secure chat… %1$s / %2$s MB</string>
+    <string name="soc_signal_progress_unknown">Preparing secure chat… %s MB</string>
+    <string name="soc_signal_failed">Couldn\'t prepare secure chat.</string>
+    <string name="soc_signal_no_space">Not enough free space to prepare secure chat.</string>
+    <string name="soc_signal_unavailable">Secure chat is unavailable on this device.</string>
+
+    <!-- Erros (Api.Error.code) -->
+    <string name="soc_err_invalid_credentials">Wrong email or password.</string>
+    <string name="soc_err_email_taken">This email is already in use.</string>
+    <string name="soc_err_weak_password">Password too weak. Use a longer one.</string>
+    <string name="soc_err_invalid_email">Invalid email.</string>
+    <string name="soc_err_rate_limited">Too many attempts. Wait a minute and try again.</string>
+    <string name="soc_err_code_not_found">No one has this code.</string>
+    <string name="soc_err_self_request">That\'s your own code.</string>
+    <string name="soc_err_blocked">You can\'t add this user.</string>
+    <string name="soc_err_already_friends">You\'re already friends.</string>
+    <string name="soc_err_unauthorized">Your session expired. Sign in again.</string>
+    <string name="soc_err_invalid_grant">The Google sign-in expired. Please try again.</string>
+    <string name="soc_err_unavailable">The server is unavailable right now. Try again in a moment.</string>
+    <string name="soc_err_network">Can\'t reach the server. Check your internet connection.</string>
+    <string name="soc_err_generic">Something went wrong. Please try again.</string>
+</resources>

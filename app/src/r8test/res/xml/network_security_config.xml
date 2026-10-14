@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Só no r8test (build de teste local, nunca distribuída): o r8test não é debuggable (para o R8 ofuscar como no qa),
+     então o debug-overrides não valeria; confia nas CAs de usuário na base para a CA local do Caddy. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

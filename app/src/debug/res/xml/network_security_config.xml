@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Só no debug (debug-overrides só vale com android:debuggable): confia também nas CAs de usuário, para o servidor
+     local do docker compose (Caddy com "tls internal"; CA instalada à mão no emulador). Cleartext segue proibido. -->
+<network-security-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Linha de pessoa: código + subtítulo opcional + até 2 ações (ocultas por padrão). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:minHeight="56dp"
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/gap_large"
+    android:paddingTop="@dimen/gap"
+    android:paddingEnd="@dimen/gap"
+    android:paddingBottom="@dimen/gap">
+    <LinearLayout
+        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView android:id="@+id/soc_row_title"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:fontFamily="monospace" android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textColor="?attr/colorOnSurface" />
+        <TextView android:id="@+id/soc_row_sub"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant" android:visibility="gone" />
+    </LinearLayout>
+    <Button android:id="@+id/soc_row_a" style="@style/Widget.PokeLocation.PanelButton"
+        android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" />
+    <Button android:id="@+id/soc_row_b" style="@style/Widget.PokeLocation.PanelButton"
+        android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" />
+</LinearLayout>

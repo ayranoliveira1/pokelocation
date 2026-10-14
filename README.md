@@ -294,4 +294,7 @@ Use com responsabilidade: simular localização pode violar os termos de uso de 
 
 ## Licença
 
-Distribuído sob a [licença MIT](LICENSE).
+Distribuído sob a [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only), exigida pela
+[libsignal](https://github.com/signalapp/libsignal) usada no chat com criptografia ponta a ponta. Quem distribuir uma
+versão modificada do app, ou oferecê-la por rede, precisa disponibilizar o código-fonte sob a mesma licença.
+As versões até a 1.0 foram publicadas sob a licença MIT.
