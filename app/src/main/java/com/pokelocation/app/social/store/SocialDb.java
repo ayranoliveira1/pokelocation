@@ -55,6 +55,18 @@ public final class SocialDb extends SQLiteOpenHelper {
     /** :overlay: quem usa o banco por um tempo segura; o último a soltar fecha a conexão (o principal nunca fecha). */
     public static synchronized void use() { sUsers++; }
 
+    /**
+     * Entra só se alguém já segura (painel aberto, LocationSharer) ou no principal: depois do último release, uma tarefa
+     * tardia do painel não reabre a conexão. Teste e incremento juntos: o release não fecha no meio.
+     */
+    public static boolean useIfHeld() { return useIfHeld(App.process() == App.PROC_MAIN); }
+
+    static synchronized boolean useIfHeld(boolean main) {
+        if (!main && sUsers == 0) return false;
+        sUsers++;
+        return true;
+    }
+
     public static void release() {
         synchronized (LOCK) { // nenhuma transação deste processo no meio
             synchronized (SocialDb.class) {

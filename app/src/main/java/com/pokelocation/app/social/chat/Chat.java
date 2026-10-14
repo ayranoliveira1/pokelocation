@@ -95,7 +95,7 @@ public final class Chat {
     }
 
     public static Msg retry(Context c, long msgId) throws IOException {
-        SocialDb.use();
+        if (!SocialDb.useIfHeld()) throw new IOException("closed");
         try {
             Msg m = Locations.atomic(c, () -> {
                 ChatDb.setState(c, msgId, SENDING);
@@ -179,11 +179,23 @@ public final class Chat {
         if (convId != null) markRead(c, convId);
     }
 
-    public static int unreadTotal(Context c) { return db(c, () -> ChatDb.unreadTotal(c), 0); }
+    /** Na subida do :overlay, sem painel aberto: abre e fecha sozinho. */
+    public static int unreadTotal(Context c) {
+        SocialDb.use();
+        try {
+            return db(c, () -> ChatDb.unreadTotal(c), 0);
+        } finally {
+            SocialDb.release();
+        }
+    }
 
     /** O contador do :overlay escuta só enquanto ele vive: nada sobe por causa disto. */
     public static void broadcastUnread(Context c) {
-        int n = db(c, () -> ChatDb.unreadTotal(c), 0);
+        int n = db(c, () -> ChatDb.unreadTotal(c), -1);
+        if (n >= 0) broadcastUnread(c, n);
+    }
+
+    public static void broadcastUnread(Context c, int n) {
         c.sendBroadcast(new Intent(Intents.INT_CHAT_UNREAD).setPackage(c.getPackageName()).putExtra(Intents.EXTRA_UNREAD, n),
                 c.getPackageName() + ".permission.INTERNAL");
     }
@@ -207,7 +219,7 @@ public final class Chat {
         m.convId = convId;
         m.state = SENDING;
         m.ts = System.currentTimeMillis();
-        SocialDb.use();
+        if (!SocialDb.useIfHeld()) throw new IOException("closed");
         try {
             Locations.atomic(c, () -> ChatDb.insert(c, m));
             transmit(c, m);
@@ -261,9 +273,8 @@ public final class Chat {
 
     private static void fail(Context c, long id) { ChatSocket.setState(c, id, FAILED); }
 
-    /** Segura o banco em volta: no :overlay, uma tarefa do painel que termina depois do overlayClosed não o deixa aberto. */
     private static <T> T db(Context c, SocialDb.Op<T> op, T none) {
-        SocialDb.use();
+        if (!SocialDb.useIfHeld()) return none;
         try {
             return SocialDb.atomic(c, op);
         } catch (IllegalStateException e) {

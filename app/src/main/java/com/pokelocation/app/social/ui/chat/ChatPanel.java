@@ -20,6 +20,7 @@ import com.pokelocation.app.social.ui.Errors;
 import com.pokelocation.app.ui.panel.PanelHost;
 import com.pokelocation.app.util.Ui;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,7 @@ public final class ChatPanel implements Chat.Listener {
     private final Map<String, MsgAdapter.VH> shown = new HashMap<>();
     private Chat.Conv conv;
     private Io.Task task;
+    private final List<Io.Task> acts = new ArrayList<>();
 
     /** teleport: recebe "lat, lng" e abre o TeleportPanel preenchido. */
     public static void show(Context overlayCtx, Consumer<String> teleport) {
@@ -80,6 +82,8 @@ public final class ChatPanel implements Chat.Listener {
         Chat.viewing(app, null);
         Chat.overlayClosed(this);
         if (task != null) task.cancel();
+        for (Io.Task t : acts) t.cancel();
+        acts.clear();
         host = null;
         list = null;
         bubbles = null;
@@ -206,9 +210,17 @@ public final class ChatPanel implements Chat.Listener {
     }
 
     private void act(Work<Chat.Msg> work) {
-        Io.run(work::run, new Io.Callback<Chat.Msg>() {
-            @Override public void onResult(Chat.Msg m) { if (host != null) onMessage(m); }
-            @Override public void onError(Throwable t) { if (host != null) Ui.toast(app, Errors.message(t)); }
+        Io.Task[] t = new Io.Task[1];
+        t[0] = Io.run(work::run, new Io.Callback<Chat.Msg>() {
+            @Override public void onResult(Chat.Msg m) {
+                acts.remove(t[0]);
+                if (host != null) onMessage(m);
+            }
+            @Override public void onError(Throwable e) {
+                acts.remove(t[0]);
+                if (host != null) Ui.toast(app, Errors.message(e));
+            }
         });
+        acts.add(t[0]);
     }
 }
