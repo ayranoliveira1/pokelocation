@@ -71,4 +71,28 @@ public class ContentTest {
         assertArrayEquals(new String[]{"11111111-2222-3333-4444-555555555555", "Raid 🐉"}, Content.groupInfo(plain));
         assertNull(Content.groupInfo(new byte[]{Content.GROUP_INFO, 0, 9, 'a'}));
     }
+
+    @Test public void resetCarriesAtMost20UnreadIds() {
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        for (int i = 0; i < 25; i++) ids.add("id-" + i);
+        byte[] p = Content.reset(ids);
+        assertEquals(Content.RESET, p[0]);
+        assertEquals(ids.subList(0, 20), Content.resetIds(p));
+        assertEquals(0, Content.resetIds(new byte[]{Content.RESET}).size());
+        assertEquals(0, Content.resetIds(new byte[]{Content.RESET, 3, 9}).size());
+    }
+
+    @Test public void resendCarriesTheOriginalIdInsideTheCipher() {
+        Chat.Msg m = new Chat.Msg();
+        m.type = Chat.TEXT;
+        m.ts = 1000;
+        m.text = "de novo";
+        byte[] p = Content.resend("orig-1", m);
+        assertEquals(Content.RESEND, p[0]);
+        Chat.Msg r = Content.resend(p);
+        assertEquals("orig-1", r.clientMsgId);
+        assertEquals("de novo", r.text);
+        assertEquals(1000, r.ts);
+        assertNull(Content.resend(new byte[]{Content.RESEND, 40, 1}));
+    }
 }

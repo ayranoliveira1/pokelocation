@@ -47,7 +47,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 public final class ChatActivity extends BaseActivity implements Chat.Listener {
-    private static final String EXTRA_CONV = "conv", EXTRA_TITLE = "title", EXTRA_GROUP = "group", EXTRA_FRIEND = "friend";
+    private static final String EXTRA_CONV = ConvRow.EXTRA_CONV, EXTRA_TITLE = ConvRow.EXTRA_TITLE,
+            EXTRA_GROUP = ConvRow.EXTRA_GROUP, EXTRA_FRIEND = "friend";
     private static final long[] LIVE_MS = {15 * 60_000L, 60 * 60_000L, 8 * 60 * 60_000L};
     private static final String[] LIVE_LABELS = {"15 min", "1 h", "8 h"};
     private static final int MENU_SAFETY = 1, MENU_MEMBERS = 2;
@@ -71,7 +72,7 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
     private EditText input;
     private View newChip;
     private String convId, friendUserId;
-    private boolean group, listening;
+    private boolean group, listening, resending, safetyOnOpen;
     private List<Api.Friend> members = new ArrayList<>();
     private Chat.Conv conv;
     private final Runnable liveTick = this::showLive;
@@ -108,6 +109,8 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         lm.setStackFromEnd(true);
         rv.setLayoutManager(lm);
         adapter = new MsgAdapter(this, group, this::onTap);
+        if (!group) adapter.setIdentity(title, m -> showSafety(), m -> resend());
+        safetyOnOpen = in.getBooleanExtra(ConvRow.EXTRA_SAFETY, false);
         rv.setAdapter(adapter);
         rv.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override public void onScrolled(@NonNull RecyclerView r, int dx, int dy) {
@@ -175,6 +178,10 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
             Map<String, String> labels = new HashMap<>();
             for (Api.Friend f : m) labels.put(f.userId, f.label);
             adapter.setLabels(labels);
+            if (safetyOnOpen) {
+                safetyOnOpen = false;
+                showSafety();
+            }
         }, null);
     }
 
@@ -184,11 +191,14 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         Chat.listen(getApplicationContext(), this);
         loadConv();
         // Com a tela parada nada chegava aqui: junta as mais recentes (o upsert deduplica pelo client_msg_id).
-        if (!pager.items().isEmpty()) {
-            Context app = getApplicationContext();
-            String id = convId;
-            read(() -> Chat.page(app, id, Long.MAX_VALUE, Long.MAX_VALUE, Pager.PAGE), this::merge, null);
-        }
+        refreshNewest();
+    }
+
+    private void refreshNewest() {
+        if (pager.items().isEmpty()) return;
+        Context app = getApplicationContext();
+        String id = convId;
+        read(() -> Chat.page(app, id, Long.MAX_VALUE, Long.MAX_VALUE, Pager.PAGE), this::merge, null);
     }
 
     private void loadMore() {
@@ -262,7 +272,22 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         if (fresh) markRead();
     }
 
-    @Override public void onConversationsChanged() { loadConv(); }
+    /** O 'Reenviar N' do aviso só vem na página: um RESET com pedido chega como mudança de conversa. */
+    @Override public void onConversationsChanged() {
+        loadConv();
+        refreshNewest();
+    }
+
+    private void resend() {
+        if (resending || convId == null) return;
+        resending = true;
+        Context app = getApplicationContext();
+        String id = convId;
+        io(() -> Chat.resend(app, id), n -> resending = false, t -> {
+            resending = false;
+            fail(t);
+        });
+    }
 
     private static boolean contains(List<Chat.Msg> items, String clientMsgId) {
         for (Chat.Msg o : items) if (o.clientMsgId.equals(clientMsgId)) return true;

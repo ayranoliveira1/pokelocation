@@ -21,7 +21,7 @@ final class MsgAdapter extends ListAdapter<Chat.Msg, MsgAdapter.VH> {
             return a.clientMsgId.equals(b.clientMsgId);
         }
         @Override public boolean areContentsTheSame(@NonNull Chat.Msg a, @NonNull Chat.Msg b) {
-            return a.state == b.state && a.type == b.type && a.ts == b.ts && a.liveUntil == b.liveUntil && a.lat == b.lat
+            return a.state == b.state && a.resend == b.resend && a.type == b.type && a.ts == b.ts && a.liveUntil == b.liveUntil && a.lat == b.lat
                     && a.lng == b.lng && Objects.equals(a.text, b.text) && Objects.equals(a.from, b.from);
         }
     };
@@ -39,6 +39,11 @@ final class MsgAdapter extends ListAdapter<Chat.Msg, MsgAdapter.VH> {
     void setLabels(Map<String, String> labels) {
         bubble.setLabels(labels);
         if (group) notifyItemRangeChanged(0, getItemCount());
+    }
+
+    void setIdentity(String peer, Consumer<Chat.Msg> onCode, Consumer<Chat.Msg> onResend) {
+        bubble.setIdentity(peer, onCode, onResend);
+        notifyItemRangeChanged(0, getItemCount());
     }
 
     @Override public long getItemId(int position) { return Pager.stableId(getItem(position).clientMsgId); }

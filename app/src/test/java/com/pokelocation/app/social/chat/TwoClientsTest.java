@@ -230,4 +230,71 @@ public class TwoClientsTest {
         }
         assertEquals("nova", b2.read(a, a.send(b2, "nova")));
     }
+
+    @Test public void afterReloginPeerReadsEverythingThroughTheResend() throws Exception {
+        Client a = new Client("a"), b = new Client("b");
+        assertEquals("antes", b.read(a, a.send(b, "antes")));
+        a.read(b, b.send(a, "ok"));
+        Client b2 = new Client("b");
+        java.util.Map<String, Chat.Msg> sent = new java.util.LinkedHashMap<>();
+        java.util.List<String> unread = new java.util.ArrayList<>();
+        for (String t : new String[]{"velha 1", "velha 2"}) {
+            String id = UUID.randomUUID().toString();
+            sent.put(id, text(t));
+            byte[] env = a.send(b, t);
+            try {
+                b2.read(a, env);
+                fail("leu a sessão velha");
+            } catch (Exception e) {
+                assertTrue(Rules.brokenSession(e));
+                unread.add(id);
+            }
+        }
+        byte[] reset = Inbox.decrypt1to1(a.st, b.addr(), Locations.encryptTo(b2.st, a.id, Content.reset(unread), a.bundle));
+        java.util.List<String> asked = Content.resetIds(reset);
+        assertEquals(unread, asked);
+        for (String id : asked) {
+            Chat.Msg again = Content.resend(Inbox.decrypt1to1(b2.st, a.addr(),
+                    Locations.encryptTo(a.st, b.id, Content.resend(id, sent.get(id)), null)));
+            assertEquals(id, again.clientMsgId);
+            assertEquals(sent.get(id).text, again.text);
+        }
+        assertEquals("depois", b2.read(a, a.send(b2, "depois")));
+    }
+
+    @Test public void manyResetsWithoutATapSendNothingAndKeepOnlyTheLastRequest() throws Exception {
+        Client a = new Client("a"), b = new Client("b");
+        b.read(a, a.send(b, "antes"));
+        a.read(b, b.send(a, "ok"));
+        Client b2 = new Client("b");
+        java.util.Map<String, Chat.Msg> mine = new java.util.LinkedHashMap<>();
+        for (String t : new String[]{"velha 1", "velha 2"}) {
+            mine.put(UUID.randomUUID().toString(), text(t));
+            a.send(b, t);
+        }
+        java.util.List<String> u = new java.util.ArrayList<>(mine.keySet());
+        java.util.List<java.util.List<String>> asks = java.util.Arrays.asList(
+                java.util.Arrays.asList(u.get(0), u.get(1), "de-outro"), java.util.Arrays.asList(u.get(0)), u);
+        java.util.List<String>[] stored = new java.util.List[1];
+        Inbox.Requests requests = new Inbox.Requests() {
+            @Override public boolean mine(String id) { return mine.containsKey(id); }
+
+            @Override public void set(java.util.List<String> ids) { stored[0] = ids; }
+        };
+        int[] frames = {0};
+        for (int i = 0; i < asks.size(); i++) {
+            byte[] reset = Locations.encryptTo(b2.st, a.id, Content.reset(asks.get(i)), i == 0 ? a.bundle : null);
+            Inbox.Result r = new Inbox.Result();
+            Inbox.onReset(Inbox.decrypt1to1(a.st, b.addr(), reset), null, requests, r);
+            Inbox.deliver(null, r, f -> ++frames[0] > 0);
+        }
+        assertEquals(0, frames[0]);
+        assertEquals(u, stored[0]);
+
+        for (String id : stored[0]) { // o toque em 'Reenviar N'
+            Chat.Msg again = Content.resend(Inbox.decrypt1to1(b2.st, a.addr(),
+                    Locations.encryptTo(a.st, b.id, Content.resend(id, mine.get(id)), null)));
+            assertEquals(mine.get(id).text, again.text);
+        }
+    }
 }

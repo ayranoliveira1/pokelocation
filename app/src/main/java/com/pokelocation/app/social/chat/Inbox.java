@@ -26,7 +26,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,6 +44,7 @@ public final class Inbox {
         final List<Chat.Msg> fresh = new ArrayList<>(1);
         String resetPeer;
         String[] groupInfo;
+        boolean changed;
 
         void add(Chat.Msg m, boolean isFresh) {
             if (m == null) return;
@@ -53,6 +56,7 @@ public final class Inbox {
     private static final Rules.Limiter RESETS = new Rules.Limiter();
     /** ponytail: em memória; um processo novo só reseta na próxima mensagem ilegível dele. */
     private static final Set<String> RESET_LATER = ConcurrentHashMap.newKeySet();
+    private static final Map<String, List<String>> RESEND_LATER = new ConcurrentHashMap<>();
 
     private Inbox() {}
 
@@ -98,7 +102,10 @@ public final class Inbox {
     private static void handle(Context c, SignalStore st, SignalProtocolAddress a, String groupId, String msgId, byte[] plain,
                                Result r) throws Exception {
         String from = a.getName();
-        if (st.replaced(from)) r.add(notice(c, from, "identity:" + msgId), true);
+        if (st.replaced(from)) {
+            r.add(notice(c, from, "identity:" + msgId), true);
+            if (groupId == null) ChatDb.setResendRequest(c, from, new ArrayList<>(), 0); // identity nova: o pedido velho não vale
+        }
         if (plain.length == 0) return;
         switch (plain[0]) {
             case Content.SKDM:
@@ -121,9 +128,39 @@ public final class Inbox {
                 store(c, m, groupId, from, msgId, r);
                 return;
             }
+            case Content.RESET: {
+                long since = System.currentTimeMillis() - Rules.RESEND_WINDOW_MS;
+                onReset(plain, groupId, new Requests() {
+                    @Override public boolean mine(String id) throws Exception { return ChatDb.resendable(c, from, id, since) != null; }
+
+                    @Override public void set(List<String> ids) { ChatDb.setResendRequest(c, from, ids, System.currentTimeMillis()); }
+                }, r);
+                return;
+            }
+            case Content.RESEND: {
+                Chat.Msg m = groupId == null ? Content.resend(plain) : null;
+                if (m == null || !Content.acceptable(m)) return;
+                r.add(ChatDb.replaceUnreadable(c, from, m), false); // a ilegível já tinha avisado: não notifica de novo
+                return;
+            }
             default:
-                // RESET ou kind de versão mais nova: confirma, senão trava a fila
+                // kind de versão mais nova: confirma, senão trava a fila
         }
+    }
+
+    interface Requests {
+        boolean mine(String clientMsgId) throws Exception;
+
+        void set(List<String> clientMsgIds) throws Exception;
+    }
+
+    /** Só guarda o pedido (substitui o anterior): o reenvio sai apenas quando o usuário toca 'Reenviar N' (Chat.resend). */
+    static void onReset(byte[] plain, String groupId, Requests q, Result r) throws Exception {
+        if (groupId != null) return;
+        List<String> ok = new ArrayList<>();
+        for (String id : new LinkedHashSet<>(Content.resetIds(plain))) if (q.mine(id)) ok.add(id);
+        q.set(ok);
+        r.changed = true;
     }
 
     private static void retryPending(Context c, SignalStore st, SignalProtocolAddress a, Result r) throws Exception {
@@ -238,6 +275,7 @@ public final class Inbox {
         if (notify.size() < r.fresh.size()) Chat.markRead(c, seen);
         else if (!r.fresh.isEmpty()) Chat.broadcastUnread(c);
         if (r.groupInfo != null) acceptGroupInfo(c, r.groupInfo);
+        if (r.changed) ChatSocket.dispatch(null);
         if (r.resetPeer == null) return;
         // sem por onde mandar, não busca bundle (consumiria uma one-time dele à toa): sai quando o WS do chat abrir
         if (send == null && !ChatSocket.isOpen()) RESET_LATER.add(r.resetPeer);
@@ -249,6 +287,34 @@ public final class Inbox {
         for (String peer : RESET_LATER) {
             RESET_LATER.remove(peer);
             if (RESETS.allow(peer, System.currentTimeMillis())) sendReset(c, peer, send);
+        }
+        for (String peer : RESEND_LATER.keySet()) {
+            List<String> ids = RESEND_LATER.remove(peer);
+            if (ids != null) resend(c, peer, ids, send);
+        }
+    }
+
+    static void resendApproved(Context c, String peer, List<String> ids) {
+        if (ChatSocket.isOpen()) resend(c, peer, ids, null);
+        else RESEND_LATER.put(peer, ids);
+    }
+
+    /**
+     * Só o que eu mandei para ele, neste 1:1, nas últimas 24 h (o SQL do ChatDb recusa o resto), pela sessão nova, com
+     * client_msg_id novo e o original dentro do cifrado.
+     */
+    private static void resend(Context c, String peer, List<String> ids, Predicate<byte[]> send) {
+        long since = System.currentTimeMillis() - Rules.RESEND_WINDOW_MS;
+        for (String id : new LinkedHashSet<>(ids)) {
+            try {
+                Chat.Msg m = Locations.atomic(c, () -> ChatDb.resendable(c, peer, id, since));
+                if (m == null) continue;
+                byte[] frame = Frames.envelope(peer, UUID.randomUUID().toString(), Groups.seal1to1(c, peer, Content.resend(id, m), null));
+                if (send != null) send.test(frame);
+                else ChatSocket.send(frame, null, null, null);
+            } catch (IOException e) {
+                Log.w("Inbox", "resend: " + e.getClass().getSimpleName());
+            }
         }
     }
 
@@ -313,8 +379,9 @@ public final class Inbox {
 
     private static void sendReset(Context c, String peer, Predicate<byte[]> send) {
         try {
+            List<String> unread = Locations.atomic(c, () -> ChatDb.unreadableIds(c, peer, System.currentTimeMillis() - Rules.RESEND_WINDOW_MS));
             Api.Bundle b = Api.keyBundle(c, peer);
-            byte[] frame = Frames.envelope(peer, UUID.randomUUID().toString(), Groups.seal1to1(c, peer, new byte[]{Content.RESET}, b));
+            byte[] frame = Frames.envelope(peer, UUID.randomUUID().toString(), Groups.seal1to1(c, peer, Content.reset(unread), b));
             if (send != null) send.test(frame);
             else ChatSocket.send(frame, null, null, null);
         } catch (IOException e) {

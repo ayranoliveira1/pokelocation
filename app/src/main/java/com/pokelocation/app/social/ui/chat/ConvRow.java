@@ -15,6 +15,10 @@ import java.text.DateFormat;
 
 /** Linha de conversa fora das Activities: o painel do :overlay usa sem carregar AppCompat. */
 final class ConvRow {
+    // Extras da ChatActivity aqui: o painel do :overlay abre a conversa pelo nome, sem carregar a Activity.
+    static final String CHAT_ACTIVITY = "com.pokelocation.app.social.ui.chat.ChatActivity";
+    static final String EXTRA_CONV = "conv", EXTRA_TITLE = "title", EXTRA_GROUP = "group", EXTRA_SAFETY = "safety";
+
     private ConvRow() {}
 
     static long liveUntil(Chat.Conv c, long now) {

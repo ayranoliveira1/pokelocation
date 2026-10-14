@@ -4,6 +4,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteStatement;
 
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.store.Envelope;
@@ -180,6 +181,79 @@ final class ChatDb {
         try (Cursor q = db(c).rawQuery("SELECT grp FROM conversations WHERE id = ?", new String[]{convId})) {
             return q.moveToFirst() && q.getInt(0) == 1;
         }
+    }
+
+    static final String UNREADABLE_IDS = "SELECT client_msg_id FROM messages WHERE conv_id = ? AND sender = ? AND type = "
+            + Chat.UNREADABLE + " AND ts >= ? ORDER BY ts DESC, id DESC LIMIT " + Rules.RESEND_MAX;
+    /** Só a minha, deste 1:1, na janela e de um tipo de usuário: um pedido de outro remetente/grupo não acha nada. */
+    static final String RESENDABLE = "SELECT id FROM messages WHERE sender = '' AND client_msg_id = ? AND conv_id = ? AND ts >= ?"
+            + " AND type IN (" + Chat.TEXT + ", " + Chat.LOC + ", " + Chat.LIVE_START + ", " + Chat.LIVE_STOP + ")";
+    /** Só a ilegível daquele remetente naquele 1:1, uma vez: já substituída ou legível, nada muda. */
+    static final String REPLACE = "UPDATE messages SET type = ?, ts = ?, live_until = ?, body = ?, state = " + Chat.SENT
+            + " WHERE conv_id = ? AND sender = ? AND client_msg_id = ? AND type = " + Chat.UNREADABLE;
+
+    static final String REQUEST_SET = "UPDATE conversations SET resend_ids = ?, resend_at = ? WHERE id = ?";
+    static final String REQUEST_GET = "SELECT resend_ids FROM conversations WHERE id = ? AND resend_at >= ? AND resend_ids IS NOT NULL";
+    static final String REQUEST_CLEAR = "UPDATE conversations SET resend_ids = NULL, resend_at = 0 WHERE id = ?";
+
+    /** Substitui o pedido pendente do par (nunca soma); vazio = sem pedido. */
+    static void setResendRequest(Context c, String peer, List<String> ids, long at) {
+        if (ids.isEmpty()) db(c).execSQL(REQUEST_CLEAR, new Object[]{directId(peer)});
+        else db(c).execSQL(REQUEST_SET, new Object[]{String.join("\n", ids), at, directId(peer)});
+    }
+
+    static List<String> resendRequest(Context c, String convId, long since) {
+        List<String> out = new ArrayList<>();
+        try (Cursor q = db(c).rawQuery(REQUEST_GET, new String[]{convId, String.valueOf(since)})) {
+            if (q.moveToFirst()) for (String id : q.getString(0).split("\n")) if (!id.isEmpty()) out.add(id);
+        }
+        return out;
+    }
+
+    static void clearResendRequest(Context c, String convId) { db(c).execSQL(REQUEST_CLEAR, new Object[]{convId}); }
+
+    static Chat.Msg latestNotice(Context c, String convId) throws GeneralSecurityException {
+        try (Cursor q = db(c).rawQuery(MSG + " WHERE conv_id = ? AND type = " + Chat.IDENTITY_CHANGED + " ORDER BY id DESC LIMIT 1",
+                new String[]{convId})) {
+            return q.moveToFirst() ? msg(c, q, null) : null;
+        }
+    }
+
+    static List<String> unreadableIds(Context c, String peer, long since) {
+        List<String> out = new ArrayList<>();
+        try (Cursor q = db(c).rawQuery(UNREADABLE_IDS, new String[]{directId(peer), peer, String.valueOf(since)})) {
+            while (q.moveToNext()) out.add(q.getString(0));
+        }
+        return out;
+    }
+
+    static Chat.Msg resendable(Context c, String peer, String clientMsgId, long since) throws GeneralSecurityException {
+        try (Cursor q = db(c).rawQuery(RESENDABLE, new String[]{clientMsgId, directId(peer), String.valueOf(since)})) {
+            return q.moveToFirst() ? byId(c, q.getLong(0)) : null;
+        }
+    }
+
+    static Chat.Msg replaceUnreadable(Context c, String from, Chat.Msg m) throws GeneralSecurityException {
+        String convId = directId(from);
+        int n;
+        try (SQLiteStatement s = db(c).compileStatement(REPLACE)) {
+            s.bindLong(1, m.type);
+            s.bindLong(2, m.ts);
+            s.bindLong(3, m.liveUntil);
+            s.bindBlob(4, Envelope.seal(c, body(m.lat, m.lng, m.text), aad(convId, from, m.clientMsgId)));
+            s.bindString(5, convId);
+            s.bindString(6, from);
+            s.bindString(7, m.clientMsgId);
+            n = s.executeUpdateDelete();
+        }
+        if (n == 0) return null;
+        Chat.Msg r = byClientId(c, from, m.clientMsgId);
+        // a ilegível era a última da conversa: a prévia passa a ser ela
+        db(c).execSQL("UPDATE conversations SET preview = ?, preview_type = ? WHERE id = ?"
+                        + " AND (SELECT MAX(id) FROM messages WHERE conv_id = ?) = ?",
+                new Object[]{m.type == Chat.TEXT ? seal(c, preview(m.text), "cp|" + convId) : null, m.type, convId, convId, r.id});
+        if (m.type == Chat.LIVE_START) recomputeLive(c, convId);
+        return r;
     }
 
     static void failSending(Context c) {

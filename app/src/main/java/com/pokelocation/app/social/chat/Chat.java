@@ -35,6 +35,7 @@ public final class Chat {
     public static final class Msg {
         public long id; public String clientMsgId, convId, from;   // from == null: minha
         public int type, state; public String text; public double lat, lng; public long liveUntil, ts;
+        public int resend;   // só no aviso IDENTITY_CHANGED mais recente com pedido válido: N do 'Reenviar N'
     }
     public interface Listener { void onMessage(Msg m); void onConversationsChanged(); }   // entregue na main
 
@@ -46,7 +47,41 @@ public final class Chat {
 
     /** Keyset: primeira página com beforeTs = Long.MAX_VALUE, beforeId = Long.MAX_VALUE; ordem ts DESC, id DESC. */
     public static List<Msg> page(Context c, String convId, long beforeTs, long beforeId, int limit) {
-        return db(c, () -> ChatDb.page(c, convId, beforeTs, beforeId, limit), new ArrayList<>());
+        return db(c, () -> {
+            List<Msg> p = ChatDb.page(c, convId, beforeTs, beforeId, limit);
+            int n = ChatDb.resendRequest(c, convId, System.currentTimeMillis() - Rules.RESEND_WINDOW_MS).size();
+            Msg notice = n == 0 ? null : ChatDb.latestNotice(c, convId);
+            if (notice != null) for (Msg m : p) if (m.id == notice.id) m.resend = n;
+            return p;
+        }, new ArrayList<>());
+    }
+
+    /** 0 = sem 'Reenviar N' (sem pedido, substituído ou com mais de 24 h). */
+    public static int pendingResend(Context c, String convId) {
+        return db(c, () -> ChatDb.resendRequest(c, convId, System.currentTimeMillis() - Rules.RESEND_WINDOW_MS).size(), 0);
+    }
+
+    /**
+     * Toque em 'Reenviar N': recifra pela sessão nova e reenvia (id novo, o original dentro do cifrado); sem WS, sai quando
+     * ele abrir. Nunca sai sem este toque. Devolve quantas; o aviso volta pelo onMessage com resend = 0.
+     */
+    public static int resend(Context c, String convId) throws IOException {
+        if (!SocialDb.useIfHeld()) throw new Rules.Unsent("closed");
+        if (App.process() != App.PROC_MAIN) ChatSocket.wantWs();
+        try {
+            String peer = Locations.atomic(c, () -> ChatDb.peer(c, convId));
+            if (peer == null) return 0;
+            List<String> ids = Locations.atomic(c, () -> {
+                List<String> l = ChatDb.resendRequest(c, convId, System.currentTimeMillis() - Rules.RESEND_WINDOW_MS);
+                ChatDb.clearResendRequest(c, convId);
+                return l;
+            });
+            if (!ids.isEmpty()) Inbox.resendApproved(c, peer, ids);
+            ChatSocket.dispatch(Locations.atomic(c, () -> ChatDb.latestNotice(c, convId)));
+            return ids.size();
+        } finally {
+            SocialDb.release();
+        }
     }
 
     public static String openDirect(Context c, String friendUserId, String label) {

@@ -32,6 +32,9 @@ final class Rules {
     /** Reenvia o mesmo client_msg_id: o servidor deduplica. */
     static boolean resend(int tries) { return tries < MAX_TRIES; }
 
+    static final int RESEND_MAX = 20;
+    static final long RESEND_WINDOW_MS = 24 * 3600_000L;
+
     static final int OUT_KEEP = 0, OUT_DONE = 1, OUT_GIVE_UP = 2;
     static final long OUTBOX_GRACE_MS = 120_000;
 

@@ -19,6 +19,15 @@
             android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:drawablePadding="6dp" android:gravity="center_vertical" android:maxWidth="280dp"
             android:textAppearance="?attr/textAppearanceBodyLarge" />
+        <LinearLayout android:id="@+id/soc_chat_msg_actions"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal" android:orientation="horizontal" android:visibility="gone">
+            <Button android:id="@+id/soc_chat_msg_code" style="@style/Widget.PokeLocation.PanelButton"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/soc_chat_view_code" />
+            <Button android:id="@+id/soc_chat_msg_resend" style="@style/Widget.PokeLocation.PanelButton"
+                android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" />
+        </LinearLayout>
         <TextView android:id="@+id/soc_chat_msg_meta"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:layout_gravity="end" android:drawablePadding="3dp" android:gravity="center_vertical"

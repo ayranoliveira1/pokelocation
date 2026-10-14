@@ -98,6 +98,15 @@ public class SocialDbSchemaTest {
         assertEquals("0", sqlite(db, ".mode list\nSELECT gone FROM conversations;").trim());
     }
 
+    @Test public void v11NoPendingResendByDefault() throws Exception {
+        Assume.assumeTrue(new File(SQLITE).canExecute());
+        File db = new File(tmp.getRoot(), "v11.db");
+        sqlite(db, String.join(";", SocialDb.CHAT) + ";" + String.join(";", SocialDb.CHAT_V8) + ";" + SocialDb.CHAT_V9 + ";"
+                + SocialDb.CHAT_V10 + ";INSERT INTO conversations(id, grp) VALUES ('d:B', 0);");
+        sqlite(db, String.join(";", SocialDb.CHAT_V11) + ";");
+        assertEquals("1|0", sqlite(db, ".mode list\nSELECT resend_ids IS NULL, resend_at FROM conversations;").trim());
+    }
+
     /** Troca os ? em ordem: o sqlite3 da linha de comando não tem parâmetros. */
     private static String bind(String sql, String... values) {
         for (String v : values) sql = sql.replaceFirst("\\?", v);

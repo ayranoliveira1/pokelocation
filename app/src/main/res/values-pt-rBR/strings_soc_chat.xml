@@ -34,6 +34,13 @@
     <string name="soc_chat_next">Avançar</string>
     <string name="soc_chat_create">Criar</string>
     <string name="soc_chat_left">Você não faz mais parte deste grupo.</string>
+    <string name="soc_chat_identity_changed_of">O código de segurança de %s mudou</string>
+    <string name="soc_chat_view_code">Ver código</string>
+    <string name="soc_chat_resend">Reenviar %d</string>
+    <plurals name="soc_chat_resend_pending">
+        <item quantity="one">1 mensagem sua pode não ter chegado.</item>
+        <item quantity="other">%d mensagens suas podem não ter chegado.</item>
+    </plurals>
     <string name="soc_chat_members">Membros</string>
     <string name="soc_chat_add_member">Adicionar</string>
     <string name="soc_chat_remove_member_confirm">Remover %s do grupo?</string>

@@ -1,6 +1,7 @@
 package com.pokelocation.app.social.ui.chat;
 
 import android.content.Context;
+import android.content.Intent;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -42,7 +43,7 @@ public final class ChatPanel implements Chat.Listener {
     private final Map<String, View> shown = new HashMap<>();
     private Chat.Conv conv;
     private Io.Task task;
-    private boolean pending;
+    private boolean pending, resending;
     private final List<Io.Task> acts = new ArrayList<>();
 
     /** teleport: recebe "lat, lng" e abre o TeleportPanel preenchido. */
@@ -139,6 +140,7 @@ public final class ChatPanel implements Chat.Listener {
         compose.setVisibility(c.left ? View.GONE : View.VISIBLE);
         empty.setVisibility(View.GONE);
         bubbles = new Bubble(ctx, c.group, this::onTap);
+        if (!c.group) bubbles.setIdentity(c.title, m -> codeInApp(), m -> resend());
         loadConv();
     }
 
@@ -215,10 +217,28 @@ public final class ChatPanel implements Chat.Listener {
 
     private void onTap(Chat.Msg m) {
         if (m.from == null && m.state == Chat.FAILED) {
-            act(() -> Chat.retry(app, m.id));
+            act(() -> Chat.retry(app, m.id), this::onMessage, null);
         } else if (m.type == Chat.LOC || m.type == Chat.LIVE_START) {
             teleport.accept(CoordParser.text(m.lat, m.lng));
         }
+    }
+
+    /** Abre pelo nome: carregar a ChatActivity no :overlay traria o AppCompat junto. */
+    private void codeInApp() {
+        app.startActivity(new Intent().setClassName(app, ConvRow.CHAT_ACTIVITY)
+                .putExtra(ConvRow.EXTRA_CONV, conv.id).putExtra(ConvRow.EXTRA_TITLE, conv.title)
+                .putExtra(ConvRow.EXTRA_SAFETY, true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        host.dismiss();
+    }
+
+    private void resend() {
+        if (resending || conv == null) return;
+        resending = true;
+        String id = conv.id;
+        act(() -> Chat.resend(app, id), n -> {
+            resending = false;
+            refresh();
+        }, () -> resending = false);
     }
 
     private void send() {
@@ -227,7 +247,7 @@ public final class ChatPanel implements Chat.Listener {
         input.setText("");
         typing(false);
         String id = conv.id;
-        act(() -> Chat.sendText(app, id, text));
+        act(() -> Chat.sendText(app, id, text), this::onMessage, null);
     }
 
     /** Só focável enquanto digita: fora disso o jogo fica com o foco e o teclado. */
@@ -254,7 +274,9 @@ public final class ChatPanel implements Chat.Listener {
 
     @Override
     public void onConversationsChanged() {
-        if (conv == null && host != null) showList();
+        if (host == null) return;
+        if (task != null) pending = true;
+        else refresh();
     }
 
     private interface Work<T> { T run() throws Exception; }
@@ -283,16 +305,18 @@ public final class ChatPanel implements Chat.Listener {
         });
     }
 
-    private void act(Work<Chat.Msg> work) {
+    private <T> void act(Work<T> work, Consumer<T> ok, Runnable failed) {
         Io.Task[] t = new Io.Task[1];
-        t[0] = Io.run(work::run, new Io.Callback<Chat.Msg>() {
-            @Override public void onResult(Chat.Msg m) {
+        t[0] = Io.run(work::run, new Io.Callback<T>() {
+            @Override public void onResult(T v) {
                 acts.remove(t[0]);
-                if (host != null) onMessage(m);
+                if (host != null && ok != null) ok.accept(v);
             }
             @Override public void onError(Throwable e) {
                 acts.remove(t[0]);
-                if (host != null) Ui.toast(app, Errors.message(e));
+                if (host == null) return;
+                if (failed != null) failed.run();
+                Ui.toast(app, Errors.message(e));
             }
         });
         acts.add(t[0]);

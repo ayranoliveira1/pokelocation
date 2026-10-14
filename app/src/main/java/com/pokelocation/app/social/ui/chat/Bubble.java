@@ -29,6 +29,8 @@ final class Bubble {
     private final DateFormat time;
     private final int mineBg, mineFg, theirsBg, theirsFg, muted, danger;
     private Map<String, String> labels = Collections.emptyMap();
+    private String peer;
+    private Consumer<Chat.Msg> onCode, onResend;
 
     Bubble(Context c, boolean group, Consumer<Chat.Msg> onTap) {
         this.group = group;
@@ -44,6 +46,12 @@ final class Bubble {
 
     void setLabels(Map<String, String> labels) {
         this.labels = labels;
+    }
+
+    void setIdentity(String peer, Consumer<Chat.Msg> onCode, Consumer<Chat.Msg> onResend) {
+        this.peer = peer;
+        this.onCode = onCode;
+        this.onResend = onResend;
     }
 
     View create(ViewGroup parent) {
@@ -74,6 +82,14 @@ final class Bubble {
         boolean pin = m.type == Chat.LOC || m.type == Chat.LIVE_START;
         h.body.setCompoundDrawablesRelativeWithIntrinsicBounds(pin ? R.drawable.ic_pin : 0, 0, 0, 0);
         h.body.setText(body(c, m));
+        boolean identity = m.type == Chat.IDENTITY_CHANGED && onCode != null;
+        h.actions.setVisibility(identity ? View.VISIBLE : View.GONE);
+        if (identity) {
+            h.code.setOnClickListener(v -> onCode.accept(m));
+            h.resend.setVisibility(m.resend > 0 ? View.VISIBLE : View.GONE);
+            h.resend.setText(c.getString(R.string.soc_chat_resend, m.resend));
+            h.resend.setOnClickListener(v -> onResend.accept(m));
+        }
 
         long now = System.currentTimeMillis();
         String when = DateUtils.formatSameDayTime(m.ts, now, DateFormat.SHORT, DateFormat.SHORT).toString();
@@ -103,7 +119,10 @@ final class Bubble {
                         ? c.getString(R.string.soc_chat_msg_live, time.format(m.liveUntil)) + "\n" + coords(m.lat, m.lng)
                         : c.getString(R.string.soc_chat_msg_live_ended);
             case Chat.LIVE_STOP: return c.getString(R.string.soc_chat_msg_live_stop);
-            case Chat.IDENTITY_CHANGED: return c.getString(R.string.soc_chat_identity_changed);
+            case Chat.IDENTITY_CHANGED:
+                String s = peer != null ? c.getString(R.string.soc_chat_identity_changed_of, peer)
+                        : c.getString(R.string.soc_chat_identity_changed);
+                return m.resend > 0 ? s + "\n" + c.getResources().getQuantityString(R.plurals.soc_chat_resend_pending, m.resend, m.resend) : s;
             default: return c.getString(R.string.soc_chat_unreadable);
         }
     }
@@ -115,8 +134,13 @@ final class Bubble {
     private static final class Holder {
         final View bubble;
         final TextView from, body, meta;
+        final View actions, code;
+        final TextView resend;
 
         Holder(View v) {
+            actions = v.findViewById(R.id.soc_chat_msg_actions);
+            code = v.findViewById(R.id.soc_chat_msg_code);
+            resend = v.findViewById(R.id.soc_chat_msg_resend);
             bubble = v.findViewById(R.id.soc_chat_msg_bubble);
             from = v.findViewById(R.id.soc_chat_msg_from);
             body = v.findViewById(R.id.soc_chat_msg_body);
