@@ -52,6 +52,8 @@ public final class Session {
             try {
                 SocialDb.atomic(c, true, () -> {
                     SocialDb.advance(); // login e logout abrem geração nova
+                    SocialDb.get(c).delete("session", null, null); // login por cima de outra conta: nada dela fica
+                    sUsername = null;
                     writeTokens(c, access, refresh);
                     return null;
                 });
