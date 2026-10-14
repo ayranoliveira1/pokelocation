@@ -15,7 +15,7 @@
     public <methods>;
 }
 
-# FCM sem as métricas de entrega (runtime e backend excluídos no build; o registrador não é descoberto: manifest)
+# Métricas de entrega do FCM excluídas no build.
 -dontwarn com.google.android.datatransport.runtime.**
 -dontwarn com.google.android.datatransport.cct.**
 
