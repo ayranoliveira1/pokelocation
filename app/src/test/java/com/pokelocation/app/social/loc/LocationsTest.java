@@ -56,8 +56,10 @@ public class LocationsTest {
         assertFalse(Locations.ack(new java.io.IOException("keystore", new java.security.GeneralSecurityException())));
         assertFalse(Locations.ack(new java.io.IOException("signal",
                 new IllegalStateException("vault", new java.security.GeneralSecurityException()))));
-        assertFalse(Locations.ack(new java.io.IOException("signal", new Locations.UnhandledKind(2))));
         assertFalse(Locations.ack(new java.io.IOException("lock")));
+        // transitório que embrulha uma exceção da libsignal: o tipo próprio vale antes da causa
+        assertFalse(Locations.ack(new Locations.Transient("sender key ainda não chegou",
+                new org.signal.libsignal.protocol.NoSessionException("x"))));
         // payload malformado (vazio/curto) de um cliente alterado: ilegível para sempre, senão 50 deles travam a fila
         assertTrue(Locations.ack(new java.io.IOException("signal", new IllegalArgumentException("vazio"))));
     }

@@ -24,6 +24,8 @@ import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,6 +41,7 @@ public final class SignalStore implements SignalProtocolStore {
     private static volatile int sRegId;
 
     private final Context app;
+    private final Set<String> replaced = new HashSet<>(1);
 
     public SignalStore(Context c) { app = c.getApplicationContext(); }
 
@@ -135,8 +138,13 @@ public final class SignalStore implements SignalProtocolStore {
         ContentValues v = new ContentValues(2);
         v.put("name", a.getName());
         putEnv("identities", v, k, "i|" + a.getName());
-        return old == null ? IdentityChange.NEW_OR_UNCHANGED : IdentityChange.REPLACED_EXISTING;
+        if (old == null) return IdentityChange.NEW_OR_UNCHANGED;
+        replaced.add(a.getName());
+        return IdentityChange.REPLACED_EXISTING;
     }
+
+    /** O amigo trocou de identity durante as operações desta instância: o chat avisa "o código de segurança mudou". */
+    public boolean replaced(String name) { return replaced.contains(name); }
 
     /** Confiança no primeiro uso: a troca (reinstalação) é aceita e avisada, nunca bloqueia a conversa. */
     @Override
@@ -355,6 +363,15 @@ public final class SignalStore implements SignalProtocolStore {
         v.put("dist", dist.toString());
         putEnv("sender_keys", v, r.serialize(), ka(a, dist));
     }
+
+    /** Rotação: a próxima GroupSessionBuilder.create gera uma chave nova (quem saiu do grupo não lê o que vem depois). */
+    public void deleteSenderKey(SignalProtocolAddress a, UUID dist) {
+        db().delete("sender_keys", "name = ? AND device = ? AND dist = ?",
+                new String[]{a.getName(), String.valueOf(a.getDeviceId()), dist.toString()});
+    }
+
+    /** Saí do grupo: as sender keys dele (minha e dos outros) não servem mais. */
+    public void deleteSenderKeys(UUID dist) { db().delete("sender_keys", "dist = ?", new String[]{dist.toString()}); }
 
     @Override
     public SenderKeyRecord loadSenderKey(SignalProtocolAddress a, UUID dist) {

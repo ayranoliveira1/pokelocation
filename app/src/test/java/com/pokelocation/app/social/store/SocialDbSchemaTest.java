@@ -69,6 +69,20 @@ public class SocialDbSchemaTest {
                 + " VALUES ('c', 'm1', 'u', 1, 2, 0, x'00'); SELECT changes();").trim().endsWith("0")); // dedup
     }
 
+    /** v8: a fila de grupo é achada pela PK (remetente) e podada pelo índice de data; messages ganha tries (outbox). */
+    @Test public void v8PendingByGroupAndSender() throws Exception {
+        Assume.assumeTrue(new File(SQLITE).canExecute());
+        File db = new File(tmp.getRoot(), "v8.db");
+        sqlite(db, String.join(";", SocialDb.CHAT) + ";" + String.join(";", SocialDb.CHAT_V8) + ";");
+        String plan = sqlite(db, "EXPLAIN QUERY PLAN SELECT sender, msg_id, payload, at FROM pending_group"
+                + " WHERE group_id = 'g' AND sender = 'u';");
+        assertTrue(plan, plan.contains("SEARCH pending_group USING PRIMARY KEY (sender=?)"));
+        String prune = sqlite(db, "EXPLAIN QUERY PLAN DELETE FROM pending_group WHERE at < 5;");
+        assertTrue(prune, prune.contains("pending_group_at"));
+        sqlite(db, "INSERT INTO messages(conv_id, client_msg_id, sender, type, state, ts, body) VALUES ('c','m','',1,1,1,x'00');");
+        assertEquals("0", sqlite(db, ".mode list\nSELECT tries FROM messages;").trim());
+    }
+
     /** Troca os ? em ordem: o sqlite3 da linha de comando não tem parâmetros. */
     private static String bind(String sql, String... values) {
         for (String v : values) sql = sql.replaceFirst("\\?", v);

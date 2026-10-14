@@ -37,7 +37,7 @@ public final class SocialDb extends SQLiteOpenHelper {
     public interface Op<T> { T run() throws Exception; }
 
     private SocialDb(Context c) {
-        super(c.getApplicationContext(), NAME, null, 7);
+        super(c.getApplicationContext(), NAME, null, 8);
         setWriteAheadLoggingEnabled(true);
     }
 
@@ -199,6 +199,7 @@ public final class SocialDb extends SQLiteOpenHelper {
         db.execSQL(SESSION_FCM);
         for (String sql : CHAT) db.execSQL(sql);
         db.execSQL(SESSION_USERNAME);
+        for (String sql : CHAT_V8) db.execSQL(sql);
     }
 
     @Override
@@ -212,6 +213,7 @@ public final class SocialDb extends SQLiteOpenHelper {
             for (String sql : CHAT) db.execSQL(sql);
             db.execSQL(SESSION_USERNAME);
         }
+        if (oldVersion < 8) for (String sql : CHAT_V8) db.execSQL(sql);
     }
 
     /** O WS do :overlay e o REST do principal podem trazer o mesmo envelope antes do ack. Podado após 31 dias (a fila
@@ -237,6 +239,18 @@ public final class SocialDb extends SQLiteOpenHelper {
                     + " sender TEXT NOT NULL, type INTEGER NOT NULL, state INTEGER NOT NULL, ts INTEGER NOT NULL,"
                     + " live_until INTEGER NOT NULL DEFAULT 0, body BLOB NOT NULL, UNIQUE(sender, client_msg_id))",
             "CREATE INDEX messages_page ON messages(conv_id, ts DESC, id DESC)",
+    };
+
+    /**
+     * v8: fila de mensagens de grupo que chegaram antes da sender key do remetente (o ciphertext como veio, já E2E; em
+     * claro só group_id/sender/at), achada pela PK (remetente) quando a SKDM dele chega e podada pela data (7 dias);
+     * messages.tries = envios sem Ack (outbox).
+     */
+    public static final String[] CHAT_V8 = {
+            "CREATE TABLE pending_group(sender TEXT NOT NULL, msg_id TEXT NOT NULL, group_id TEXT NOT NULL,"
+                    + " payload BLOB NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(sender, msg_id)) WITHOUT ROWID",
+            "CREATE INDEX pending_group_at ON pending_group(at)",
+            "ALTER TABLE messages ADD COLUMN tries INTEGER NOT NULL DEFAULT 0",
     };
 
     /** @nome da conta (selado): o :overlay só abre o WS com ele (o servidor recusa sem). */

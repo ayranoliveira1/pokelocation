@@ -123,6 +123,123 @@ final class ChatDb {
         }
     }
 
+    static Chat.Msg byClientId(Context c, String from, String clientMsgId) throws GeneralSecurityException {
+        try (Cursor q = db(c).rawQuery(MSG + " WHERE sender = ? AND client_msg_id = ?",
+                new String[]{from == null ? MINE : from, clientMsgId})) {
+            return q.moveToFirst() ? msg(c, q, null) : null;
+        }
+    }
+
+    /** live_until da conversa = a live ativa mais longa de outro membro (o LIVE_START dele guarda o fim). */
+    static void recomputeLive(Context c, String convId) {
+        db(c).execSQL("UPDATE conversations SET live_until = IFNULL((SELECT MAX(live_until) FROM messages WHERE conv_id = ?"
+                + " AND type = " + Chat.LIVE_START + " AND sender != ''), 0) WHERE id = ?", new Object[]{convId, convId});
+    }
+
+    /** client_msg_id da minha live mais recente nessa conversa; null se nenhuma. */
+    static String myLiveStart(Context c, String convId) {
+        try (Cursor q = db(c).rawQuery("SELECT client_msg_id FROM messages WHERE conv_id = ? AND sender = '' AND type = "
+                + Chat.LIVE_START + " ORDER BY ts DESC, id DESC LIMIT 1", new String[]{convId})) {
+            return q.moveToFirst() ? q.getString(0) : null;
+        }
+    }
+
+    static String peer(Context c, String convId) {
+        try (Cursor q = db(c).rawQuery("SELECT peer FROM conversations WHERE id = ?", new String[]{convId})) {
+            return q.moveToFirst() ? q.getString(0) : null;
+        }
+    }
+
+    static boolean isMember(Context c, String convId, String userId) {
+        try (Cursor q = db(c).rawQuery("SELECT 1 FROM group_members WHERE conv_id = ? AND user_id = ?", new String[]{convId, userId})) {
+            return q.moveToFirst();
+        }
+    }
+
+    static boolean isGroup(Context c, String convId) {
+        try (Cursor q = db(c).rawQuery("SELECT grp FROM conversations WHERE id = ?", new String[]{convId})) {
+            return q.moveToFirst() && q.getInt(0) == 1;
+        }
+    }
+
+    static void deleteConversation(Context c, String convId) {
+        String[] a = {convId};
+        db(c).delete("messages", "conv_id = ?", a);
+        db(c).delete("group_members", "conv_id = ?", a);
+        db(c).delete("conversations", "id = ?", a);
+    }
+
+    /** Outbox: minhas ainda SENDING (reenviadas ao abrir o WS). */
+    static List<Long> sendingIds(Context c) {
+        List<Long> out = new ArrayList<>();
+        try (Cursor q = db(c).rawQuery("SELECT id FROM messages WHERE state = " + Chat.SENDING + " AND sender = '' LIMIT "
+                + CONVERSATIONS_LIMIT, null)) {
+            while (q.moveToNext()) out.add(q.getLong(0));
+        }
+        return out;
+    }
+
+    /** +1 envio sem Ack; devolve o novo total. */
+    static int incTries(Context c, long id) {
+        db(c).execSQL("UPDATE messages SET tries = tries + 1 WHERE id = ?", new Object[]{id});
+        return tries(c, id);
+    }
+
+    static int tries(Context c, long id) {
+        try (Cursor q = db(c).rawQuery("SELECT tries FROM messages WHERE id = ?", new String[]{String.valueOf(id)})) {
+            return q.moveToFirst() ? q.getInt(0) : Integer.MAX_VALUE;
+        }
+    }
+
+    /** Mensagem de grupo antes da sender key do remetente: o ciphertext como veio (já E2E). */
+    static void addPending(Context c, String sender, String msgId, String groupId, byte[] payload) {
+        ContentValues v = new ContentValues(5);
+        v.put("sender", sender);
+        v.put("msg_id", msgId);
+        v.put("group_id", groupId);
+        v.put("payload", payload);
+        v.put("at", System.currentTimeMillis());
+        db(c).insertWithOnConflict("pending_group", null, v, SQLiteDatabase.CONFLICT_IGNORE);
+    }
+
+    /** {msg_id, group_id} + payload de um remetente (a SKDM dele acabou de chegar). */
+    static List<Object[]> pendingFrom(Context c, String sender) {
+        List<Object[]> out = new ArrayList<>();
+        try (Cursor q = db(c).rawQuery("SELECT msg_id, group_id, payload FROM pending_group WHERE sender = ? LIMIT 50",
+                new String[]{sender})) {
+            while (q.moveToNext()) out.add(new Object[]{q.getString(0), q.getString(1), q.getBlob(2)});
+        }
+        return out;
+    }
+
+    static int pendingCount(Context c, String sender) {
+        return (int) android.database.DatabaseUtils.longForQuery(db(c), "SELECT COUNT(*) FROM pending_group WHERE sender = ?",
+                new String[]{sender});
+    }
+
+    /** {msg_id, group_id} da mais antiga desse remetente na fila; null se vazia. */
+    static String[] oldestPending(Context c, String sender) {
+        try (Cursor q = db(c).rawQuery("SELECT msg_id, group_id FROM pending_group WHERE sender = ? ORDER BY at LIMIT 1",
+                new String[]{sender})) {
+            return q.moveToFirst() ? new String[]{q.getString(0), q.getString(1)} : null;
+        }
+    }
+
+    static void dropPending(Context c, String sender, String msgId) {
+        db(c).delete("pending_group", "sender = ? AND msg_id = ?", new String[]{sender, msgId});
+    }
+
+    /** Vencidas (a SKDM nunca chegou): {sender, msg_id, group_id}, já apagadas da fila. */
+    static List<String[]> takeExpiredPending(Context c, long before) {
+        List<String[]> out = new ArrayList<>();
+        String[] a = {String.valueOf(before)};
+        try (Cursor q = db(c).rawQuery("SELECT sender, msg_id, group_id FROM pending_group WHERE at < ? LIMIT 50", a)) {
+            while (q.moveToNext()) out.add(new String[]{q.getString(0), q.getString(1), q.getString(2)});
+        }
+        for (String[] p : out) dropPending(c, p[0], p[1]);
+        return out;
+    }
+
     /** Ativa = until maior que o relógio (sem job); 0 = nenhuma. */
     static void setLive(Context c, String convId, boolean mine, long until) {
         ContentValues v = new ContentValues(1);

@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
 public final class Api {
     private static final int TIMEOUT_MS = 15_000, REFRESH_TIMEOUT_MS = 10_000;
     /** 64 KiB em geral; GET /v1/locations até 256 KiB (o servidor corta em 192 KiB). */
-    static final int MAX_BODY = 64 * 1024, LOCATIONS_MAX_BODY = 256 * 1024;
+    static final int MAX_BODY = 64 * 1024, LOCATIONS_MAX_BODY = 256 * 1024, GROUPS_MAX_BODY = 192 * 1024;
     private static final Object TOKEN_LOCK = new Object();
     private static final String CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
     private static final Pattern USERNAME = Pattern.compile("[a-z][a-z0-9_.]{2,19}");
@@ -188,7 +188,70 @@ public final class Api {
 
     /** preKey = one-time EC; null quando acabaram no servidor. */
     public static final class Bundle { public int registrationId; public byte[] identity; public PreKey signed, kyber, preKey; }
-    public static final class Envelope { public String id, from, clientMsgId; public byte[] payload; }
+    /** groupId != null: cópia de uma mensagem de grupo (fan-out do servidor). */
+    public static final class Envelope { public String id, from, clientMsgId, groupId; public byte[] payload; }
+    public static final class Group { public String id, ownerId; public List<Friend> members; public long createdAt; }
+
+    /** members: [{user_id, username}] (inclui o dono e eu). */
+    public static String createGroup(Context c, List<String> members) throws IOException {
+        try {
+            return new JSONObject(call(c, "POST", "/v1/groups", new JSONObject().put("members", new JSONArray(members))))
+                    .getString("id");
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
+    public static List<Group> groups(Context c) throws IOException {
+        try {
+            return parseGroups(call(c, "GET", "/v1/groups", null, GROUPS_MAX_BODY)); // 25 grupos × 50 membros ≈ 108 KiB
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
+    public static Group group(Context c, String groupId) throws IOException {
+        try {
+            return parseGroup(new JSONObject(call(c, "GET", "/v1/groups/" + Uri.encode(groupId), null)));
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
+    public static void addGroupMember(Context c, String groupId, String userId) throws IOException {
+        call(c, "POST", "/v1/groups/" + Uri.encode(groupId) + "/members", obj("user_id", userId));
+    }
+
+    /** userId = eu → sair do grupo. */
+    public static void removeGroupMember(Context c, String groupId, String userId) throws IOException {
+        call(c, "DELETE", "/v1/groups/" + Uri.encode(groupId) + "/members/" + Uri.encode(userId), null);
+    }
+
+    static List<Group> parseGroups(String body) throws JSONException {
+        JSONArray a = new JSONObject(body).optJSONArray("groups");
+        int n = a == null ? 0 : a.length();
+        List<Group> out = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) out.add(parseGroup(a.getJSONObject(i)));
+        return out;
+    }
+
+    private static Group parseGroup(JSONObject o) throws JSONException {
+        Group g = new Group();
+        g.id = o.getString("id");
+        g.ownerId = optString(o, "owner_id");
+        g.createdAt = o.optLong("created_at");
+        JSONArray m = o.optJSONArray("members");
+        int n = m == null ? 0 : m.length();
+        g.members = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            JSONObject j = m.getJSONObject(i);
+            Friend f = new Friend();
+            f.userId = j.getString("user_id");
+            f.username = optString(j, "username");
+            g.members.add(f);
+        }
+        return g;
+    }
     public static final class Location { public String userId, friendCode, username; public byte[] payload; }
 
     /** Token do FCM deste aparelho: o servidor manda o ping de "há fila" para ele. */
@@ -269,6 +332,7 @@ public final class Api {
             e.id = j.getString("id");
             e.from = j.getString("from");
             e.clientMsgId = j.getString("client_msg_id");
+            e.groupId = optString(j, "group_id");
             e.payload = unb64(j.getString("payload"));
             out.add(e);
         }
@@ -289,6 +353,19 @@ public final class Api {
             out.add(l);
         }
         return out;
+    }
+
+    /** "sub" do access token (o meu id), sem verificar a assinatura: só identifica, quem valida é o servidor. */
+    public static String jwtSubject(String jwt) {
+        if (jwt == null) return null;
+        String[] parts = jwt.split("\\.");
+        if (parts.length != 3) return null;
+        try {
+            byte[] json = unb64(parts[1].replace('-', '+').replace('_', '/'));
+            return optString(new JSONObject(new String(json, StandardCharsets.UTF_8)), "sub");
+        } catch (JSONException | IllegalArgumentException e) {
+            return null;
+        }
     }
 
     /** Ausente ou null → null (o optString(k, null) do Android devolve "null"). */

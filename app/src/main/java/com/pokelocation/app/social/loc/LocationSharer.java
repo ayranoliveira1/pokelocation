@@ -12,6 +12,7 @@ import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.geo.Geo;
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.chat.Inbox;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.store.SocialDb;
@@ -186,21 +187,22 @@ public final class LocationSharer {
     private void frame(WsClient from, Frames.Frame f) {
         if (ws != from) return;
         try {
-            if (f.type == Frames.ENVELOPE) { // SKDM de um amigo online: guarda a sender key dele e confirma
+            if (f.type == Frames.ENVELOPE || f.type == Frames.GROUP_ENVELOPE) {
+                // com algum WS aberto o servidor não manda ping FCM: este processo grava o chat e notifica como o principal
                 Throwable fail = null;
+                Inbox.Result got = null;
                 try {
-                    Locations.atomic(app, () -> {
-                        Locations.receive(app, f.peer, f.msgId, f.payload);
-                        return null;
-                    });
+                    got = Locations.atomic(app, () -> Inbox.receive(app, f.peer, f.groupId, f.msgId, f.payload));
                 } catch (Api.Error e) {
                     throw e; // 401: sem ack; volta na próxima entrega
                 } catch (IOException e) {
                     fail = e;
                 }
-                // Ack só se processado ou ilegível para sempre; transitório/kind não tratado → o servidor reentrega
+                // Ack só depois de gravar, ou se ilegível para sempre; transitório → o servidor reentrega
                 if (Locations.ack(fail)) ws.send(Frames.ack(f.peer, f.msgId));
                 else Log.w(TAG, "envelope sem ack: " + Locations.rootName(fail));
+                WsClient w = ws;
+                if (got != null) Inbox.deliver(app, got, frame -> w != null && w.send(frame));
             } else if (f.type == Frames.ACK) { // S→C (api.md §6): o servidor gravou meu envelope
                 String to = skdmPending.remove(f.msgId);
                 if (to != null) skdmSent.add(to);

@@ -1,11 +1,10 @@
 package com.pokelocation.app.social.loc;
 
-import android.content.ContentValues;
 import android.content.Context;
-import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.chat.Inbox;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.store.SignalStore;
 import com.pokelocation.app.social.store.SocialDb;
@@ -26,9 +25,7 @@ import org.signal.libsignal.protocol.groups.GroupCipher;
 import org.signal.libsignal.protocol.groups.GroupSessionBuilder;
 import org.signal.libsignal.protocol.kem.KEMPublicKey;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
-import org.signal.libsignal.protocol.message.PreKeySignalMessage;
 import org.signal.libsignal.protocol.message.SenderKeyDistributionMessage;
-import org.signal.libsignal.protocol.message.SignalMessage;
 import org.signal.libsignal.protocol.state.PreKeyBundle;
 
 import java.io.IOException;
@@ -154,13 +151,11 @@ public final class Locations {
         atomic(c, () -> SocialDb.get(c).delete("seen_envelopes", "at < ?",
                 new String[]{String.valueOf(System.currentTimeMillis() - SEEN_TTL_MS)}));
         List<String> ids = new ArrayList<>(es.size());
+        List<Inbox.Result> got = new ArrayList<>(es.size());
         for (Api.Envelope e : es) {
             Throwable fail = null;
             try {
-                atomic(c, () -> {
-                    receive(c, e.from, e.clientMsgId, e.payload);
-                    return null;
-                });
+                got.add(atomic(c, () -> Inbox.receive(c, e.from, e.groupId, e.clientMsgId, e.payload)));
             } catch (Api.Error x) {
                 throw x; // 401: sessão morta
             } catch (IOException x) {
@@ -170,22 +165,24 @@ public final class Locations {
             else Log.w(TAG, "envelope sem ack: " + rootName(fail));
         }
         Api.ack(c, ids);
-    }
-
-    /** Lançado dentro do atomic para o rollback desfazer o avanço do ratchet. */
-    static final class UnhandledKind extends Exception {
-        UnhandledKind(int kind) { super("kind " + kind); }
+        for (Inbox.Result r : got) Inbox.deliver(c, r, null);
+        Inbox.deliver(c, atomic(c, () -> Inbox.prune(c)), null);
     }
 
     /**
      * Ack ao servidor? Sim se processado (null, inclui o duplicado já visto) ou ilegível para sempre (erro de mensagem
      * da libsignal ou payload malformado na cadeia de causas). Não em falha transitória (lock, Keystore, banco, timeout)
-     * nem em kind não tratado aqui: o servidor entrega de novo.
+     * o servidor entrega de novo.
      */
-    static boolean ack(Throwable failure) {
+    /** Falha transitória explícita: sem Ack, mesmo que a causa seja uma exceção da libsignal. */
+    public static final class Transient extends IOException {
+        public Transient(String msg, Throwable cause) { super(msg, cause); }
+    }
+
+    public static boolean ack(Throwable failure) {
         if (failure == null) return true;
+        for (Throwable t = failure; t != null; t = t.getCause()) if (t instanceof Transient) return false;
         for (Throwable t = failure; t != null; t = t.getCause()) {
-            if (t instanceof UnhandledKind) return false;
             if (t instanceof IllegalArgumentException // payload/registro malformado (cliente alterado): não melhora
                     || t instanceof InvalidMessageException || t instanceof InvalidKeyException || t instanceof InvalidKeyIdException
                     || t instanceof InvalidVersionException || t instanceof LegacyMessageException
@@ -196,36 +193,9 @@ public final class Locations {
         return false;
     }
 
-    static String rootName(Throwable t) {
+    public static String rootName(Throwable t) {
         while (t.getCause() != null) t = t.getCause();
         return t.getClass().getSimpleName();
-    }
-
-    /**
-     * Dentro de SocialDb.atomic. O mesmo envelope pode vir pelo WS (:overlay) e pelo REST (principal) antes do ack:
-     * dedup por (from, client_msg_id), porque decifrar de novo falharia. Qualquer exceção volta tudo (marca de dedup e
-     * ratchet). Kind ≠ SKDM → UnhandledKind, sem Ack.
-     */
-    static void receive(Context c, String from, String msgId, byte[] payload) throws Exception {
-        ContentValues seen = new ContentValues(3);
-        seen.put("sender", from);
-        seen.put("msg_id", msgId);
-        seen.put("at", System.currentTimeMillis());
-        if (SocialDb.get(c).insertWithOnConflict("seen_envelopes", null, seen, SQLiteDatabase.CONFLICT_IGNORE) == -1) return;
-        // malformado (o servidor não tem tamanho mínimo): marcado como visto e confirmado; sem Ack, 50 deles travariam a
-        // página do GET /v1/envelopes (mais antigos primeiro) por 30 dias
-        if (payload.length < 2) return;
-        SignalStore st = new SignalStore(c);
-        SignalProtocolAddress a = address(from);
-        SessionCipher sc = new SessionCipher(st, a);
-        byte[] ct = body(payload);
-        byte[] plain = kind(payload) == CiphertextMessage.PREKEY_TYPE
-                ? sc.decrypt(new PreKeySignalMessage(ct)) : sc.decrypt(new SignalMessage(ct));
-        if (plain.length == 0) return; // vazio: ilegível para sempre (marcado e confirmado)
-        // ponytail: com o chat, kind desconhecido (versões misturadas) também precisa de Ack ou gravar+Ack, senão a
-        // mesma trava da fila aparece
-        if (kind(plain) != KIND_SKDM) throw new UnhandledKind(kind(plain)); // rollback: decifrável de novo pelo chat
-        new GroupSessionBuilder(st).process(a, new SenderKeyDistributionMessage(body(plain)));
     }
 
     /**
@@ -233,12 +203,24 @@ public final class Locations {
      * (buscado fora do lock); bundle == null e sem sessão → null (busque o bundle).
      */
     static byte[] skdmFor(Context c, String myId, String friendId, Api.Bundle bundle) throws Exception {
-        SignalStore st = new SignalStore(c);
+        SenderKeyDistributionMessage skdm = new GroupSessionBuilder(new SignalStore(c)).create(address(myId), distribution(myId));
+        return encryptTo(c, friendId, frame(KIND_SKDM, skdm.serialize()), bundle);
+    }
+
+    /**
+     * Dentro de SocialDb.atomic: envelope 1:1 ([tipo][ciphertext]) para o amigo. bundle != null abre a sessão (buscado
+     * fora do lock); bundle == null e sem sessão → null (busque o bundle).
+     */
+    public static byte[] encryptTo(Context c, String friendId, byte[] plain, Api.Bundle bundle) throws Exception {
+        return encryptTo(new SignalStore(c), friendId, plain, bundle);
+    }
+
+    /** Com o store de quem chama: st.replaced(friendId) diz se o bundle trouxe identity nova. */
+    public static byte[] encryptTo(SignalStore st, String friendId, byte[] plain, Api.Bundle bundle) throws Exception {
         SignalProtocolAddress to = address(friendId);
         if (bundle != null) new SessionBuilder(st, to).process(preKeyBundle(bundle));
         else if (!st.containsSession(to)) return null;
-        SenderKeyDistributionMessage skdm = new GroupSessionBuilder(st).create(address(myId), distribution(myId));
-        CiphertextMessage m = new SessionCipher(st, to).encrypt(frame(KIND_SKDM, skdm.serialize()));
+        CiphertextMessage m = new SessionCipher(st, to).encrypt(plain);
         return frame(m.getType(), m.serialize());
     }
 
@@ -266,7 +248,7 @@ public final class Locations {
     private static SignalProtocolAddress address(String userId) { return new SignalProtocolAddress(userId, DEVICE); }
 
     /** Só cripto + banco aqui dentro, nunca rede. Logout no outro processo = sessão morta. */
-    static <T> T atomic(Context c, SocialDb.Op<T> op) throws IOException {
+    public static <T> T atomic(Context c, SocialDb.Op<T> op) throws IOException {
         try {
             return SocialDb.atomic(c, op);
         } catch (IOException e) {
@@ -292,7 +274,7 @@ public final class Locations {
         return new double[]{b.getDouble(), b.getDouble(), b.getLong()};
     }
 
-    static byte[] frame(int kind, byte[] body) {
+    public static byte[] frame(int kind, byte[] body) {
         byte[] f = new byte[1 + body.length];
         f[0] = (byte) kind;
         System.arraycopy(body, 0, f, 1, body.length);

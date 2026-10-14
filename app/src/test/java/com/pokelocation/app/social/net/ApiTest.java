@@ -105,6 +105,8 @@ public class ApiTest {
     @Test public void bodyLimitPerCall() throws java.io.IOException {
         assertEquals(256 * 1024, Api.LOCATIONS_MAX_BODY);
         assertEquals(64 * 1024, Api.MAX_BODY);
+        assertEquals(192 * 1024, Api.GROUPS_MAX_BODY); // GET /v1/groups: 25 grupos × 50 membros ≈ 108 KiB
+        assertEquals(150 * 1024, Api.read(new java.io.ByteArrayInputStream(new byte[150 * 1024]), Api.GROUPS_MAX_BODY).length());
         byte[] big = new byte[200 * 1024];
         assertEquals(big.length, Api.read(new java.io.ByteArrayInputStream(big), Api.LOCATIONS_MAX_BODY).length());
         try {
@@ -262,6 +264,33 @@ public class ApiTest {
         assertEquals("caio", f.incoming.get(0).username);
         assertEquals("bia", Api.parseLocations("{\"locations\":[{\"user_id\":\"u2\",\"friend_code\":\"C2\",\"username\":\"bia\","
                 + "\"payload\":\"AA==\"}]}").get(0).username);
+    }
+
+    /** api.md §7: membros [{user_id, username}]; envelope de grupo traz group_id na fila. */
+    @Test public void groups() throws JSONException {
+        java.util.List<Api.Group> gs = Api.parseGroups("{\"groups\":[{\"id\":\"g1\",\"owner_id\":\"u1\","
+                + "\"members\":[{\"user_id\":\"u1\",\"username\":\"ana\"},{\"user_id\":\"u2\",\"username\":\"bia\"}],"
+                + "\"created_at\":5}]}");
+        assertEquals(1, gs.size());
+        Api.Group g = gs.get(0);
+        assertEquals("g1", g.id);
+        assertEquals("u1", g.ownerId);
+        assertEquals(2, g.members.size());
+        assertEquals("bia", g.members.get(1).username);
+        assertEquals(0, Api.parseGroups("{\"groups\":[]}").size());
+        assertEquals("g1", Api.parseEnvelopes("{\"envelopes\":[{\"id\":\"e\",\"from\":\"u\",\"client_msg_id\":\"m\","
+                + "\"group_id\":\"g1\",\"payload\":\"AA==\"}]}").get(0).groupId);
+        assertNull(Api.parseEnvelopes("{\"envelopes\":[{\"id\":\"e\",\"from\":\"u\",\"client_msg_id\":\"m\","
+                + "\"payload\":\"AA==\"}]}").get(0).groupId);
+    }
+
+    /** O meu id sai do sub do JWT (sem rede); o header/assinatura não importam aqui (o servidor é quem valida). */
+    @Test public void jwtSubject() {
+        String payload = Api.b64url("{\"sub\":\"u-123\",\"exp\":9}".getBytes());
+        assertEquals("u-123", Api.jwtSubject("eyJhbGciOiJFZERTQSJ9." + payload + ".sig"));
+        assertNull(Api.jwtSubject("lixo"));
+        assertNull(Api.jwtSubject(null));
+        assertNull(Api.jwtSubject("a." + Api.b64url("{}".getBytes()) + ".c"));
     }
 
     @Test public void keyCount() throws JSONException {

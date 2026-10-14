@@ -79,6 +79,9 @@ public final class SignalLoader {
     /** Só depois disto as classes org.signal podem ser usadas. */
     public static boolean loaded() { return sLoaded; }
 
+    /** ABI sem .so ou a lib não carrega: definitivo no processo. */
+    public static boolean unavailable() { return sUnavailable; }
+
     /**
      * Thread própria, não o Io (único: um download de 3 MB travaria o app). Sem login só baixa e confere: System.load
      * só com login. Idempotente: com uma carga em andamento troca o listener e pede mais uma passada.
