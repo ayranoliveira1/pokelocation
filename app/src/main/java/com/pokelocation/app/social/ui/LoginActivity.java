@@ -15,6 +15,7 @@ import com.pokelocation.app.R;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.net.Api;
+import com.pokelocation.app.social.ui.chat.ChatListActivity;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.main.MainActivity;
 import com.pokelocation.app.util.Ui;
@@ -26,7 +27,7 @@ public final class LoginActivity extends BaseActivity {
     private static final String SIGNAL_STARTED = "signal_started";
     /** Quem abre o Login diz para onde ir depois do sucesso. Sem o extra: volta à MainActivity. */
     public static final String EXTRA_RETURN_TO = "return_to", RETURN_MAIN = "main", RETURN_FRIENDS = "friends",
-            RETURN_BACK = "back";
+            RETURN_BACK = "back", RETURN_CHATS = "chats";
     private String returnTo;
 
     static Class<?> first(String returnTo, boolean hasUsername) {
@@ -36,6 +37,7 @@ public final class LoginActivity extends BaseActivity {
     /** Tela a abrir depois do login; null = só fechar o Login (a de baixo atualiza no onResume). */
     static Class<?> next(String returnTo) {
         if (RETURN_FRIENDS.equals(returnTo)) return FriendsActivity.class;
+        if (RETURN_CHATS.equals(returnTo)) return ChatListActivity.class;
         if (RETURN_BACK.equals(returnTo)) return null;
         return MainActivity.class;
     }

@@ -2,8 +2,11 @@ package com.pokelocation.app.social.ui.chat;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.InputFilter;
+import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -17,6 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
@@ -30,6 +34,7 @@ import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.base.StateView;
 import com.pokelocation.app.util.Ui;
 
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,6 +46,7 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
     private final Rows rows = new Rows();
     private Io.Task task, groupTask;
     private boolean listening;
+    private int accent, muted, avatarBg, avatarFg;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +64,10 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
             state.setState(StateView.LOADING);
             load();
         });
+        accent = MaterialColors.getColor(state, androidx.appcompat.R.attr.colorPrimary);
+        muted = MaterialColors.getColor(state, com.google.android.material.R.attr.colorOnSurfaceVariant);
+        avatarBg = MaterialColors.getColor(state, com.google.android.material.R.attr.colorPrimaryContainer);
+        avatarFg = MaterialColors.getColor(state, com.google.android.material.R.attr.colorOnPrimaryContainer);
         RecyclerView rv = findViewById(R.id.soc_chat_list_rv);
         rv.setLayoutManager(new LinearLayoutManager(this));
         rv.setAdapter(rows);
@@ -207,8 +217,14 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
     }
 
     private void toLogin() {
-        startActivity(new Intent(this, LoginActivity.class).putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_BACK));
+        startActivity(new Intent(this, LoginActivity.class).putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_CHATS));
         finish();
+    }
+
+    static String initial(String title) {
+        if (title == null) return "?";
+        String t = title.startsWith("@") ? title.substring(1) : title;
+        return t.isEmpty() ? "?" : new String(Character.toChars(Character.toUpperCase(t.codePointAt(0))));
     }
 
     private final class Rows extends RecyclerView.Adapter<Rows.VH> {
@@ -223,29 +239,39 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
 
         @NonNull @Override
         public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new VH(LayoutInflater.from(parent.getContext()).inflate(R.layout.soc_row, parent, false));
+            return new VH(LayoutInflater.from(parent.getContext()).inflate(R.layout.soc_chat_row, parent, false));
         }
 
         @Override
         public void onBindViewHolder(@NonNull VH h, int position) {
             Chat.Conv c = items.get(position);
+            long now = System.currentTimeMillis();
+            boolean unread = c.unread > 0;
+            h.avatar.setText(initial(c.title));
             h.title.setText(c.title != null ? c.title : "…");
-            h.title.setTypeface(null, c.unread > 0 ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            h.title.setTypeface(null, unread ? Typeface.BOLD : Typeface.NORMAL);
+            h.time.setText(c.lastTs > 0 ? DateUtils.formatSameDayTime(c.lastTs, now, DateFormat.SHORT, DateFormat.SHORT) : "");
+            h.time.setTextColor(unread ? accent : muted);
             String preview = preview(c);
-            if (c.unread > 0) preview = getString(R.string.soc_chat_unread, c.unread, preview);
-            if (ChatActivity.liveUntil(c, System.currentTimeMillis()) > 0) preview = getString(R.string.soc_chat_live) + " · " + preview;
-            h.sub.setText(preview);
-            h.sub.setVisibility(h.sub.length() > 0 ? View.VISIBLE : View.GONE);
+            if (ChatActivity.liveUntil(c, now) > 0) preview = getString(R.string.soc_chat_live) + " · " + preview;
+            h.preview.setText(preview);
+            h.unread.setText(c.unread > 99 ? "99+" : String.valueOf(c.unread));
+            h.unread.setVisibility(unread ? View.VISIBLE : View.GONE);
             h.itemView.setOnClickListener(v -> startActivity(ChatActivity.conv(ChatListActivity.this, c.id, c.title, c.group)));
         }
 
         final class VH extends RecyclerView.ViewHolder {
-            final TextView title, sub;
+            final TextView avatar, title, time, preview, unread;
 
             VH(View v) {
                 super(v);
-                title = v.findViewById(R.id.soc_row_title);
-                sub = v.findViewById(R.id.soc_row_sub);
+                avatar = v.findViewById(R.id.soc_chat_row_avatar);
+                title = v.findViewById(R.id.soc_chat_row_title);
+                time = v.findViewById(R.id.soc_chat_row_time);
+                preview = v.findViewById(R.id.soc_chat_row_preview);
+                unread = v.findViewById(R.id.soc_chat_row_unread);
+                avatar.setBackgroundTintList(ColorStateList.valueOf(avatarBg));
+                avatar.setTextColor(avatarFg);
             }
         }
     }

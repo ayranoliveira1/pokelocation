@@ -2,7 +2,6 @@
 <resources>
     <string name="soc_chat_title">Conversas</string>
     <string name="soc_chat_empty">Nenhuma conversa ainda. Toque num amigo para começar.</string>
-    <string name="soc_chat_unread">(%1$d) %2$s</string>
     <string name="soc_chat_open">Abrir chat</string>
     <string name="soc_chat_hint">Mensagem</string>
     <string name="soc_chat_send">Enviar</string>
