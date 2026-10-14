@@ -258,6 +258,7 @@ public final class OverlayView implements View.OnClickListener {
     public void setChatEnabled(boolean on) {
         chat = on;
         setShown(chatBox, on);
+        if (!on) flows.closeChat();
     }
 
     public void setUnread(int n) {

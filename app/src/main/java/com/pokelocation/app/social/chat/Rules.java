@@ -32,18 +32,40 @@ final class Rules {
     /** Reenvia o mesmo client_msg_id: o servidor deduplica. */
     static boolean resend(int tries) { return tries < MAX_TRIES; }
 
+    static final int WS_OPEN = 0, WS_LOAD_LIB = 1, WS_NEED_NAME = 2, WS_GIVE_UP = 3;
+
+    /** Processo novo aberto direto no chat: ninguém mais carregou a lib, e esperar por ela seria para sempre. */
+    static int wsStep(boolean loaded, boolean unavailable, String user) {
+        if (unavailable) return WS_GIVE_UP;
+        if (!loaded) return WS_LOAD_LIB;
+        return user == null ? WS_NEED_NAME : WS_OPEN;
+    }
+
     interface Send {
         void run() throws Exception;
     }
 
-    /** Nenhuma exceção deixa a mensagem em SENDING para sempre: vira FAILED (o usuário reenvia); no log só a classe. */
+    /** Motivo fixo do app (sem dado do usuário): o log pode trazer a mensagem. */
+    static final class Unsent extends IOException {
+        Unsent(String reason) { super(reason); }
+    }
+
+    /** Nenhuma exceção deixa a mensagem em SENDING para sempre: vira FAILED (o usuário reenvia). */
     static void sendOrFail(Send send, Runnable fail) {
         try {
             send.run();
         } catch (Exception | LinkageError e) {
-            Log.w("Chat", "send: " + e.getClass().getSimpleName());
+            Log.w("Chat", "send: " + cause(e));
             fail.run();
         }
+    }
+
+    /** Classe, motivo fixo se for nosso, e a classe da causa raiz; nunca a mensagem de fora (pode ter corpo/token). */
+    static String cause(Throwable e) {
+        Throwable root = e;
+        while (root.getCause() != null) root = root.getCause();
+        String s = e.getClass().getSimpleName() + (e instanceof Unsent ? " " + e.getMessage() : "");
+        return root == e ? s : s + " <- " + root.getClass().getSimpleName();
     }
 
     interface Page {

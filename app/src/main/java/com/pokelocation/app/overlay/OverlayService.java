@@ -196,7 +196,9 @@ public final class OverlayService extends Service
     private void listenUnread() {
         unreadRx = new BroadcastReceiver() {
             @Override public void onReceive(Context c, Intent i) {
-                if (ui != null) ui.setUnread(i.getIntExtra(Intents.EXTRA_UNREAD, 0));
+                if (ui == null) return;
+                if (i.getBooleanExtra(Intents.EXTRA_LOGGED_OUT, false)) ui.setChatEnabled(false);
+                else ui.setUnread(i.getIntExtra(Intents.EXTRA_UNREAD, 0));
             }
         };
         IntentFilter f = new IntentFilter(Intents.INT_CHAT_UNREAD);

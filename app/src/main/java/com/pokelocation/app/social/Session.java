@@ -220,7 +220,7 @@ public final class Session {
         sp(c).edit().clear().commit();
         SocialDb.delete(c);
         Vault.wipe();
-        Chat.broadcastUnread(c, 0);
+        Chat.broadcastLoggedOut(c);
     }
 
     /** Verifier e state do PKCE cifrados pelo Vault (Io: o Keystore pode bloquear). IOException = Keystore falhou. */

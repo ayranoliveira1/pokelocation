@@ -438,6 +438,32 @@ public final class Api {
         return sb.length() == 8 ? sb.toString() : null;
     }
 
+    /**
+     * O WS só apresenta o token no Auth: vencido, o servidor fecha (1008) e a reconexão repetiria o mesmo. null = sessão
+     * morta (refresh revogado).
+     */
+    public static String wsToken(Context c) throws IOException {
+        String a = Session.access(c);
+        if (a == null || !expiresSoon(a, System.currentTimeMillis())) return a;
+        try {
+            return renew(c, a);
+        } catch (Error e) {
+            if (e.http == 401) return null;
+            throw e;
+        }
+    }
+
+    static boolean expiresSoon(String jwt, long now) {
+        String[] parts = jwt.split("\\.");
+        if (parts.length != 3) return false;
+        try {
+            JSONObject o = new JSONObject(new String(unb64(parts[1].replace('-', '+').replace('_', '/')), StandardCharsets.UTF_8));
+            return o.has("exp") && o.getLong("exp") * 1000 - now < 60_000;
+        } catch (JSONException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     /** Linha de tokens no social.db; usar com o token.lock. */
     interface Tokens {
         String[] read() throws Exception;

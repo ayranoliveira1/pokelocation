@@ -61,7 +61,7 @@ public final class Intents {
 
     // --- Extras públicos ---
     public static final String EXTRA_FROM_CHAT = "from_chat";   // INT_TELEPORT_UI: título do chat no painel
-    public static final String EXTRA_UNREAD = "n";
+    public static final String EXTRA_UNREAD = "n", EXTRA_LOGGED_OUT = "logged_out";
     public static final String EXTRA_LAT = "lat", EXTRA_LNG = "lng", EXTRA_ALT = "alt", EXTRA_NAME = "name",
             EXTRA_ID = "id", EXTRA_WAYPOINTS = "waypoints", EXTRA_TELEPORT = "teleport", EXTRA_SPEED = "speed",
             EXTRA_MODE = "mode", EXTRA_MARKER_COUNT = "marker_count", EXTRA_OFFSET = "offset",

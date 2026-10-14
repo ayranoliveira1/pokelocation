@@ -72,6 +72,10 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
     protected void onStart() {
         super.onStart();
         if (state == null) return;
+        if (!Session.loggedIn(this)) {
+            finish();
+            return;
+        }
         listening = true;
         Chat.listen(getApplicationContext(), this);
         load();

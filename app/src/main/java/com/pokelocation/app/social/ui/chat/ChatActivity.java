@@ -131,6 +131,10 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
     @Override
     protected void onStart() {
         super.onStart();
+        if (!Session.loggedIn(this)) {   // saiu da conta com esta tela na pilha: some sem mostrar o que ficou em memória
+            finish();
+            return;
+        }
         if (convId != null) listen();
     }
 

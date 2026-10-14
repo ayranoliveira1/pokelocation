@@ -2,6 +2,7 @@ package com.pokelocation.app.social.net;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -288,6 +289,17 @@ public class ApiTest {
         assertNull(Api.jwtSubject(null));
         assertNull(Api.jwtSubject("a." + Api.b64url("{}".getBytes()) + ".c"));
     }
+
+    @Test public void wsNeedsAnAccessThatIsNotAboutToExpire() {
+        long now = 1_000_000_000_000L;
+        assertTrue(Api.expiresSoon(jwt("{\"exp\":" + (now / 1000 + 10) + "}"), now));
+        assertTrue(Api.expiresSoon(jwt("{\"exp\":" + (now / 1000 - 60) + "}"), now));
+        assertFalse(Api.expiresSoon(jwt("{\"exp\":" + (now / 1000 + 600) + "}"), now));
+        assertFalse(Api.expiresSoon(jwt("{}"), now));
+        assertFalse(Api.expiresSoon("lixo", now));
+    }
+
+    private static String jwt(String payload) { return "h." + Api.b64url(payload.getBytes()) + ".s"; }
 
     @Test public void keyCount() throws JSONException {
         assertArrayEquals(new int[]{19, 100}, Api.parseKeyCount("{\"ec\":19,\"kyber\":100}"));

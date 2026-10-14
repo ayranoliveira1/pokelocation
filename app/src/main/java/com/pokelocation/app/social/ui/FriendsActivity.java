@@ -95,6 +95,10 @@ public final class FriendsActivity extends BaseActivity {
     @Override
     protected void onRestart() {
         super.onRestart();
+        if (!Session.loggedIn(this)) {
+            finish();
+            return;
+        }
         if (busy) return;
         me = null;
         load();

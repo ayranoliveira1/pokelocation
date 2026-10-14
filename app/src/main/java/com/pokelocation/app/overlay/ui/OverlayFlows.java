@@ -55,6 +55,10 @@ final class OverlayFlows {
         openTeleport(text, null);
     }
 
+    void closeChat() {
+        ChatPanel.dismissOpen();
+    }
+
     void openChat() {
         close();
         String title = ctx.getString(R.string.soc_teleport_title);

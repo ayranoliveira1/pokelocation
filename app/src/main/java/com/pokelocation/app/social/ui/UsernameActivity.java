@@ -60,6 +60,12 @@ public final class UsernameActivity extends BaseActivity {
     }
 
     @Override
+    protected void onRestart() {
+        super.onRestart();
+        if (!Session.loggedIn(this)) finish();
+    }
+
+    @Override
     protected void onDestroy() {
         if (task != null) task.cancel();
         super.onDestroy();

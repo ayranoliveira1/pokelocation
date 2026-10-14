@@ -168,7 +168,6 @@ public final class ChatSocket {
     }
 
     private static void start(Context app) {
-        if (SignalLoader.unavailable()) return;
         String user = null;
         try {
             if (SignalLoader.loaded()) {
@@ -180,7 +179,10 @@ public final class ChatSocket {
             }
         } catch (IOException ignored) {
         }
-        if (user == null) {
+        int step = Rules.wsStep(SignalLoader.loaded(), SignalLoader.unavailable(), user);
+        if (step == Rules.WS_GIVE_UP) return;
+        if (step != Rules.WS_OPEN) {
+            if (step == Rules.WS_LOAD_LIB) SignalLoader.ensure(app);
             Handler h = work;
             if (h != null) h.postDelayed(() -> start(app), RETRY_MS);
             return;
@@ -188,7 +190,7 @@ public final class ChatSocket {
         synchronized (ChatSocket.class) {
             if (thread == null) return;
             WsClient[] self = new WsClient[1];
-            self[0] = new WsClient(BuildConfig.SOCIAL_API.replaceFirst("^https", "wss") + "/v1/ws", () -> Session.access(app),
+            self[0] = new WsClient(BuildConfig.SOCIAL_API.replaceFirst("^https", "wss") + "/v1/ws", () -> Api.wsToken(app),
                     new WsClient.Listener() {
                         @Override public void onOpen() { post(() -> opened(app, self[0])); }
 
@@ -198,6 +200,7 @@ public final class ChatSocket {
                             post(() -> {
                                 if (ws == self[0]) open = false;
                                 failAll();
+                                if ("unauthorized".equals(why.getMessage())) stopSocket(self[0]); // refresh revogado: sem laço
                             });
                         }
                     });

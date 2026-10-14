@@ -73,6 +73,10 @@ public final class AccountActivity extends BaseActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        if (!Session.loggedIn(this)) {
+            finish();
+            return;
+        }
         if (list != null) load();   // voltando da troca do @nome
     }
 

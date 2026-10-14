@@ -120,4 +120,17 @@ public class RulesTest {
         assertFalse(Rules.brokenSession(new org.signal.libsignal.protocol.DuplicateMessageException("x")));
         assertFalse(Rules.brokenSession(new org.signal.libsignal.protocol.LegacyMessageException("x")));
     }
+
+    @Test public void chatSocketLoadsTheLibInsteadOfWaitingForever() {
+        assertEquals(Rules.WS_LOAD_LIB, Rules.wsStep(false, false, null));
+        assertEquals(Rules.WS_GIVE_UP, Rules.wsStep(false, true, null));
+        assertEquals(Rules.WS_NEED_NAME, Rules.wsStep(true, false, null));
+        assertEquals(Rules.WS_OPEN, Rules.wsStep(true, false, "nome"));
+    }
+
+    @Test public void sendLogShowsOurReasonButNeverOutsideMessages() {
+        assertEquals("Unsent left", Rules.cause(new Rules.Unsent("left")));
+        String s = Rules.cause(new java.io.IOException("corpo do servidor", new javax.net.ssl.SSLException("token=abc")));
+        assertEquals("IOException <- SSLException", s);
+    }
 }

@@ -28,6 +28,7 @@ import java.util.function.Consumer;
 
 public final class ChatPanel implements Chat.Listener {
     private static final int CONVS = 10, MSGS = 20;
+    private static ChatPanel open;
 
     private final Context ctx, app;
     private final Consumer<String> teleport;
@@ -46,6 +47,10 @@ public final class ChatPanel implements Chat.Listener {
     /** teleport: recebe "lat, lng" e abre o TeleportPanel preenchido. */
     public static void show(Context overlayCtx, Consumer<String> teleport) {
         new ChatPanel(overlayCtx, teleport).open();
+    }
+
+    public static void dismissOpen() {
+        if (open != null && open.host != null) open.host.dismiss();
     }
 
     private ChatPanel(Context overlayCtx, Consumer<String> teleport) {
@@ -74,11 +79,13 @@ public final class ChatPanel implements Chat.Listener {
         host = PanelHost.show(ctx, root, true);
         host.overGame();
         host.setOnDismiss(this::closed);
+        open = this;
         Chat.overlayOpened(app, this);
         showList();
     }
 
     private void closed() {
+        if (open == this) open = null;
         Chat.viewing(app, null);
         Chat.overlayClosed(this);
         if (task != null) task.cancel();

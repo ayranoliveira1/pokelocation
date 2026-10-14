@@ -95,7 +95,16 @@ public final class SignalLoader {
             sAgain = true;
             return;
         }
-        Context app = c.getApplicationContext();
+        spawn(c.getApplicationContext());
+    }
+
+    /** Carrega sem trocar o listener de quem já acompanha o download (processo novo aberto direto no chat). */
+    public static synchronized void ensure(Context c) {
+        if (sLoaded || sUnavailable || sThread != null) return;
+        spawn(c.getApplicationContext());
+    }
+
+    private static void spawn(Context app) {
         sThread = new Thread(() -> {
             IOException err;
             do {

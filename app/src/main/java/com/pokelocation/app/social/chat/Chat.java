@@ -95,7 +95,7 @@ public final class Chat {
     }
 
     public static Msg retry(Context c, long msgId) throws IOException {
-        if (!SocialDb.useIfHeld()) throw new IOException("closed");
+        if (!SocialDb.useIfHeld()) throw new Rules.Unsent("closed");
         try {
             Msg m = Locations.atomic(c, () -> {
                 ChatDb.setState(c, msgId, SENDING);
@@ -195,6 +195,12 @@ public final class Chat {
         if (n >= 0) broadcastUnread(c, n);
     }
 
+    /** Logout: o :overlay esconde o botão do chat e fecha o painel. */
+    public static void broadcastLoggedOut(Context c) {
+        c.sendBroadcast(new Intent(Intents.INT_CHAT_UNREAD).setPackage(c.getPackageName()).putExtra(Intents.EXTRA_UNREAD, 0)
+                .putExtra(Intents.EXTRA_LOGGED_OUT, true), c.getPackageName() + ".permission.INTERNAL");
+    }
+
     public static void broadcastUnread(Context c, int n) {
         c.sendBroadcast(new Intent(Intents.INT_CHAT_UNREAD).setPackage(c.getPackageName()).putExtra(Intents.EXTRA_UNREAD, n),
                 c.getPackageName() + ".permission.INTERNAL");
@@ -219,7 +225,7 @@ public final class Chat {
         m.convId = convId;
         m.state = SENDING;
         m.ts = System.currentTimeMillis();
-        if (!SocialDb.useIfHeld()) throw new IOException("closed");
+        if (!SocialDb.useIfHeld()) throw new Rules.Unsent("closed");
         try {
             Locations.atomic(c, () -> ChatDb.insert(c, m));
             transmit(c, m);
@@ -231,12 +237,12 @@ public final class Chat {
 
     private static void transmit(Context c, Msg m) {
         Rules.sendOrFail(() -> {
-            if (SignalLoader.unavailable()) throw new IOException("signal unavailable");
+            if (SignalLoader.unavailable()) throw new Rules.Unsent("signal unavailable");
             if (!SignalLoader.loaded() || !ChatSocket.isOpen()) return;
             byte[] plain = Content.msg(m);
             byte[] frame;
             if (Locations.atomic(c, () -> ChatDb.isGroup(c, m.convId))) {
-                if (Locations.atomic(c, () -> ChatDb.gone(c, m.convId))) throw new IOException("left");
+                if (Locations.atomic(c, () -> ChatDb.gone(c, m.convId))) throw new Rules.Unsent("left");
                 Groups.distribute(c, m.convId);
                 String me = Groups.myId(c);
                 frame = Frames.groupEnvelope(m.convId, m.clientMsgId, Locations.atomic(c, () -> Groups.encrypt(c, me, m.convId, plain, true)));

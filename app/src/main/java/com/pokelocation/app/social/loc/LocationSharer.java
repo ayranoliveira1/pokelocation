@@ -124,7 +124,7 @@ public final class LocationSharer {
                 gen = g;
             }
             if (!SignalLoader.loaded()) {
-                SignalLoader.start(app, null); // carrega na thread dele (login + compartilhar); segue no próximo tick
+                SignalLoader.ensure(app); // carrega na thread dele (login + compartilhar); segue no próximo tick
                 return;
             }
             if (myId == null) myId = Api.me(app).id;
@@ -196,7 +196,7 @@ public final class LocationSharer {
 
     private void startWs() {
         WsClient[] self = new WsClient[1];
-        self[0] = new WsClient(BuildConfig.SOCIAL_API.replaceFirst("^https", "wss") + "/v1/ws", () -> Session.access(app),
+        self[0] = new WsClient(BuildConfig.SOCIAL_API.replaceFirst("^https", "wss") + "/v1/ws", () -> Api.wsToken(app),
                 new WsClient.Listener() {
                     @Override public void onOpen() {
                         work.post(() -> {
@@ -214,6 +214,7 @@ public final class LocationSharer {
                         work.post(() -> {
                             if (ws == self[0]) open = false;
                             ChatSocket.unbind(self[0]);
+                            if (ws == self[0] && "unauthorized".equals(why.getMessage())) halt(); // refresh revogado
                         });
                     }
                 });
