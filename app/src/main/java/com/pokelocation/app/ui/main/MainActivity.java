@@ -41,6 +41,8 @@ import com.pokelocation.app.model.Folder;
 import com.pokelocation.app.model.MapOptions;
 import com.pokelocation.app.net.Elevation;
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.ui.AccountActivity;
+import com.pokelocation.app.social.ui.chat.ChatListActivity;
 import com.pokelocation.app.social.ui.FriendsActivity;
 import com.pokelocation.app.social.ui.LoginActivity;
 import com.pokelocation.app.ui.about.AboutActivity;
@@ -277,6 +279,11 @@ public final class MainActivity extends BaseActivity {
         } else if (id == R.id.main_nav_friends) {
             startActivity(Session.loggedIn(this) ? new Intent(this, FriendsActivity.class) : new Intent(this, LoginActivity.class)
                     .putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_FRIENDS));
+        } else if (id == R.id.main_nav_chats) {
+            startActivity(Session.loggedIn(this) ? new Intent(this, ChatListActivity.class) : new Intent(this, LoginActivity.class)
+                    .putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_CHATS));
+        } else if (id == R.id.main_nav_account) {
+            startActivity(AccountActivity.open(this));
         } else if (id == R.id.main_nav_gpx) {
             SelectPanel.show(this, getString(R.string.main_nav_gpx),
                     new CharSequence[]{getString(R.string.main_gpx_import), getString(R.string.main_gpx_export)},
@@ -587,7 +594,7 @@ public final class MainActivity extends BaseActivity {
     // ================================================================ intents de entrada (F23, F24, F97)
 
     private void handleIntent(Intent i) {
-        if (i == null) return;
+        if (i == null || !Intents.trusted(this, i)) return;
         String action = i.getAction();
         if (Intents.INT_START_AND_REPLAY.equals(action)) {
             // notificação de ação pendente (2ª via do replay em segundo plano, overlay/svc/Actions)
@@ -599,7 +606,23 @@ public final class MainActivity extends BaseActivity {
             if (r != null) startWith(r);
         } else if (Intent.ACTION_VIEW.equals(action) && i.getData() != null) {
             onViewLink(i);
+        } else if (Intents.INT_FILL_LOCATION.equals(action)) {
+            fillCoordinate(Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN), Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN));
         }
+    }
+
+    /** Só preenche: diferente do openCoordinate, nunca teleporta, nem com o overlay rodando. */
+    private void fillCoordinate(double lat, double lng) {
+        if (!Intents.validLatLng(lat, lng)) return;
+        if (mode == 1) setMode(0);
+        form.fillLocation(new Coord(lat, lng, 0), true);
+        cancel(elevTask);
+        Context app = getApplicationContext();
+        elevTask = Io.run(() -> Elevation.fetch(app, lat, lng), new Io.Callback<Double>() {
+            @Override public void onResult(Double alt) {
+                if (alt != null && !Double.isNaN(alt)) form.setAltitudeFor(lat, lng, alt);
+            }
+        });
     }
 
     private void onViewLink(Intent i) {
@@ -644,6 +667,7 @@ public final class MainActivity extends BaseActivity {
     /** F97: ação pública que chegou com o serviço parado. */
     private void onReplay(Intent i) {
         Intent svc = Intents.unwrapReplay(this, i);
+        if (svc == null) return;
         if (Intents.isOverlayRunning(this)) {
             Intents.sendToOverlay(this, svc);
             return;

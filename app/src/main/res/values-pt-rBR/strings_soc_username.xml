@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="soc_username">\@nome</string>
+    <string name="soc_username_title">Escolha seu \@nome</string>
+    <string name="soc_username_explain">Seus amigos te encontram e te veem pelo \@nome. Dá para trocar depois nas Configurações.</string>
+    <string name="soc_username_rules">3 a 20 caracteres: letras minúsculas, números, _ ou . Começa com letra.</string>
+    <string name="soc_username_save">Salvar</string>
+    <string name="soc_username_change">Trocar \@nome</string>
+    <string name="soc_username_needed">Escolha seu \@nome para criar a conta.</string>
+
+    <string name="soc_tab_friends">Amigos</string>
+    <string name="soc_tab_requests">Pedidos</string>
+    <string name="soc_tab_requests_n">Pedidos (%d)</string>
+    <string name="soc_add_target_hint">\@nome ou código</string>
+    <string name="soc_invalid_target">Digite um \@nome ou código de amigo válido.</string>
+    <string name="soc_my_username">Meu \@nome</string>
+    <string name="soc_share_username">Me adicione no PokeLocation! Meu \@nome: \@%s</string>
+    <string name="soc_no_friends_yet">Nenhum amigo ainda. Toque em + para adicionar.</string>
+    <string name="soc_no_requests">Nenhum pedido pendente.</string>
+    <string name="soc_online">online</string>
+    <string name="soc_seen">visto há %d s</string>
+    <string name="soc_more">Mais opções</string>
+
+    <string name="soc_err_username_taken">Esse \@nome já está em uso.</string>
+    <string name="soc_err_invalid_username">\@nome inválido. Use 3 a 20 letras minúsculas, números, _ ou . começando com letra.</string>
+    <string name="soc_err_username_reserved">Esse \@nome é reservado. Escolha outro.</string>
+    <string name="soc_err_username_limit">Você já trocou o \@nome muitas vezes hoje. Tente amanhã.</string>
+    <string name="soc_err_username_required">Escolha seu \@nome para continuar.</string>
+</resources>

@@ -3,6 +3,7 @@ package com.pokelocation.app.social.net;
 import android.content.Context;
 import android.net.Uri;
 
+import com.pokelocation.app.App;
 import com.pokelocation.app.BuildConfig;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.crypto.SignalLoader;
@@ -27,24 +28,24 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
- * REST do pokelocation-server (padrão de net/Elevation), conforme pokelocation-server/docs/api.md. BLOQUEANTE: fora da
- * main (Io para ações do usuário; rede periódica numa thread do social).
- * Único lugar que conhece o JSON do servidor (parse em métodos estáticos puros, testados em ApiTest).
- * 401 numa chamada autenticada → renova o access token uma vez e repete; refresh morto → limpa a sessão e lança
- * Error(401, "unauthorized").
+ * REST do pokelocation-server (pokelocation-server/docs/api.md); único lugar que conhece o JSON. Bloqueante: nunca na
+ * main. 401 numa chamada autenticada → renova o access uma vez e repete; refresh morto → limpa a sessão.
  */
 public final class Api {
     private static final int TIMEOUT_MS = 15_000, REFRESH_TIMEOUT_MS = 10_000;
-    /** Limite de leitura por chamada (A-api2): 64 KiB em geral; GET /v1/locations 256 KiB (o servidor corta em 192). */
-    static final int MAX_BODY = 64 * 1024, LOCATIONS_MAX_BODY = 256 * 1024;
+    /** 64 KiB em geral; GET /v1/locations até 256 KiB (o servidor corta em 192 KiB). */
+    static final int MAX_BODY = 64 * 1024, LOCATIONS_MAX_BODY = 256 * 1024, GROUPS_MAX_BODY = 192 * 1024;
     private static final Object TOKEN_LOCK = new Object();
     private static final String CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+    private static final Pattern USERNAME = Pattern.compile("[a-z][a-z0-9_.]{2,19}");
     private static final char[] B64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".toCharArray();
     private static final char[] B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
 
-    /** Erro do servidor. code = campo "error" do JSON ("unknown" se não houver); http = status. */
+    /** code = campo "error" do servidor ("unknown" se não veio o JSON esperado). */
     public static final class Error extends IOException {
         public final int http;
         public final String code;
@@ -56,14 +57,14 @@ public final class Api {
         }
     }
 
-    public static final class Me { public String id, email, friendCode; }
-    public static final class Friend { public String userId, friendCode; }
-    public static final class Request { public String id, userId, friendCode; public long createdAt; /* epoch ms */ }
+    public static final class Me { public String id, email, friendCode, username; }
+    public static final class Friend { public String userId, friendCode, username, label; }
+    public static final class Request { public String id, userId, friendCode, username; public long createdAt; }
     public static final class Friends { public List<Friend> accepted; public List<Request> incoming, outgoing; }
 
-    /** Chave pública do Signal para o servidor. sig = assinatura pela identity (null nas one-time EC). */
+    /** sig = assinatura pela identity; null nas one-time EC. */
     public static final class PreKey { public int id; public byte[] pub, sig; }
-    /** Pacote de chaves públicas do aparelho (A3). ec/kyber = one-time ainda não enviadas. */
+    /** ec/kyber = one-time ainda não enviadas. */
     public static final class KeyBundle {
         public int registrationId;
         public byte[] identity;
@@ -73,17 +74,26 @@ public final class Api {
 
     private Api() {}
 
-    // ---- conta ----
+    public static void register(Context c, String email, String password, String username) throws IOException {
+        store(c, http(c, "POST", "/v1/auth/register", null, obj("email", email, "password", password, "username", username)));
+        if (username == null) return;
+        Session.username(c, normalizeUsername(username));
+        SignalLoader.kick(c); // as chaves e o FCM levaram 403 até aqui
+    }
 
-    public static void register(Context c, String email, String password) throws IOException {
-        store(c, http(c, "POST", "/v1/auth/register", null, obj("email", email, "password", password)));
+    public static void register(Context c, String email, String password) throws IOException { register(c, email, password, null); }
+
+    public static void setUsername(Context c, String username) throws IOException {
+        call(c, "PUT", "/v1/me/username", obj("username", username));
+        Session.username(c, normalizeUsername(username));
+        SignalLoader.kick(c); // as chaves e o FCM levaram 403 até aqui
     }
 
     public static void login(Context c, String email, String password) throws IOException {
         store(c, http(c, "POST", "/v1/auth/login", null, obj("email", email, "password", password)));
     }
 
-    /** Gera PKCE (verifier S256) + state, guarda, devolve a URL para abrir no navegador (ACTION_VIEW). Bloqueia (Keystore): chamar no Io. */
+    /** PKCE (S256) e state vão selados pelo Vault (Keystore), por isso bloqueia: fora da main. Devolve a URL do navegador. */
     public static Uri googleStart(Context c, String returnTo) throws IOException {
         String verifier = random(32), state = random(16);
         Session.savePkce(c, verifier, state, returnTo);
@@ -94,7 +104,6 @@ public final class Api {
                 .build();
     }
 
-    /** Recebe o Uri pokelocationauth://callback?code=…&state=…; confere state, troca o code, grava a sessão. */
     public static void googleFinish(Context c, Uri callback) throws IOException {
         String err = callback.getQueryParameter("error"), code = callback.getQueryParameter("code");
         // state antes de consumir: um callback forjado não aborta o login pendente
@@ -108,6 +117,10 @@ public final class Api {
     /** Revoga no servidor (melhor esforço) e SEMPRE limpa a sessão local. */
     public static void logout(Context c) {
         try {
+            putFcmToken(c, null); // enquanto o access vale: este aparelho para de receber pings desta conta
+        } catch (Exception ignored) {
+        }
+        try {
             String r = Session.refresh(c);
             if (r != null) http(c, "POST", "/v1/auth/logout", null, obj("refresh_token", r));
         } catch (Exception ignored) {
@@ -118,13 +131,15 @@ public final class Api {
 
     public static Me me(Context c) throws IOException {
         try {
-            return parseMe(call(c, "GET", "/v1/me", null));
+            Me m = parseMe(call(c, "GET", "/v1/me", null));
+            boolean had = Session.username(c) != null;
+            Session.username(c, m.username);
+            if (!had && m.username != null) SignalLoader.kick(c); // as chaves esperavam o @nome
+            return m;
         } catch (JSONException e) {
             throw new IOException("bad response"); // sem causa: a mensagem do JSONTokener traz o corpo
         }
     }
-
-    // ---- amigos ----
 
     public static Friends friends(Context c) throws IOException {
         try {
@@ -134,9 +149,22 @@ public final class Api {
         }
     }
 
-    /** code já normalizado (normalizeCode). */
-    public static void requestFriend(Context c, String code) throws IOException {
-        call(c, "POST", "/v1/friends/requests", obj("code", code));
+    public static void requestFriend(Context c, String usernameOrCode) throws IOException {
+        List<JSONObject> tries;
+        try {
+            tries = friendRequests(usernameOrCode);
+        } catch (JSONException e) {
+            throw new IOException("bad request");
+        }
+        if (tries.isEmpty()) throw new Error(404, "code_not_found");
+        for (int i = 0; ; i++) {
+            try {
+                call(c, "POST", "/v1/friends/requests", tries.get(i));
+                return;
+            } catch (Error e) {
+                if (!"code_not_found".equals(e.code) || i == tries.size() - 1) throw e;
+            }
+        }
     }
 
     public static void accept(Context c, String requestId) throws IOException {
@@ -159,14 +187,83 @@ public final class Api {
         call(c, "DELETE", "/v1/blocks/" + Uri.encode(userId), null);
     }
 
-    /** Pacote de chaves públicas de um amigo (para abrir sessão 1:1). preKey = one-time EC, null se esgotadas. */
+    /** preKey = one-time EC; null quando acabaram no servidor. */
     public static final class Bundle { public int registrationId; public byte[] identity; public PreKey signed, kyber, preKey; }
-    /** Envelope 1:1 pendente na fila do servidor. */
-    public static final class Envelope { public String id, from, clientMsgId; public byte[] payload; }
-    /** Última posição cifrada de um amigo (sender key loc:{userId}). */
-    public static final class Location { public String userId, friendCode; public byte[] payload; }
+    public static final class Envelope { public String id, from, clientMsgId, groupId; public byte[] payload; }
+    public static final class Group { public String id, ownerId; public List<Friend> members; public long createdAt; }
 
-    // ---- localização e envelopes (A8). JSON PROVISÓRIO (plano S6/S7, sem api.md): só esta classe muda. ----
+    public static String createGroup(Context c, List<String> members) throws IOException {
+        try {
+            return new JSONObject(call(c, "POST", "/v1/groups", new JSONObject().put("members", new JSONArray(members))))
+                    .getString("id");
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
+    public static List<Group> groups(Context c) throws IOException {
+        try {
+            return parseGroups(call(c, "GET", "/v1/groups", null, GROUPS_MAX_BODY));
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
+    public static Group group(Context c, String groupId) throws IOException {
+        try {
+            return parseGroup(new JSONObject(call(c, "GET", "/v1/groups/" + Uri.encode(groupId), null)));
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
+    public static void addGroupMember(Context c, String groupId, String userId) throws IOException {
+        call(c, "POST", "/v1/groups/" + Uri.encode(groupId) + "/members", obj("user_id", userId));
+    }
+
+    public static void removeGroupMember(Context c, String groupId, String userId) throws IOException {
+        call(c, "DELETE", "/v1/groups/" + Uri.encode(groupId) + "/members/" + Uri.encode(userId), null);
+    }
+
+    static List<Group> parseGroups(String body) throws JSONException {
+        JSONArray a = new JSONObject(body).optJSONArray("groups");
+        int n = a == null ? 0 : a.length();
+        List<Group> out = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) out.add(parseGroup(a.getJSONObject(i)));
+        return out;
+    }
+
+    private static Group parseGroup(JSONObject o) throws JSONException {
+        Group g = new Group();
+        g.id = o.getString("id");
+        g.ownerId = optString(o, "owner_id");
+        g.createdAt = o.optLong("created_at");
+        JSONArray m = o.optJSONArray("members");
+        int n = m == null ? 0 : m.length();
+        g.members = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            JSONObject j = m.getJSONObject(i);
+            Friend f = new Friend();
+            f.userId = j.getString("user_id");
+            f.username = optString(j, "username");
+            g.members.add(f);
+        }
+        return g;
+    }
+    public static final class Location { public String userId, friendCode, username; public byte[] payload; }
+
+    public static void putFcmToken(Context c, String token) throws IOException {
+        try {
+            call(c, "PUT", "/v1/devices/fcm", fcmJson(token));
+        } catch (JSONException e) {
+            throw new IOException("bad request");
+        }
+    }
+
+    /** null = parar de receber pings; vai como null explícito (o put(k, null) do org.json apagaria a chave). */
+    static JSONObject fcmJson(String token) throws JSONException {
+        return new JSONObject().put("token", token == null ? JSONObject.NULL : token);
+    }
 
     public static Bundle keyBundle(Context c, String userId) throws IOException {
         try {
@@ -176,7 +273,7 @@ public final class Api {
         }
     }
 
-    /** Fila de envelopes 1:1 pendentes (1ª página; o resto vem nas próximas chamadas, depois do ack). */
+    /** Uma página; a próxima vem depois do ack. */
     public static List<Envelope> envelopes(Context c) throws IOException {
         try {
             return parseEnvelopes(call(c, "GET", "/v1/envelopes", null));
@@ -185,7 +282,6 @@ public final class Api {
         }
     }
 
-    /** Apaga do servidor os envelopes já processados. */
     public static void ack(Context c, List<String> ids) throws IOException {
         if (ids.isEmpty()) return;
         try {
@@ -195,7 +291,6 @@ public final class Api {
         }
     }
 
-    /** Última posição cifrada dos amigos online (MGET no Redis; some em 60 s). */
     public static List<Location> locations(Context c) throws IOException {
         try {
             return parseLocations(call(c, "GET", "/v1/locations", null, LOCATIONS_MAX_BODY));
@@ -234,6 +329,7 @@ public final class Api {
             e.id = j.getString("id");
             e.from = j.getString("from");
             e.clientMsgId = j.getString("client_msg_id");
+            e.groupId = optString(j, "group_id");
             e.payload = unb64(j.getString("payload"));
             out.add(e);
         }
@@ -248,12 +344,29 @@ public final class Api {
             JSONObject j = a.getJSONObject(i);
             Location l = new Location();
             l.userId = j.getString("user_id");
-            l.friendCode = j.isNull("friend_code") ? null : j.getString("friend_code");
+            l.friendCode = optString(j, "friend_code");
+            l.username = optString(j, "username");
             l.payload = unb64(j.getString("payload"));
             out.add(l);
         }
         return out;
     }
+
+    /** "sub" do access token (o meu id), sem verificar a assinatura: só identifica, quem valida é o servidor. */
+    public static String jwtSubject(String jwt) {
+        if (jwt == null) return null;
+        String[] parts = jwt.split("\\.");
+        if (parts.length != 3) return null;
+        try {
+            byte[] json = unb64(parts[1].replace('-', '+').replace('_', '/'));
+            return optString(new JSONObject(new String(json, StandardCharsets.UTF_8)), "sub");
+        } catch (JSONException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /** Ausente ou null → null (o optString(k, null) do Android devolve "null"). */
+    private static String optString(JSONObject o, String k) throws JSONException { return o.isNull(k) ? null : o.getString(k); }
 
     /** Base64 padrão (com ou sem '='); IllegalArgumentException se tiver caractere fora do alfabeto. */
     static byte[] unb64(String s) {
@@ -276,8 +389,6 @@ public final class Api {
         return out;
     }
 
-    // ---- chaves do Signal (A3). JSON provisório até o docs/api.md do servidor; só esta classe muda. ----
-
     public static void putKeys(Context c, KeyBundle k) throws IOException {
         try {
             call(c, "PUT", "/v1/keys", keysJson(k));
@@ -286,7 +397,7 @@ public final class Api {
         }
     }
 
-    /** {ec, kyber}: one-time prekeys que o servidor ainda tem deste aparelho. */
+    /** {ec, kyber}: one-time que o servidor ainda tem deste aparelho. */
     public static int[] keyCount(Context c) throws IOException {
         try {
             return parseKeyCount(call(c, "GET", "/v1/keys/count", null));
@@ -295,7 +406,25 @@ public final class Api {
         }
     }
 
-    /** Crockford base32, 8 chars: maiúsculas, I/L→1, O→0, remove espaços e '-'. null se inválido. Puro, sem rede. */
+    public static String normalizeUsername(String raw) {
+        if (raw == null) return null;
+        String s = raw.trim();
+        if (s.startsWith("@")) s = s.substring(1);
+        s = s.toLowerCase(Locale.ROOT);
+        return USERNAME.matcher(s).matches() && !s.contains("..") && !s.endsWith(".") ? s : null;
+    }
+
+    static List<JSONObject> friendRequests(String raw) throws JSONException {
+        List<JSONObject> out = new ArrayList<>(2);
+        if (raw == null) return out;
+        String t = raw.trim();
+        String code = t.startsWith("@") ? null : normalizeCode(t), user = normalizeUsername(t);
+        if (code != null) out.add(new JSONObject().put("code", code));
+        if (user != null) out.add(new JSONObject().put("username", user));
+        return out;
+    }
+
+    /** Crockford base32, 8 chars: maiúsculas, I/L→1, O→0, sem espaços e '-'. null se inválido. */
     public static String normalizeCode(String raw) {
         if (raw == null) return null;
         StringBuilder sb = new StringBuilder(8);
@@ -310,20 +439,43 @@ public final class Api {
         return sb.length() == 8 ? sb.toString() : null;
     }
 
-    // ---- transporte ----
+    /**
+     * O WS só apresenta o token no Auth: vencido, o servidor fecha (1008) e a reconexão repetiria o mesmo. null = sessão
+     * morta (refresh revogado).
+     */
+    public static String wsToken(Context c) throws IOException {
+        String a = Session.access(c);
+        if (a == null || !expiresSoon(a, System.currentTimeMillis())) return a;
+        try {
+            return renew(c, a);
+        } catch (Error e) {
+            if (e.http == 401) return null;
+            throw e;
+        }
+    }
 
-    /** Linha de tokens no social.db (sob o lock). */
+    static boolean expiresSoon(String jwt, long now) {
+        String[] parts = jwt.split("\\.");
+        if (parts.length != 3) return false;
+        try {
+            JSONObject o = new JSONObject(new String(unb64(parts[1].replace('-', '+').replace('_', '/')), StandardCharsets.UTF_8));
+            return o.has("exp") && o.getLong("exp") * 1000 - now < 60_000;
+        } catch (JSONException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    /** Linha de tokens no social.db; usar com o token.lock. */
     interface Tokens {
         String[] read() throws Exception;
         void save(String access, String refresh) throws Exception;
     }
 
-    /** POST /v1/auth/refresh → {access, refresh}. */
     interface Refresher { String[] refresh(String refreshToken) throws IOException; }
 
     /**
-     * Puro (ApiTest), já com o lock entre processos: RELÊ do banco; se outro processo já renovou (access diferente do
-     * velho), usa o novo sem chamar /refresh, porque reusar o refresh revoga a família. null = sessão morta.
+     * Já com o token.lock: relê do banco; se outro processo já renovou (access diferente do velho), usa o novo sem
+     * chamar /refresh, porque reusar o refresh revoga a família. null = sessão morta.
      */
     static String renewLocked(Tokens t, String stale, Refresher r) throws Exception {
         String[] cur = t.read();
@@ -341,7 +493,6 @@ public final class Api {
         return fresh[0];
     }
 
-    /** Chamada autenticada com renovação única em 401. */
     private static String call(Context c, String method, String path, JSONObject body) throws IOException {
         return call(c, method, path, body, MAX_BODY);
     }
@@ -363,17 +514,16 @@ public final class Api {
     }
 
     /**
-     * Renovação sob files/token.lock (decisão do maestro), SEPARADO do social.lock: um /refresh lento (até 10 s) nunca
-     * segura o estado Signal. Principal e :overlay nunca gastam o mesmo refresh (renewLocked relê do banco). Antes de
-     * reler, confere a geração no social.lock (relance curto): sem isso, um processo com o arquivo velho aberto leria
-     * tokens fantasmas e um 401 deles limparia a sessão nova. Ordem sempre token → social (nada pega o token.lock
-     * dentro do social.lock). Sessão morta → limpa FORA dos locks (o clear apaga o social.db).
+     * Sob files/token.lock, separado do social.lock: um /refresh lento (até 10 s) não segura o estado Signal. Antes de
+     * reler os tokens passa pelo social.lock para conferir a geração: um processo com o arquivo velho aberto leria
+     * tokens fantasmas, e o 401 deles limparia a sessão nova. Ordem sempre token → social. Sessão morta → limpa fora
+     * dos locks (o clear apaga o social.db).
      */
     private static String renew(Context c, String stale) throws IOException {
         String fresh;
         try {
             fresh = tokenLocked(new File(c.getFilesDir(), "token.lock"), () -> {
-                SocialDb.locked(c, () -> null); // geração: esquece caches/arquivo velhos; logout lá → IllegalStateException
+                SocialDb.locked(c, () -> null); // geração; logout no outro processo → IllegalStateException
                 return renewLocked(new Tokens() {
                     @Override public String[] read() throws IOException { return Session.readTokens(c); }
 
@@ -392,16 +542,16 @@ public final class Api {
         } catch (IOException e) {
             throw e;
         } catch (IllegalStateException e) {
-            fresh = null; // o outro processo fez logout (SocialDb sem o arquivo)
+            fresh = null; // logout no outro processo
         } catch (Exception e) {
             throw new IOException("renew", e);
         }
         if (fresh == null) throw unauthorized(c);
-        SignalLoader.kick(c); // refresh = checagem periódica das prekeys (A3)
+        SignalLoader.kick(c); // cada refresh também confere se faltam prekeys
         return fresh;
     }
 
-    /** files/token.lock: exclusivo entre processos (FileLock) e entre threads daqui (monitor). Não reentrante. */
+    /** Exclusivo entre processos (FileLock) e entre threads (monitor); não reentrante. */
     static <T> T tokenLocked(File lock, SocialDb.Op<T> op) throws Exception {
         synchronized (TOKEN_LOCK) {
             try (RandomAccessFile f = new RandomAccessFile(lock, "rw"); FileLock ignored = f.getChannel().lock()) {
@@ -411,9 +561,8 @@ public final class Api {
     }
 
     /**
-     * Renova agora, mesmo com o access ainda válido (o JWT é stateless: vale até 15 min depois de logout/revogação).
-     * Para o WS: Error "unauthorized" + 1008 (logout, reuso do refresh, vínculo Google) → refresh revogado → 401 →
-     * quem chama para, sem laço de reconexão; refresh bom (access só venceu) → token novo para a reconexão.
+     * Renova mesmo com o access ainda válido: o JWT vale até 15 min depois de logout/revogação. Refresh revogado → 401,
+     * e quem chama para em vez de reconectar em laço.
      */
     public static void renewNow(Context c) throws IOException {
         String a = Session.access(c);
@@ -426,7 +575,6 @@ public final class Api {
         return new Error(401, "unauthorized");
     }
 
-    /** Login: grava os tokens da resposta. */
     private static void store(Context c, String body) throws IOException {
         String[] t;
         try {
@@ -437,7 +585,6 @@ public final class Api {
         Session.save(c, t[0], t[1]);
     }
 
-    /** Uma ida ao servidor; status ≥ 400 vira Error. Devolve o corpo ("" se vazio). */
     private static String http(Context c, String method, String path, String token, JSONObject body) throws IOException {
         return http(c, method, path, token, body, TIMEOUT_MS, MAX_BODY);
     }
@@ -454,6 +601,8 @@ public final class Api {
             con.setRequestMethod(method);
             con.setRequestProperty("User-Agent", c.getPackageName() + "/" + BuildConfig.VERSION_NAME);
             con.setRequestProperty("Accept", "application/json");
+            // :overlay: sem conexão parada no pool (TLS + buffers) depois de uma chamada avulsa
+            if (App.process() != App.PROC_MAIN) con.setRequestProperty("Connection", "close");
             if (token != null) con.setRequestProperty("Authorization", "Bearer " + token);
             if (body != null || "POST".equals(method)) {
                 byte[] b = body == null ? new byte[0] : body.toString().getBytes(StandardCharsets.UTF_8);
@@ -476,7 +625,6 @@ public final class Api {
         }
     }
 
-    /** Corpo até max bytes (o buffer cresce com o real; nada pré-alocado). */
     static String read(InputStream in, int max) throws IOException {
         if (in == null) return "";
         ByteArrayOutputStream bo = new ByteArrayOutputStream(256);
@@ -507,8 +655,6 @@ public final class Api {
         return b64url(b);
     }
 
-    // ---- puros (ApiTest) ----
-
     /** PKCE S256: base64url(SHA-256(ASCII(verifier))), sem padding. */
     static String challenge(String verifier) {
         try {
@@ -534,7 +680,7 @@ public final class Api {
         return sb.toString();
     }
 
-    /** api.md §4: até 100 por lista por PUT /v1/keys. */
+    /** api.md §4: até 100 por lista em cada PUT /v1/keys. */
     public static final int MAX_KEYS_PER_PUT = 100;
 
     static JSONObject keysJson(KeyBundle k) throws JSONException {
@@ -561,7 +707,6 @@ public final class Api {
         return new int[]{o.getInt("ec"), o.getInt("kyber")};
     }
 
-    /** {access_token, refresh_token}; JSONException se faltar. */
     static String[] tokens(String body) throws JSONException {
         JSONObject o = new JSONObject(body);
         return new String[]{o.getString("access_token"), o.getString("refresh_token")};
@@ -573,6 +718,7 @@ public final class Api {
         m.id = o.getString("id");
         m.email = o.isNull("email") ? null : o.getString("email"); // optString(k, null) do Android devolve "null"
         m.friendCode = o.getString("friend_code");
+        m.username = optString(o, "username");
         return m;
     }
 
@@ -587,6 +733,7 @@ public final class Api {
             Friend x = new Friend();
             x.userId = j.getString("user_id");
             x.friendCode = j.getString("friend_code");
+            x.username = optString(j, "username");
             f.accepted.add(x);
         }
         f.incoming = requests(o.optJSONArray("incoming"));
@@ -603,13 +750,13 @@ public final class Api {
             r.id = j.getString("id");
             r.userId = j.getString("user_id");
             r.friendCode = j.getString("friend_code");
+            r.username = optString(j, "username");
             r.createdAt = j.optLong("created_at");
             out.add(r);
         }
         return out;
     }
 
-    /** Campo "error" do corpo; "unknown" se o corpo não for o JSON esperado. */
     static String errorCode(String body) {
         try {
             return new JSONObject(body).getString("error");

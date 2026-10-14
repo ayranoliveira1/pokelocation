@@ -12,6 +12,9 @@ import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.geo.Geo;
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.chat.ChatSocket;
+import com.pokelocation.app.social.chat.Inbox;
+import com.pokelocation.app.social.chat.Live;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.store.SocialDb;
@@ -26,13 +29,11 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * A8: compartilha minha posição com os amigos, no :overlay (criado/destruído pelo OverlayService; o motor não muda).
- * A cada 5 s a main só lê engine.lat()/lng() e entrega à thread "pl-loc", que decide: social.db existe (senão nada
- * social é carregado) → "Compartilhar" ligado (senão LocationOff na transição e fecha o WS) → sessão viva no banco
- * (Session.access: geração nova/logout → para tudo; o :overlay nunca limpa sessão) → libsignal carregada (só aqui,
- * com login + compartilhar) → WS aberto → moveu > 5 m → cifra com a sender key loc:{meuId} sob o SocialDb.atomic e
- * envia. A SKDM vai por envelope 1:1 aos amigos que ainda não a receberam nesta sessão do joystick. Rede sempre fora
- * do lock; nada disto roda no Io.
+ * Compartilha minha posição com os amigos, no :overlay; o OverlayService só o cria com login (o motor não muda).
+ * A cada 5 s a main só lê lat/lng e entrega à "pl-loc", que segue nesta ordem: sem social.db → nada; "Compartilhar"
+ * desligado → LocationOff na transição e, sem live no chat, fecha o WS; sem sessão no banco (logout/geração nova) →
+ * para, nunca limpa; lib carregada; WS aberto; lives do chat; moveu > 5 m → cifra sob o SocialDb.atomic e envia. Rede
+ * sempre fora do lock.
  */
 public final class LocationSharer {
     private static final String TAG = "LocationSharer";
@@ -52,10 +53,13 @@ public final class LocationSharer {
     private boolean sharing, open;
     private double lastLat = Double.NaN, lastLng = Double.NaN;
     private int ticks;
+    private boolean dbHeld;
+    private long gen = -1;
+    private final Map<String, double[]> liveSent = new HashMap<>();
     // ponytail: SKDM 1 vez por amigo por sessão do joystick (em memória), confirmada pelo Ack S→C do servidor (gravou:
     // entrega garantida pela fila dele); sem Ack até cair, reenvia na próxima conexão.
     // ponytail: a sender key loc:{meuId} não rotaciona ao remover/bloquear um amigo (ele guarda a chave; hoje só o
-    // servidor deixa de entregar). Rotacionar = nova distribuição + SKDM aos que ficam (o chat/grupos do subprojeto 3).
+    // servidor deixa de entregar). Rotacionar = nova distribuição + SKDM aos que ficam (com o chat/grupos).
     private final Set<String> skdmSent = new HashSet<>();
     private final Map<String, String> skdmPending = new HashMap<>(); // client_msg_id → amigo, até o Ack S→C
 
@@ -99,27 +103,45 @@ public final class LocationSharer {
                 halt();
                 return;
             }
-            if (!Prefs.shareLocation(app)) { // MULTI_PROCESS: lido aqui, fora da main
-                off();
+            boolean share = Prefs.shareLocation(app); // MULTI_PROCESS: lido aqui, fora da main
+            boolean live = Live.maybeActive(app, System.currentTimeMillis()), chat = ChatSocket.overlayWsNeeded(app);
+            if (!share) shareOff(live || chat);
+            if (!share && !live && !chat) {
+                releaseDb();
                 return;
             }
             if (Session.access(app) == null) { // logout/geração nova sem sessão: para em 1 tick
                 halt();
                 return;
             }
+            if (!dbHeld) {
+                SocialDb.use();
+                dbHeld = true;
+            }
+            long g = SocialDb.seenGeneration();
+            if (g != gen) { // logout + login entre dois ticks: nada da conta anterior segue
+                halt();
+                gen = g;
+            }
             if (!SignalLoader.loaded()) {
-                SignalLoader.start(app, null); // carrega na thread dele (login + compartilhar); segue no próximo tick
+                SignalLoader.ensure(app); // carrega na thread dele (login + compartilhar); segue no próximo tick
                 return;
             }
             if (myId == null) myId = Api.me(app).id;
-            if (ws == null) startWs();
-            sharing = true;
+            if (ws == null) {
+                if (Session.username(app) == null) return; // sem @nome o Auth é recusado
+                startWs();
+            }
+            sharing = share;
             if (!open) return;
+            WsClient w = ws;
+            if (live) Live.send(app, myId, lat, lng, liveSent, w::send);
+            if (!share) return;
             if (ticks++ % FRIENDS_EVERY == 0) distribute();
             if (!moved(lastLat, lastLng, lat, lng)) return;
             String me = myId;
             byte[] p = Locations.atomic(app, () -> Locations.encrypt(app, me, lat, lng, System.currentTimeMillis()));
-            if (ws.send(Frames.location(p))) {
+            if (w.send(Frames.location(p))) {
                 lastLat = lat;
                 lastLng = lng;
             }
@@ -132,35 +154,49 @@ public final class LocationSharer {
     }
 
     /**
-     * Compartilhar desligado: avisa os amigos uma vez (LocationOff sai antes do close) e fecha o WS. Desligado durante
-     * uma reconexão (WS fechado), o aviso não sai: a última posição some sozinha no servidor em até 60 s (TTL).
+     * Compartilhar desligado: avisa os amigos uma vez (LocationOff sai antes do close) e fecha o WS, que fica aberto só
+     * se há live no chat. Desligado durante uma reconexão (WS fechado), o aviso não sai: a última posição some sozinha no
+     * servidor em até 60 s (TTL).
      */
-    private void off() {
+    private void shareOff(boolean live) {
         if (sharing && ws != null && open) ws.send(Frames.locationOff());
         sharing = false;
-        stopWs();
+        lastLat = lastLng = Double.NaN;
+        if (!live) stopWs();
     }
 
     /** Sem sessão (ou stop): fecha tudo e esquece o desta sessão. A libsignal fica carregada (não descarrega). */
     private void halt() {
         sharing = false;
         stopWs();
+        releaseDb();
         myId = null;
         skdmSent.clear();
         skdmPending.clear();
     }
 
+    /** Só entre ticks: o painel do chat e este dividem a conexão do :overlay. */
+    private void releaseDb() {
+        if (!dbHeld) return;
+        dbHeld = false;
+        SocialDb.release();
+    }
+
     private void stopWs() {
-        if (ws != null) ws.stop();
+        if (ws != null) {
+            ChatSocket.unbind(ws);
+            ws.stop();
+        }
         ws = null;
         open = false;
         lastLat = lastLng = Double.NaN;
         ticks = 0;
+        liveSent.clear();
     }
 
     private void startWs() {
         WsClient[] self = new WsClient[1];
-        self[0] = new WsClient(BuildConfig.SOCIAL_API.replaceFirst("^https", "wss") + "/v1/ws", () -> Session.access(app),
+        self[0] = new WsClient(BuildConfig.SOCIAL_API.replaceFirst("^https", "wss") + "/v1/ws", () -> Api.wsToken(app),
                 new WsClient.Listener() {
                     @Override public void onOpen() {
                         work.post(() -> {
@@ -168,6 +204,7 @@ public final class LocationSharer {
                             open = true;
                             ticks = 0; // distribui a SKDM já no próximo tick
                             skdmPending.clear(); // sem Ack na conexão velha: manda de novo
+                            ChatSocket.bind(app, self[0], work);
                         });
                     }
 
@@ -176,6 +213,8 @@ public final class LocationSharer {
                     @Override public void onClosed(IOException why) {
                         work.post(() -> {
                             if (ws == self[0]) open = false;
+                            ChatSocket.unbind(self[0]);
+                            if (ws == self[0] && "unauthorized".equals(why.getMessage())) halt(); // refresh revogado
                         });
                     }
                 });
@@ -186,24 +225,27 @@ public final class LocationSharer {
     private void frame(WsClient from, Frames.Frame f) {
         if (ws != from) return;
         try {
-            if (f.type == Frames.ENVELOPE) { // SKDM de um amigo online: guarda a sender key dele e confirma
+            if (f.type == Frames.ENVELOPE || f.type == Frames.GROUP_ENVELOPE) {
+                // com algum WS aberto o servidor não manda ping FCM: quem recebe grava e notifica
                 Throwable fail = null;
+                Inbox.Result got = null;
                 try {
-                    Locations.atomic(app, () -> {
-                        Locations.receive(app, f.peer, f.msgId, f.payload);
-                        return null;
-                    });
+                    got = Locations.atomic(app, () -> Inbox.receive(app, f.peer, f.groupId, f.msgId, f.payload));
                 } catch (Api.Error e) {
                     throw e; // 401: sem ack; volta na próxima entrega
                 } catch (IOException e) {
                     fail = e;
                 }
-                // A8b: Ack só se processado ou ilegível para sempre; transitório/kind não tratado → o servidor reentrega
                 if (Locations.ack(fail)) ws.send(Frames.ack(f.peer, f.msgId));
                 else Log.w(TAG, "envelope sem ack: " + Locations.rootName(fail));
+                WsClient w = ws;
+                if (got != null) Inbox.deliver(app, got, frame -> w != null && w.send(frame));
             } else if (f.type == Frames.ACK) { // S→C (api.md §6): o servidor gravou meu envelope
                 String to = skdmPending.remove(f.msgId);
                 if (to != null) skdmSent.add(to);
+                else ChatSocket.acked(f.msgId);
+            } else if (f.type == Frames.ERROR && "username_required".equals(f.code)) {
+                halt();
             } else if (f.type == Frames.ERROR && "unauthorized".equals(f.code)) {
                 // logout/reuso/vínculo Google derrubam o WS: renova já (não só se o JWT venceu); refresh revogado → 401 →
                 // halt sem laço; refresh bom → a reconexão usa o token novo
@@ -239,7 +281,7 @@ public final class LocationSharer {
         }
     }
 
-    /** Pura (LocationsTest): manda se nada foi enviado ainda ou se andou mais de 5 m. */
+    /** Manda se nada foi enviado ainda ou se andou mais de 5 m. */
     static boolean moved(double lat0, double lng0, double lat, double lng) {
         return Double.isNaN(lat0) || Geo.distance(lat0, lng0, lat, lng) > MIN_MOVE_M;
     }

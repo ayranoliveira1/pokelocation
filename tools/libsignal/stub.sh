@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Gera o stub vazio libsignal_jni.so por ABI em app/src/main/jniLibs (spec §3.1).
+# Gera o stub vazio libsignal_jni.so por ABI em app/src/main/jniLibs.
 # Native.loadLibrary("signal_jni") carrega o stub; os métodos JNI resolvem na lib real já carregada via System.load.
 set -e
 P=${0:a:h:h:h}

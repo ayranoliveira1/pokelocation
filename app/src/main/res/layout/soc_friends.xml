@@ -13,93 +13,53 @@
 
     <include android:id="@+id/soc_signal" layout="@layout/soc_signal" />
 
-    <com.pokelocation.app.ui.base.StateView
-        android:id="@+id/soc_friends_state"
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/soc_friends_tabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
-        <ScrollView
+        <com.pokelocation.app.ui.base.StateView
+            android:id="@+id/soc_friends_state"
             android:layout_width="match_parent"
             android:layout_height="match_parent">
-            <LinearLayout
+            <ScrollView
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingBottom="@dimen/gap_large">
-
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:paddingStart="@dimen/gap_large" android:paddingTop="24dp" android:paddingEnd="@dimen/gap_large"
-                    android:paddingBottom="@dimen/gap" android:textAppearance="?attr/textAppearanceTitleSmall"
-                    android:textColor="?attr/colorPrimary" android:text="@string/soc_my_code" />
+                android:layout_height="match_parent">
+                <!-- paddingBottom: a última linha não fica atrás do FAB -->
                 <LinearLayout
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:gravity="center_vertical" android:orientation="horizontal"
-                    android:paddingStart="@dimen/gap_large" android:paddingEnd="@dimen/gap">
-                    <TextView android:id="@+id/soc_friends_code"
-                        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                        android:fontFamily="monospace" android:textColor="?attr/colorOnSurface"
-                        android:textIsSelectable="true" android:textSize="28sp" android:textStyle="bold" />
-                    <ImageButton android:id="@+id/soc_friends_copy"
-                        android:layout_width="48dp" android:layout_height="48dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/copy" android:src="@drawable/ic_copy"
-                        android:tint="?attr/colorPrimary" />
-                    <ImageButton android:id="@+id/soc_friends_share"
-                        android:layout_width="48dp" android:layout_height="48dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/share" android:src="@drawable/ic_share"
-                        android:tint="?attr/colorPrimary" />
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingBottom="88dp">
+                    <TextView android:id="@+id/soc_friends_empty"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:padding="@dimen/gap_large" android:visibility="gone"
+                        android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" />
+                    <LinearLayout android:id="@+id/soc_friends_list"
+                        android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+                    <TextView android:id="@+id/soc_friends_outgoing_h"
+                        android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:paddingStart="@dimen/gap_large" android:paddingTop="24dp" android:paddingEnd="@dimen/gap_large"
+                        android:paddingBottom="@dimen/gap" android:text="@string/soc_outgoing"
+                        android:textAppearance="?attr/textAppearanceTitleSmall" android:textColor="?attr/colorPrimary"
+                        android:visibility="gone" />
+                    <LinearLayout android:id="@+id/soc_friends_outgoing"
+                        android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
                 </LinearLayout>
+            </ScrollView>
+        </com.pokelocation.app.ui.base.StateView>
 
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:paddingStart="@dimen/gap_large" android:paddingTop="24dp" android:paddingEnd="@dimen/gap_large"
-                    android:paddingBottom="@dimen/gap" android:textAppearance="?attr/textAppearanceTitleSmall"
-                    android:textColor="?attr/colorPrimary" android:text="@string/soc_add_friend" />
-                <LinearLayout
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:gravity="center_vertical" android:orientation="horizontal"
-                    android:paddingStart="@dimen/gap_large" android:paddingEnd="@dimen/gap_large">
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-                        android:hint="@string/soc_code_hint">
-                        <com.google.android.material.textfield.TextInputEditText android:id="@+id/soc_friends_input"
-                            android:layout_width="match_parent" android:layout_height="wrap_content"
-                            android:fontFamily="monospace" android:imeOptions="actionDone"
-                            android:importantForAutofill="no" android:inputType="textCapCharacters|textNoSuggestions"
-                            android:maxLength="16" android:maxLines="1" />
-                    </com.google.android.material.textfield.TextInputLayout>
-                    <Button android:id="@+id/soc_friends_add" style="@style/Widget.PokeLocation.PanelButton.Filled"
-                        android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:layout_marginStart="@dimen/gap" android:text="@string/soc_add" />
-                </LinearLayout>
-
-                <TextView android:id="@+id/soc_friends_incoming_h" android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:paddingStart="@dimen/gap_large" android:paddingTop="24dp" android:paddingEnd="@dimen/gap_large"
-                    android:paddingBottom="@dimen/gap" android:textAppearance="?attr/textAppearanceTitleSmall"
-                    android:textColor="?attr/colorPrimary"
-                    android:text="@string/soc_incoming" />
-                <LinearLayout android:id="@+id/soc_friends_incoming"
-                    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
-
-                <TextView android:id="@+id/soc_friends_outgoing_h" android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:paddingStart="@dimen/gap_large" android:paddingTop="24dp" android:paddingEnd="@dimen/gap_large"
-                    android:paddingBottom="@dimen/gap" android:textAppearance="?attr/textAppearanceTitleSmall"
-                    android:textColor="?attr/colorPrimary"
-                    android:text="@string/soc_outgoing" />
-                <LinearLayout android:id="@+id/soc_friends_outgoing"
-                    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
-
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:paddingStart="@dimen/gap_large" android:paddingTop="24dp" android:paddingEnd="@dimen/gap_large"
-                    android:paddingBottom="@dimen/gap" android:textAppearance="?attr/textAppearanceTitleSmall"
-                    android:textColor="?attr/colorPrimary" android:text="@string/soc_your_friends" />
-                <TextView android:id="@+id/soc_friends_none"
-                    android:layout_width="match_parent" android:layout_height="wrap_content"
-                    android:paddingStart="@dimen/gap_large" android:paddingEnd="@dimen/gap_large"
-                    android:text="@string/soc_no_friends" android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" />
-                <LinearLayout android:id="@+id/soc_friends_list"
-                    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
-            </LinearLayout>
-        </ScrollView>
-    </com.pokelocation.app.ui.base.StateView>
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/soc_friends_fab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="@dimen/gap_large"
+            android:contentDescription="@string/soc_add_friend"
+            android:src="@drawable/ic_add" />
+    </FrameLayout>
 </LinearLayout>

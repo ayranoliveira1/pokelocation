@@ -1,6 +1,7 @@
 package com.pokelocation.app.ipc;
 
 import android.app.ActivityManager;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -12,6 +13,7 @@ import com.pokelocation.app.data.RouteDao;
 import com.pokelocation.app.model.Route;
 import com.pokelocation.app.overlay.OverlayService;
 
+import java.util.Arrays;
 import java.util.List;
 
 /** Ações, extras, erros e helpers de envio/leitura tolerante. Só primitivos/arrays entre processos. */
@@ -52,10 +54,14 @@ public final class Intents {
             INT_REQUEST_PERMISSIONS = "com.pokelocation.app.internal.REQUEST_PERMISSIONS",
             INT_START_AND_REPLAY = "com.pokelocation.app.internal.START_AND_REPLAY",
             INT_WIDGET_REFRESH = "com.pokelocation.app.internal.WIDGET_REFRESH",
-            INT_WIDGET_TOGGLE_TAB = "com.pokelocation.app.internal.WIDGET_TOGGLE_TAB";
+            INT_WIDGET_TOGGLE_TAB = "com.pokelocation.app.internal.WIDGET_TOGGLE_TAB",
+            INT_FILL_LOCATION = "com.pokelocation.app.internal.FILL_LOCATION",
+            INT_CHAT_UNREAD = "com.pokelocation.app.internal.CHAT_UNREAD";
     // Start do serviço = Intent explícito com action null.
 
     // --- Extras públicos ---
+    public static final String EXTRA_FROM_CHAT = "from_chat";   // INT_TELEPORT_UI: título do chat no painel
+    public static final String EXTRA_UNREAD = "n", EXTRA_LOGGED_OUT = "logged_out";
     public static final String EXTRA_LAT = "lat", EXTRA_LNG = "lng", EXTRA_ALT = "alt", EXTRA_NAME = "name",
             EXTRA_ID = "id", EXTRA_WAYPOINTS = "waypoints", EXTRA_TELEPORT = "teleport", EXTRA_SPEED = "speed",
             EXTRA_MODE = "mode", EXTRA_MARKER_COUNT = "marker_count", EXTRA_OFFSET = "offset",
@@ -199,7 +205,48 @@ public final class Intents {
 
     /** Explícito para OverlayService (action null = start). */
     public static Intent overlay(Context c, String actionOrNull) {
-        return new Intent(actionOrNull).setComponent(new ComponentName(c, OverlayService.class));
+        Intent i = new Intent(actionOrNull).setComponent(new ComponentName(c, OverlayService.class));
+        return actionOrNull != null && actionOrNull.startsWith(INTERNAL) ? auth(c, i) : i;
+    }
+
+    private static final String INTERNAL = "com.pokelocation.app.internal.", EXTRA_AUTH = "auth";
+
+    /**
+     * Um PendingIntent não se forja e este nunca sai do app: só vai dentro de intents para os nossos componentes (os
+     * do widget e das notificações, que o launcher e os listeners seguram, são outros).
+     */
+    public static Intent auth(Context c, Intent i) {
+        return i.putExtra(EXTRA_AUTH, authToken(c, 0));
+    }
+
+    private static PendingIntent authToken(Context c, int flags) {
+        return PendingIntent.getBroadcast(c, 0, new Intent(INTERNAL + "AUTH").setPackage(c.getPackageName()),
+                PendingIntent.FLAG_IMMUTABLE | flags);
+    }
+
+    /** Componentes exportados: ação interna de outro app é ignorada; as públicas seguem abertas. */
+    @SuppressWarnings("deprecation")
+    public static boolean trusted(Context c, Intent i) {
+        boolean ours = false;
+        try {
+            PendingIntent pi = i.getParcelableExtra(EXTRA_AUTH);
+            ours = pi != null && pi.equals(authToken(c, PendingIntent.FLAG_NO_CREATE));
+        } catch (RuntimeException ignored) {   // extra de classe desconhecida vindo de fora
+        }
+        return trusted(i.getAction(), ours);
+    }
+
+    static boolean trusted(String action, boolean ownToken) {
+        return action == null || !action.startsWith(INTERNAL) || ownToken;
+    }
+
+    /** O replay (F97) só existe para ações públicas: senão o overlay() assinaria uma interna vinda de fora. */
+    static boolean replayable(String action) {
+        return action == null || Arrays.asList(PUBLIC_ACTIONS).contains(action);
+    }
+
+    public static boolean validLatLng(double lat, double lng) {
+        return Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
     }
 
     /** startForegroundService (26+) / startService; exceções são engolidas (logadas). */
@@ -221,12 +268,14 @@ public final class Intents {
             if (b != null) r.putExtras(b);
             r.putExtra(EXTRA_REPLAY_ACTION, original.getAction());
         }
-        return r;
+        return auth(c, r);
     }
 
     /** → Intent para OverlayService com a ação e os extras originais. */
     public static Intent unwrapReplay(Context c, Intent replay) {
-        Intent o = overlay(c, replay.getStringExtra(EXTRA_REPLAY_ACTION));
+        String action = replay.getStringExtra(EXTRA_REPLAY_ACTION);
+        if (!replayable(action)) return null;
+        Intent o = overlay(c, action);
         Bundle b = replay.getExtras();
         if (b != null) o.putExtras(b);
         o.removeExtra(EXTRA_REPLAY_ACTION);

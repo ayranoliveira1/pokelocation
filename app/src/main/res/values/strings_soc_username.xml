@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="soc_username">\@username</string>
+    <string name="soc_username_title">Choose your \@username</string>
+    <string name="soc_username_explain">Friends find you and see you by your \@username. You can change it later in Settings.</string>
+    <string name="soc_username_rules">3 to 20 characters: lowercase letters, numbers, _ or . Starts with a letter.</string>
+    <string name="soc_username_save">Save</string>
+    <string name="soc_username_change">Change \@username</string>
+    <string name="soc_username_needed">Choose your \@username to create the account.</string>
+
+    <string name="soc_tab_friends">Friends</string>
+    <string name="soc_tab_requests">Requests</string>
+    <string name="soc_tab_requests_n">Requests (%d)</string>
+    <string name="soc_add_target_hint">\@username or code</string>
+    <string name="soc_invalid_target">Type a valid \@username or friend code.</string>
+    <string name="soc_my_username">My \@username</string>
+    <string name="soc_share_username">Add me on PokeLocation! My \@username: \@%s</string>
+    <string name="soc_no_friends_yet">No friends yet. Tap + to add one.</string>
+    <string name="soc_no_requests">No pending requests.</string>
+    <string name="soc_online">online</string>
+    <string name="soc_seen">seen %d s ago</string>
+    <string name="soc_more">More options</string>
+
+    <string name="soc_err_username_taken">This \@username is already taken.</string>
+    <string name="soc_err_invalid_username">Invalid \@username. Use 3 to 20 lowercase letters, numbers, _ or . starting with a letter.</string>
+    <string name="soc_err_username_reserved">This \@username is reserved. Choose another one.</string>
+    <string name="soc_err_username_limit">You already changed your \@username too many times today. Try again tomorrow.</string>
+    <string name="soc_err_username_required">Choose your \@username to continue.</string>
+</resources>

@@ -3,11 +3,12 @@ package com.pokelocation.app.social.ui;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import com.pokelocation.app.social.ui.chat.ChatListActivity;
 import com.pokelocation.app.ui.main.MainActivity;
 
 import org.junit.Test;
 
-/** A4d: para onde o app vai depois do login (email/senha ou Google), conforme quem abriu o Login. */
+/** Para onde o app vai depois do login (email/senha ou Google), conforme quem abriu o Login. */
 public class LoginRouteTest {
     @Test public void defaultGoesBackToMain() {
         assertEquals(MainActivity.class, LoginActivity.next(null));
@@ -20,8 +21,19 @@ public class LoginRouteTest {
         assertEquals(FriendsActivity.class, LoginActivity.next(LoginActivity.RETURN_FRIENDS));
     }
 
-    /** Linha "Conta" das Configurações → só fecha o Login (a tela de baixo atualiza no onResume). */
+    @Test public void chatsOriginOpensChats() {
+        assertEquals(ChatListActivity.class, LoginActivity.next(LoginActivity.RETURN_CHATS));
+    }
+
+    /** Item "Conta" sem login → só fecha o Login (a tela de baixo atualiza no onResume). */
     @Test public void backOriginJustCloses() {
         assertNull(LoginActivity.next(LoginActivity.RETURN_BACK));
+    }
+
+    @Test public void missingUsernameGoesToChooseItFirst() {
+        assertEquals(UsernameActivity.class, LoginActivity.first(LoginActivity.RETURN_FRIENDS, false));
+        assertEquals(UsernameActivity.class, LoginActivity.first(LoginActivity.RETURN_BACK, false));
+        assertEquals(FriendsActivity.class, LoginActivity.first(LoginActivity.RETURN_FRIENDS, true));
+        assertNull(LoginActivity.first(LoginActivity.RETURN_BACK, true));
     }
 }

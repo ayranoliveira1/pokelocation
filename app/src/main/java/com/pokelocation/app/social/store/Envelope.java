@@ -1,5 +1,10 @@
 package com.pokelocation.app.social.store;
 
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
@@ -9,15 +14,45 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * AES-256-GCM em software com a chave-envelope (contrato do subprojeto 2): registros do Signal no caminho quente sem IPC
- * ao Keystore. Blob = IV(12) || cifrado+tag(16). aad = endereço da linha ("s|nome|device"…): blob copiado para outra
- * linha não abre.
+ * AES-256-GCM em software com a chave-envelope: registros do Signal no caminho quente sem IPC ao Keystore.
+ * Blob = IV(12) || cifrado+tag(16). aad = endereço da linha ("s|nome|device"…): blob copiado para outra linha não abre.
  */
-final class Envelope {
+public final class Envelope {
     private static final int IV = 12, TAG_BITS = 128;
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static volatile byte[] sKey;
 
     private Envelope() {}
+
+    /** Dentro do SocialDb.atomic: o Keystore só é tocado na 1ª vez do processo (chave-envelope selada pelo Vault). */
+    public static byte[] seal(Context c, byte[] plain, String aad) throws GeneralSecurityException {
+        return seal(key(c), plain, aad);
+    }
+
+    public static byte[] open(Context c, byte[] blob, String aad) throws GeneralSecurityException {
+        return open(key(c), blob, aad);
+    }
+
+    static byte[] key(Context c) throws GeneralSecurityException {
+        byte[] k = sKey;
+        if (k != null) return k;
+        if (!SocialDb.inAtomic()) throw new IllegalStateException("Envelope fora de SocialDb.atomic");
+        synchronized (Envelope.class) {
+            if (sKey != null) return sKey;
+            SQLiteDatabase db = SocialDb.get(c);
+            try (Cursor q = db.rawQuery("SELECT blob FROM envelope", null)) {
+                if (q.moveToFirst()) return sKey = Vault.open(q.getBlob(0));
+            }
+            k = newKey();
+            ContentValues v = new ContentValues(2);
+            v.put("id", 0);
+            v.put("blob", Vault.seal(k));
+            db.insertOrThrow("envelope", null, v);
+            return sKey = k;
+        }
+    }
+
+    static void forget() { sKey = null; }
 
     static byte[] seal(byte[] key, byte[] plain, String aad) throws GeneralSecurityException {
         byte[] iv = new byte[IV];

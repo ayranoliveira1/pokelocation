@@ -2,8 +2,9 @@ package com.pokelocation.app.social.net;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
-
+import static org.junit.Assert.assertTrue;
 
 import org.json.JSONException;
 import org.junit.Test;
@@ -45,7 +46,7 @@ public class ApiTest {
         }
     }
 
-    /** Decisão do maestro: dois processos com o mesmo access vencido → exatamente UM /refresh (reuso revoga a família). */
+    /** Dois processos com o mesmo access vencido → exatamente UM /refresh (reuso revoga a família). */
     @Test public void concurrentRenewCallsRefreshOnce() throws Exception {
         java.io.File lock = java.io.File.createTempFile("social", ".lock");
         lock.deleteOnExit();
@@ -101,10 +102,12 @@ public class ApiTest {
         assertNull(Api.renewLocked(none, "a0", rt -> { throw new AssertionError(); }));
     }
 
-    /** A-api2: o limite de leitura é parâmetro por chamada; só o GET /v1/locations lê até 256 KiB (500 amigos ≈ 128 KB). */
+    /** O limite de leitura é parâmetro por chamada; só o GET /v1/locations lê até 256 KiB (500 amigos ≈ 128 KB). */
     @Test public void bodyLimitPerCall() throws java.io.IOException {
         assertEquals(256 * 1024, Api.LOCATIONS_MAX_BODY);
         assertEquals(64 * 1024, Api.MAX_BODY);
+        assertEquals(192 * 1024, Api.GROUPS_MAX_BODY);
+        assertEquals(150 * 1024, Api.read(new java.io.ByteArrayInputStream(new byte[150 * 1024]), Api.GROUPS_MAX_BODY).length());
         byte[] big = new byte[200 * 1024];
         assertEquals(big.length, Api.read(new java.io.ByteArrayInputStream(big), Api.LOCATIONS_MAX_BODY).length());
         try {
@@ -209,6 +212,94 @@ public class ApiTest {
         b.kyber = java.util.Collections.emptyList();
         Api.keysJson(b);
     }
+
+    /** O put(k, null) do org.json apagaria a chave: o servidor leria um corpo sem token. */
+    @Test public void fcmJsonKeepsExplicitNull() throws JSONException {
+        assertEquals("abc", new org.json.JSONObject(Api.fcmJson("abc").toString()).getString("token"));
+        org.json.JSONObject off = new org.json.JSONObject(Api.fcmJson(null).toString());
+        assertTrue(off.has("token"));
+        assertTrue(off.isNull("token"));
+    }
+
+    @Test public void normalizeUsername() {
+        assertEquals("ana.b_9", Api.normalizeUsername("  @Ana.B_9 "));
+        assertEquals("abc", Api.normalizeUsername("abc"));
+        assertEquals("a2345678901234567890", Api.normalizeUsername("a2345678901234567890"));
+        assertNull(Api.normalizeUsername("ab"));
+        assertNull(Api.normalizeUsername("a23456789012345678901"));
+        assertNull(Api.normalizeUsername("1abc"));
+        assertNull(Api.normalizeUsername("_abc"));
+        assertNull(Api.normalizeUsername("ab..c"));
+        assertNull(Api.normalizeUsername("abc."));
+        assertNull(Api.normalizeUsername("joão"));
+        assertNull(Api.normalizeUsername("ab-c"));
+        assertNull(Api.normalizeUsername("@"));
+        assertNull(Api.normalizeUsername(null));
+    }
+
+    @Test public void friendRequestCandidates() throws JSONException {
+        assertEquals(java.util.Collections.singletonList("{\"username\":\"ana\"}"), bodies(Api.friendRequests("@Ana")));
+        assertEquals(java.util.Arrays.asList("{\"code\":\"AB1C0DE1\"}"), bodies(Api.friendRequests("ab-iC o-de l")));
+        assertEquals(java.util.Arrays.asList("{\"code\":\"ABCDEFGH\"}", "{\"username\":\"abcdefgh\"}"),
+                bodies(Api.friendRequests("abcdefgh")));
+        assertEquals(java.util.Collections.singletonList("{\"username\":\"maria.silva\"}"),
+                bodies(Api.friendRequests("Maria.Silva")));
+        assertEquals(0, Api.friendRequests("??").size());
+    }
+
+    private static java.util.List<String> bodies(java.util.List<org.json.JSONObject> l) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (org.json.JSONObject o : l) out.add(o.toString());
+        return out;
+    }
+
+    @Test public void usernameInModels() throws JSONException {
+        assertEquals("ana", Api.parseMe("{\"id\":\"u\",\"email\":null,\"friend_code\":\"C\",\"username\":\"ana\"}").username);
+        assertNull(Api.parseMe("{\"id\":\"u\",\"email\":null,\"friend_code\":\"C\",\"username\":null}").username);
+        Api.Friends f = Api.parseFriends("{\"friends\":[{\"user_id\":\"u2\",\"friend_code\":\"C2\",\"username\":\"bia\"}],"
+                + "\"incoming\":[{\"id\":\"r\",\"user_id\":\"u3\",\"friend_code\":\"C3\",\"username\":\"caio\",\"created_at\":1}],"
+                + "\"outgoing\":[]}");
+        assertEquals("bia", f.accepted.get(0).username);
+        assertEquals("caio", f.incoming.get(0).username);
+        assertEquals("bia", Api.parseLocations("{\"locations\":[{\"user_id\":\"u2\",\"friend_code\":\"C2\",\"username\":\"bia\","
+                + "\"payload\":\"AA==\"}]}").get(0).username);
+    }
+
+    @Test public void groups() throws JSONException {
+        java.util.List<Api.Group> gs = Api.parseGroups("{\"groups\":[{\"id\":\"g1\",\"owner_id\":\"u1\","
+                + "\"members\":[{\"user_id\":\"u1\",\"username\":\"ana\"},{\"user_id\":\"u2\",\"username\":\"bia\"}],"
+                + "\"created_at\":5}]}");
+        assertEquals(1, gs.size());
+        Api.Group g = gs.get(0);
+        assertEquals("g1", g.id);
+        assertEquals("u1", g.ownerId);
+        assertEquals(2, g.members.size());
+        assertEquals("bia", g.members.get(1).username);
+        assertEquals(0, Api.parseGroups("{\"groups\":[]}").size());
+        assertEquals("g1", Api.parseEnvelopes("{\"envelopes\":[{\"id\":\"e\",\"from\":\"u\",\"client_msg_id\":\"m\","
+                + "\"group_id\":\"g1\",\"payload\":\"AA==\"}]}").get(0).groupId);
+        assertNull(Api.parseEnvelopes("{\"envelopes\":[{\"id\":\"e\",\"from\":\"u\",\"client_msg_id\":\"m\","
+                + "\"payload\":\"AA==\"}]}").get(0).groupId);
+    }
+
+    @Test public void jwtSubject() {
+        String payload = Api.b64url("{\"sub\":\"u-123\",\"exp\":9}".getBytes());
+        assertEquals("u-123", Api.jwtSubject("eyJhbGciOiJFZERTQSJ9." + payload + ".sig"));
+        assertNull(Api.jwtSubject("lixo"));
+        assertNull(Api.jwtSubject(null));
+        assertNull(Api.jwtSubject("a." + Api.b64url("{}".getBytes()) + ".c"));
+    }
+
+    @Test public void wsNeedsAnAccessThatIsNotAboutToExpire() {
+        long now = 1_000_000_000_000L;
+        assertTrue(Api.expiresSoon(jwt("{\"exp\":" + (now / 1000 + 10) + "}"), now));
+        assertTrue(Api.expiresSoon(jwt("{\"exp\":" + (now / 1000 - 60) + "}"), now));
+        assertFalse(Api.expiresSoon(jwt("{\"exp\":" + (now / 1000 + 600) + "}"), now));
+        assertFalse(Api.expiresSoon(jwt("{}"), now));
+        assertFalse(Api.expiresSoon("lixo", now));
+    }
+
+    private static String jwt(String payload) { return "h." + Api.b64url(payload.getBytes()) + ".s"; }
 
     @Test public void keyCount() throws JSONException {
         assertArrayEquals(new int[]{19, 100}, Api.parseKeyCount("{\"ec\":19,\"kyber\":100}"));

@@ -5,10 +5,15 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteStatement;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.util.Base64;
 
 import com.pokelocation.app.App;
+import com.pokelocation.app.social.chat.Chat;
+import com.pokelocation.app.social.chat.Live;
+import com.pokelocation.app.social.chat.Notify;
+import com.pokelocation.app.social.chat.Push;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.store.SocialDb;
 import com.pokelocation.app.social.store.Vault;
@@ -22,13 +27,15 @@ import javax.crypto.AEADBadTagException;
 
 /**
  * Estado de login. Flag "in" e PKCE no prefs "social" (fora do "prefs" do app); access/refresh no social.db (tabela
- * session, selados pelo Vault): principal e :overlay leem o mesmo arquivo, e a renovação roda sob o token.lock
- * (decisão do maestro, Api.renew). Só loggedIn é API das telas; o resto é público só porque Api fica em social.net.
+ * session, selados pelo Vault), que principal e :overlay leem; a renovação roda sob o token.lock (Api.renew).
+ * Só loggedIn é API das telas; o resto é público só porque Api fica em social.net.
  */
 public final class Session {
     private static final String FILE = "social", IN = "in", VERIFIER = "pv", STATE = "ps", RETURN_TO = "pr";
     /** Último access lido/gravado no banco por este processo; num 401 a Api relê do banco sob o lock. */
     private static volatile String sAccess;
+    /** O @nome troca mas nunca volta a null: em memória até a geração mudar, sem Keystore a cada leitura. */
+    private static volatile String sUsername;
 
     private Session() {}
 
@@ -45,7 +52,9 @@ public final class Session {
         for (int i = 0; ; i++) {
             try {
                 SocialDb.atomic(c, true, () -> {
-                    SocialDb.advance(); // decisão do maestro: login e logout abrem geração nova
+                    SocialDb.advance(); // login e logout abrem geração nova
+                    SocialDb.get(c).delete("session", null, null); // login por cima de outra conta: nada dela fica
+                    sUsername = null;
                     writeTokens(c, access, refresh);
                     return null;
                 });
@@ -78,14 +87,16 @@ public final class Session {
         });
     }
 
-    /** Refresh token (logout). null como em access(). */
     public static String refresh(Context c) throws IOException {
         String[] t = locked(c, () -> readTokens(c));
         return t == null ? null : t[1];
     }
 
     /** SocialDb.sync: a geração mudou, o access em memória é da conta/sessão velha. */
-    public static void forget() { sAccess = null; }
+    public static void forget() {
+        sAccess = null;
+        sUsername = null;
+    }
 
     /** {access, refresh} do banco (null sem arquivo/linha), sob o social.lock ou o token.lock. Atualiza o access em memória. */
     public static String[] readTokens(Context c) throws IOException {
@@ -99,18 +110,87 @@ public final class Session {
         }
     }
 
+    public static String username(Context c) throws IOException {
+        String u = sUsername;
+        if (u != null) return u;
+        return locked(c, () -> {
+            if (!SocialDb.exists(c)) return null;
+            try (Cursor q = SocialDb.get(c).rawQuery("SELECT username FROM session", null)) {
+                return sUsername = q.moveToFirst() ? open(q.getBlob(0)) : null;
+            }
+        });
+    }
+
+    public static void username(Context c, String username) throws IOException {
+        if (App.process() != App.PROC_MAIN || username == null) return;
+        locked(c, () -> {
+            if (!SocialDb.exists(c)) return null;
+            ContentValues v = new ContentValues(1);
+            try {
+                v.put("username", Vault.seal(username.getBytes(StandardCharsets.UTF_8)));
+            } catch (GeneralSecurityException e) {
+                throw new IOException("keystore", e);
+            }
+            SocialDb.get(c).update("session", v, null, null);
+            sUsername = username;
+            return null;
+        });
+    }
+
+    public static String fcmSent(Context c) throws IOException {
+        return locked(c, () -> {
+            if (!SocialDb.exists(c)) return null;
+            try (Cursor q = SocialDb.get(c).rawQuery("SELECT fcm FROM session", null)) {
+                return q.moveToFirst() ? open(q.getBlob(0)) : null;
+            }
+        });
+    }
+
+    public static void fcmSent(Context c, String token) throws IOException {
+        locked(c, () -> {
+            if (!SocialDb.exists(c)) return null;
+            ContentValues v = new ContentValues(1);
+            try {
+                v.put("fcm", Vault.seal(token.getBytes(StandardCharsets.UTF_8)));
+            } catch (GeneralSecurityException e) {
+                throw new IOException("keystore", e);
+            }
+            SocialDb.get(c).update("session", v, null, null);
+            return null;
+        });
+    }
+
+    // REPLACE apagaria a linha inteira, com o @nome e o token do FCM
+    static final String TOKENS_UPDATE = "UPDATE session SET access = ?, refresh = ?";
+    static final String TOKENS_INSERT = "INSERT INTO session(id, access, refresh) VALUES (0, ?, ?)";
+
     /** Grava a linha única, sob o social.lock (login) ou o token.lock (renovação). */
     public static void writeTokens(Context c, String access, String refresh) throws IOException {
-        ContentValues v = new ContentValues(3);
-        v.put("id", 0);
+        byte[] a, r;
         try {
-            v.put("access", Vault.seal(access.getBytes(StandardCharsets.UTF_8)));
-            v.put("refresh", Vault.seal(refresh.getBytes(StandardCharsets.UTF_8)));
+            a = Vault.seal(access.getBytes(StandardCharsets.UTF_8));
+            r = Vault.seal(refresh.getBytes(StandardCharsets.UTF_8));
         } catch (GeneralSecurityException e) {
             throw new IOException("keystore", e);
         }
-        SocialDb.get(c).insertWithOnConflict("session", null, v, SQLiteDatabase.CONFLICT_REPLACE);
+        SQLiteDatabase db = SocialDb.get(c);
+        int n;
+        try (SQLiteStatement u = tokens(db, TOKENS_UPDATE, a, r)) {
+            n = u.executeUpdateDelete();
+        }
+        if (n == 0) {
+            try (SQLiteStatement i = tokens(db, TOKENS_INSERT, a, r)) {
+                i.executeInsert();
+            }
+        }
         sAccess = access;
+    }
+
+    private static SQLiteStatement tokens(SQLiteDatabase db, String sql, byte[] access, byte[] refresh) {
+        SQLiteStatement s = db.compileStatement(sql);
+        s.bindBlob(1, access);
+        s.bindBlob(2, refresh);
+        return s;
     }
 
     /** SocialDb.locked com os erros no padrão do Session: IOException passa; logout no outro processo = null. */
@@ -133,17 +213,21 @@ public final class Session {
      */
     public static void clear(Context c) {
         if (App.process() != App.PROC_MAIN) return;
+        if (loggedIn(c)) Push.stop(c); // sem login, o Firebase nem deve subir
+        Notify.cancelAll(c);
+        Live.forget(c);
         sAccess = null;
         sp(c).edit().clear().commit();
         SocialDb.delete(c);
         Vault.wipe();
+        Chat.broadcastLoggedOut(c);
     }
 
     /** Verifier e state do PKCE cifrados pelo Vault (Io: o Keystore pode bloquear). IOException = Keystore falhou. */
     public static void savePkce(Context c, String verifier, String state, String returnTo) throws IOException {
         try {
             // sem gravar, a volta do navegador daria invalid_state sem explicação
-            // returnTo (origem do Login, A4d) não é sensível: em claro, só para o destino depois do Google
+            // returnTo (origem do Login) não é sensível: vai em claro
             if (!sp(c).edit().putString(VERIFIER, seal(verifier)).putString(STATE, seal(state)).putString(RETURN_TO, returnTo)
                     .commit()) {
                 throw new IOException("prefs");

@@ -13,7 +13,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Regra multiprocesso (maestro): operação Signal inteira sob files/social.lock, exclusivo entre processos e threads. */
+/** Operação Signal inteira sob files/social.lock, exclusiva entre processos e threads. */
 public class SocialLockTest {
     @Rule public TemporaryFolder tmp = new TemporaryFolder();
 

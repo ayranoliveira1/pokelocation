@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.chat.Push;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.store.SocialDb;
 import com.pokelocation.app.social.store.Vault;
@@ -28,19 +29,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Chaves do Signal deste aparelho (A3): identity, signed prekey, kyber last resort, 100 one-time EC e 100 Kyber,
- * guardadas cifradas no social.db e enviadas por PUT /v1/keys; repõe um lote quando o servidor tem < 20.
- * SÓ no Io, com login e SignalLoader.loaded(): classe separada do SignalLoader para nada de org.signal ser resolvido
- * antes do System.load. Entrada: SignalLoader.kick.
+ * Chaves do Signal deste aparelho: identity, signed prekey, kyber last resort, 100 one-time EC e 100 Kyber, cifradas no
+ * social.db e enviadas por PUT /v1/keys; repõe um lote quando o servidor tem < 20. Só no Io, com login e a lib
+ * carregada: classe separada do SignalLoader para nada de org.signal ser resolvido antes do System.load.
  */
 final class Keys {
     static final int BATCH = 100, LOW = 20;
 
     private Keys() {}
 
-    /** Banco sob SocialDb.atomic (regra multiprocesso); rede fora do lock (um PUT lento não trava o :overlay). */
+    /** Banco sob SocialDb.atomic; rede fora do lock (um PUT lento não trava o :overlay). */
     static void ensure(Context c) throws IOException {
-        if (!SignalLoader.loaded() || !Session.loggedIn(c)) return;
+        if (!SignalLoader.loaded() || !Session.loggedIn(c) || Session.username(c) == null) return; // sem @nome: 403
         try {
             boolean pending = SocialDb.atomic(c, () -> {
                 SQLiteDatabase db = SocialDb.get(c);
@@ -73,6 +73,7 @@ final class Keys {
                     return pending(db);
                 });
             }
+            Push.start(c); // o servidor só aceita o token do FCM depois que o aparelho tem chaves
         } catch (IOException e) {
             throw e;
         } catch (GeneralSecurityException e) {

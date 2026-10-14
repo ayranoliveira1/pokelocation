@@ -9,6 +9,7 @@ import com.pokelocation.app.App;
 import com.pokelocation.app.BuildConfig;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.chat.Push;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -24,10 +25,10 @@ import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
 /**
- * libsignal nativa baixada no login (spec §3.1). O APK leva só o stub libsignal_jni.so; aqui baixamos o .so real
- * (GitHub → reserva no servidor), com .part retomável por Range, gunzip, SHA-256 fixado em BuildConfig.LIBSIGNAL_SO,
- * rename atômico para files/libsignal/ somente leitura, e System.load. O hash é conferido A CADA carga.
- * Nenhuma classe org.signal pode ser tocada antes de loaded() == true (o ART resolveria os JNI no stub vazio).
+ * libsignal nativa baixada no login: o APK leva só o stub libsignal_jni.so; o .so real vem do GitHub (reserva no
+ * servidor) com .part retomável por Range, gunzip, SHA-256 fixado em BuildConfig.LIBSIGNAL_SO e rename atômico para
+ * files/libsignal/ somente leitura. O hash é conferido a cada carga. Nenhuma classe org.signal pode ser tocada antes de
+ * loaded(): o ART resolveria os JNI no stub vazio.
  */
 public final class SignalLoader {
     static final String SO = "libsignal_jni.so", PART = SO + ".gz.part", TMP = SO + ".tmp";
@@ -37,16 +38,16 @@ public final class SignalLoader {
 
     /** Callbacks na main. */
     public interface Listener {
-        /** Baixando: bytes do .gz (total -1 se desconhecido). */
+        /** Bytes do .gz; total -1 se desconhecido. */
         void onProgress(long done, long total);
         void onReady();
-        /** Falhou, dá para tentar de novo (start outra vez). e.getMessage() == NO_SPACE → sem espaço; resto → rede. */
+        /** Dá para tentar de novo (start). NO_SPACE → sem espaço; o resto → rede. */
         void onError(IOException e);
-        /** Social indisponível neste aparelho (ABI sem .so publicado, ou a lib não carrega). Definitivo no processo. */
+        /** ABI sem .so publicado ou a lib não carrega: definitivo no processo. */
         void onUnavailable();
     }
 
-    /** Lançada quando não há .so para a ABI do processo ou o System.load falha: não adianta tentar de novo. */
+    /** Sem .so para a ABI do processo ou o System.load falhou: não adianta tentar de novo. */
     static final class Unavailable extends IOException {
         Unavailable(String why) { super(why); }
     }
@@ -55,7 +56,7 @@ public final class SignalLoader {
 
     interface Progress { void on(long done, long total); }
 
-    /** Resposta da fonte: stream a partir de start (0 = servidor ignorou o Range), total = tamanho do .gz (-1 = ?). */
+    /** start 0 = o servidor ignorou o Range; total -1 = desconhecido. */
     static final class Resp {
         final InputStream in;
         final long start, total;
@@ -75,13 +76,14 @@ public final class SignalLoader {
 
     private SignalLoader() {}
 
-    /** true depois do System.load da lib verificada neste processo: aí as classes org.signal podem ser usadas. */
+    /** Só depois disto as classes org.signal podem ser usadas. */
     public static boolean loaded() { return sLoaded; }
 
+    public static boolean unavailable() { return sUnavailable; }
+
     /**
-     * Garante a lib numa thread própria (não no Io, que é único: um download de 3 MB travaria o app). Sem login só
-     * baixa e confere (System.load só com login, spec §3) e entrega onReady ("nada a mostrar"; carregou = loaded()).
-     * Idempotente: com uma carga em andamento troca o listener e pede mais uma passada ao fim.
+     * Thread própria, não o Io (único: um download de 3 MB travaria o app). Sem login só baixa e confere: System.load
+     * só com login. Idempotente: com uma carga em andamento troca o listener e pede mais uma passada.
      */
     public static synchronized void start(Context c, Listener l) {
         sListener = l;
@@ -93,7 +95,16 @@ public final class SignalLoader {
             sAgain = true;
             return;
         }
-        Context app = c.getApplicationContext();
+        spawn(c.getApplicationContext());
+    }
+
+    /** Carrega sem trocar o listener de quem já acompanha o download (processo novo aberto direto no chat). */
+    public static synchronized void ensure(Context c) {
+        if (sLoaded || sUnavailable || sThread != null) return;
+        spawn(c.getApplicationContext());
+    }
+
+    private static void spawn(Context app) {
         sThread = new Thread(() -> {
             IOException err;
             do {
@@ -127,7 +138,6 @@ public final class SignalLoader {
         }
     }
 
-    /** Fim de uma passada: repete se pediram (e ainda faz sentido); senão libera o thread. */
     private static synchronized boolean again() {
         boolean more = sAgain && !sLoaded && !sUnavailable;
         sAgain = false;
@@ -136,13 +146,14 @@ public final class SignalLoader {
     }
 
     /**
-     * Agenda Keys.ensure no Io (gera, envia e repõe as chaves do Signal). Chamado quando a lib carrega e em todo
-     * login/refresh (Session.save): o refresh do access token (~15 min de uso) é a checagem periódica do "< 20".
-     * No-op sem lib ou sem login. Keys fica em outra classe: nada de org.signal é resolvido antes do System.load.
+     * Agenda Keys.ensure no Io quando a lib carrega e em todo login/refresh: o refresh do access (~15 min de uso) é a
+     * checagem periódica de prekeys. Keys fica em outra classe para nada de org.signal ser resolvido antes do System.load.
      */
     public static void kick(Context c) {
-        // só o principal gera/envia chaves (Keys): no :overlay o loggedIn() do prefs pode estar velho
-        if (App.process() != App.PROC_MAIN || !sLoaded || sKicked || !Session.loggedIn(c)) return;
+        // só o principal gera chaves: no :overlay o loggedIn() do prefs pode estar velho
+        if (App.process() != App.PROC_MAIN || !Session.loggedIn(c)) return;
+        Push.start(c);
+        if (!sLoaded || sKicked) return;
         sKicked = true;
         Context app = c.getApplicationContext();
         Io.run(() -> {
@@ -155,7 +166,7 @@ public final class SignalLoader {
         });
     }
 
-    /** Solta o listener (onDestroy da tela); o download segue. */
+    /** O download segue. */
     public static void detach(Listener l) {
         if (sListener == l) sListener = null;
     }
@@ -170,14 +181,30 @@ public final class SignalLoader {
         });
     }
 
-    /** BLOQUEANTE (thread própria). Baixa se preciso, confere o hash e, com login, carrega. Retentativas 2/4/8 s. */
-    static void load(Context c) throws IOException {
-        synchronized (LOAD) { // não o lock da classe: start() roda na main e não pode esperar um download
-            loadLocked(c);
+    /** Ping do FCM (~20 s): só o .so já baixado e conferido, sem rede nem esperas. */
+    public static void loadDownloaded(Context c) throws IOException {
+        if (sLoaded) return;
+        synchronized (SignalLoader.class) {
+            if (sThread != null) throw new IOException("downloading");
+        }
+        try {
+            synchronized (LOAD) {
+                loadLocked(c.getApplicationContext(), true);
+            }
+        } catch (Unavailable e) {
+            sUnavailable = true;
+            throw e;
         }
     }
 
-    private static void loadLocked(Context c) throws IOException {
+    /** Bloqueante. Retentativas com espera de 2/4/8 s. */
+    static void load(Context c) throws IOException {
+        synchronized (LOAD) { // não o lock da classe: start() roda na main e não pode esperar um download
+            loadLocked(c, false);
+        }
+    }
+
+    private static void loadLocked(Context c, boolean offline) throws IOException {
         if (sLoaded) return;
         // ABI do PROCESSO (a do stub carregado), não a 1ª do aparelho: x86 com houdini lista armeabi-v7a, e carregar
         // ARM num processo x86 quebra. Sem .so publicado para ela (x86) → indisponível, sem baixar.
@@ -197,11 +224,12 @@ public final class SignalLoader {
             });
         };
         IOException err = null;
-        for (int round = 0; round < ROUNDS; round++) {
+        Fetch fetch = offline ? (url, from) -> { throw new IOException("offline"); } : SignalLoader::http;
+        for (int round = 0; round < (offline ? 1 : ROUNDS); round++) {
             try {
                 if (round > 0) Thread.sleep(1000L << round);
                 sLoaded = fetchAndLoad(dir, pin[1], Long.parseLong(pin[2]), c.getFilesDir().getUsableSpace(), urls,
-                        SignalLoader::http, p, () -> loggedInNow(c), System::load);
+                        fetch, p, () -> loggedInNow(c), System::load);
                 return;
             } catch (InterruptedException e) {
                 throw new IOException(e);
@@ -215,11 +243,9 @@ public final class SignalLoader {
         throw err;
     }
 
-    // ---- núcleo puro (SignalLoaderTest) ----
-
     /**
-     * Baixa/confere e só faz System.load (loader) se loggedIn DEPOIS do download (spec §3: libsignal só após login;
-     * o download corre em paralelo à auth). false = .so pronto, não carregado. Falha de link → apaga o .so, Unavailable.
+     * System.load só se loggedIn DEPOIS do download (o download corre em paralelo à autenticação). false = .so pronto,
+     * não carregado. Falha de link → apaga o .so e Unavailable.
      */
     static boolean fetchAndLoad(File dir, String sha, long size, long free, String[] urls, Fetch f, Progress p,
                                 BooleanSupplier loggedIn, Consumer<String> loader) throws IOException {
@@ -245,7 +271,7 @@ public final class SignalLoader {
         return true;
     }
 
-    /** Devolve o .so instalado e verificado; baixa/instala se faltar ou não bater. Nunca deixa instalado algo não verificado. */
+    /** Nunca deixa instalado algo não verificado. */
     static File fetch(File dir, String sha, long size, long free, String[] urls, Fetch f, Progress p) throws IOException {
         File so = new File(dir, SO), part = new File(dir, PART), tmp = new File(dir, TMP);
         if (so.exists()) {
@@ -322,7 +348,6 @@ public final class SignalLoader {
         return n == size && hex(md.digest()).equals(sha);
     }
 
-    /** SHA-256 do arquivo == sha (hex minúsculo). ~20 ms para 6,7 MB. */
     static boolean verified(File so, String sha) {
         MessageDigest md = sha256();
         try (InputStream in = new FileInputStream(so)) {

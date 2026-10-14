@@ -17,14 +17,9 @@
     <string name="soc_my_code">Meu código de amigo</string>
     <string name="soc_share_code">Me adicione no PokeLocation! Meu código de amigo: %s</string>
     <string name="soc_add_friend">Adicionar amigo</string>
-    <string name="soc_code_hint">Código de amigo</string>
     <string name="soc_add">Adicionar</string>
-    <string name="soc_invalid_code">Código inválido. Ele tem 8 letras e números.</string>
     <string name="soc_request_sent">Pedido enviado!</string>
-    <string name="soc_incoming">Pedidos recebidos</string>
     <string name="soc_outgoing">Pedidos enviados</string>
-    <string name="soc_your_friends">Seus amigos</string>
-    <string name="soc_no_friends">Nenhum amigo ainda. Compartilhe seu código!</string>
     <string name="soc_pending">Aguardando resposta</string>
     <string name="soc_accept">Aceitar</string>
     <string name="soc_decline">Recusar</string>
@@ -33,8 +28,6 @@
     <string name="soc_remove_confirm">Remover %s dos seus amigos?</string>
     <string name="soc_block_confirm">Bloquear %s? Essa pessoa não poderá te enviar pedidos.</string>
 
-    <string name="soc_account_row">Conta do PokeLocation</string>
-    <string name="soc_account_signed_out">Entre para adicionar amigos</string>
     <string name="soc_account_signed_in">Conectado</string>
     <string name="soc_logout">Sair</string>
     <string name="soc_share_location">Compartilhar minha localização</string>
@@ -56,7 +49,7 @@
     <string name="soc_err_weak_password">Senha fraca. Use uma senha mais longa.</string>
     <string name="soc_err_invalid_email">Email inválido.</string>
     <string name="soc_err_rate_limited">Muitas tentativas. Aguarde um minuto e tente de novo.</string>
-    <string name="soc_err_code_not_found">Ninguém tem este código.</string>
+    <string name="soc_err_code_not_found">Ninguém com esse \@nome ou código.</string>
     <string name="soc_err_self_request">Esse é o seu próprio código.</string>
     <string name="soc_err_blocked">Não é possível adicionar este usuário.</string>
     <string name="soc_err_already_friends">Vocês já são amigos.</string>

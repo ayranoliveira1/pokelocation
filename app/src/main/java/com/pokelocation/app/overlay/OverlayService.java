@@ -2,7 +2,10 @@ package com.pokelocation.app.overlay;
 
 import android.app.ActivityManager;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -15,6 +18,7 @@ import com.pokelocation.app.data.RouteDao;
 import com.pokelocation.app.engine.EngineConfig;
 import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.engine.MockEngineImpl;
+import com.pokelocation.app.social.chat.Chat;
 import com.pokelocation.app.social.loc.LocationSharer;
 import com.pokelocation.app.geo.CoordParser;
 import com.pokelocation.app.ipc.Intents;
@@ -41,7 +45,8 @@ public final class OverlayService extends Service
     private OverlayNotification notif;
     private MockEngineImpl engine;
     private OverlayView ui;
-    private LocationSharer sharer; // social (A8): só age com login + Compartilhar ligado
+    private LocationSharer sharer;
+    private BroadcastReceiver unreadRx;
     private Intent mockIntent;
 
     private boolean fgFailed, running, hidden, mapOpen, sessionSent, destroyed;
@@ -67,6 +72,10 @@ public final class OverlayService extends Service
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
+        if (intent != null && !Intents.trusted(this, intent)) {
+            if (!running) stopSelfResult(startId);
+            return running ? START_STICKY : START_NOT_STICKY;
+        }
         if (fgFailed) {
             if (action == null) {
                 if (intent != null) openMain(Intents.INT_REQUEST_PERMISSIONS);
@@ -142,10 +151,14 @@ public final class OverlayService extends Service
         engine.start(lat, lng, alt);
         ui.setVisible(!hidden);
         running = true;
-        // sem login nenhuma classe social carrega (só um stat); login no meio vale a partir da próxima sessão do joystick
+        // Sem login nenhuma classe social carrega; login no meio só vale na próxima sessão do joystick.
         if (getDatabasePath("social.db").exists()) {
             sharer = new LocationSharer(this, engine);
             sharer.start();
+            ui.setChatEnabled(true);
+            listenUnread();
+            Context app = getApplicationContext();
+            Io.run(() -> Chat.unreadTotal(app), n -> { if (ui != null) ui.setUnread(n); });
         }
         notif.setHidden(hidden);
         Intents.broadcastSpoofState(this, true, null);
@@ -179,6 +192,24 @@ public final class OverlayService extends Service
         Intents.broadcastSpoofState(this, false, b);
     }
 
+    /** Só enquanto vivo, e só o próprio app (permissão signature): mensagem do chat nunca sobe o serviço. */
+    private void listenUnread() {
+        unreadRx = new BroadcastReceiver() {
+            @Override public void onReceive(Context c, Intent i) {
+                if (ui == null) return;
+                if (i.getBooleanExtra(Intents.EXTRA_LOGGED_OUT, false)) ui.setChatEnabled(false);
+                else {
+                    ui.setUnread(i.getIntExtra(Intents.EXTRA_UNREAD, 0));
+                    ui.chatChanged();
+                }
+            }
+        };
+        IntentFilter f = new IntentFilter(Intents.INT_CHAT_UNREAD);
+        String perm = getPackageName() + ".permission.INTERNAL";
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(unreadRx, f, perm, null, Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(unreadRx, f, perm, null);
+    }
+
     @Override
     public void onDestroy() {
         if (destroyed) return;
@@ -187,6 +218,10 @@ public final class OverlayService extends Service
         running = false;
         notif.release();
         if (sharer != null) sharer.stop();
+        if (unreadRx != null) {
+            unregisterReceiver(unreadRx);
+            unreadRx = null;
+        }
         if (engine != null) engine.shutdown();
         if (ui != null) ui.destroy();
         try {
@@ -219,7 +254,8 @@ public final class OverlayService extends Service
             case Intents.INT_TELEPORT_UI:
                 closeMap();
                 ui.openTeleport(Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN),
-                        Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN));
+                        Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN),
+                        Intents.getBool(i, Intents.EXTRA_FROM_CHAT, false) ? getString(com.pokelocation.app.R.string.soc_teleport_title) : null);
                 return true;
             case Intents.INT_SAVE_LOCATION:
                 closeMap();
@@ -248,8 +284,8 @@ public final class OverlayService extends Service
 
     private void openMain(String action) {
         try {
-            startActivity(Intents.main(this).setAction(action)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            startActivity(Intents.auth(this, Intents.main(this).setAction(action)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)));
         } catch (RuntimeException ignored) {
         }
     }

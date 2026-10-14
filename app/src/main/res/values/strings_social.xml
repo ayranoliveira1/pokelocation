@@ -20,14 +20,9 @@
     <string name="soc_my_code">My friend code</string>
     <string name="soc_share_code">Add me on PokeLocation! My friend code: %s</string>
     <string name="soc_add_friend">Add friend</string>
-    <string name="soc_code_hint">Friend code</string>
     <string name="soc_add">Add</string>
-    <string name="soc_invalid_code">Invalid code. It has 8 letters and numbers.</string>
     <string name="soc_request_sent">Request sent!</string>
-    <string name="soc_incoming">Requests received</string>
     <string name="soc_outgoing">Requests sent</string>
-    <string name="soc_your_friends">Your friends</string>
-    <string name="soc_no_friends">No friends yet. Share your code!</string>
     <string name="soc_pending">Waiting for a reply</string>
     <string name="soc_accept">Accept</string>
     <string name="soc_decline">Decline</string>
@@ -36,9 +31,7 @@
     <string name="soc_remove_confirm">Remove %s from your friends?</string>
     <string name="soc_block_confirm">Block %s? They won\'t be able to send you requests.</string>
 
-    <!-- Conta (Configurações) -->
-    <string name="soc_account_row">PokeLocation account</string>
-    <string name="soc_account_signed_out">Sign in to add friends</string>
+    <!-- Conta -->
     <string name="soc_account_signed_in">Signed in</string>
     <string name="soc_logout">Sign out</string>
     <string name="soc_share_location">Share my location</string>
@@ -63,7 +56,7 @@
     <string name="soc_err_weak_password">Password too weak. Use a longer one.</string>
     <string name="soc_err_invalid_email">Invalid email.</string>
     <string name="soc_err_rate_limited">Too many attempts. Wait a minute and try again.</string>
-    <string name="soc_err_code_not_found">No one has this code.</string>
+    <string name="soc_err_code_not_found">No one with this \@username or code.</string>
     <string name="soc_err_self_request">That\'s your own code.</string>
     <string name="soc_err_blocked">You can\'t add this user.</string>
     <string name="soc_err_already_friends">You\'re already friends.</string>

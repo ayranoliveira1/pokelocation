@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/soc_chat_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <include layout="@layout/base_toolbar" />
+
+    <com.pokelocation.app.ui.base.StateView
+        android:id="@+id/soc_chat_state"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/soc_chat_rv"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingTop="@dimen/gap"
+                android:paddingBottom="@dimen/gap" />
+            <TextView android:id="@+id/soc_chat_new"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="@dimen/gap"
+                android:background="@drawable/bg_pill" android:drawableStart="@drawable/ic_expand_more"
+                android:drawablePadding="4dp" android:drawableTint="@color/on_primary" android:gravity="center_vertical"
+                android:minHeight="40dp" android:paddingStart="12dp" android:paddingEnd="16dp"
+                android:text="@string/soc_chat_new_messages" android:textColor="@color/on_primary"
+                android:visibility="gone" />
+        </FrameLayout>
+    </com.pokelocation.app.ui.base.StateView>
+
+    <TextView android:id="@+id/soc_chat_left"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:background="?attr/colorSurfaceContainer" android:gravity="center" android:padding="@dimen/gap_large"
+        android:text="@string/soc_chat_left" android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant" android:visibility="gone" />
+    <LinearLayout android:id="@+id/soc_chat_bar"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:background="?attr/colorSurfaceContainer" android:gravity="center_vertical"
+        android:orientation="horizontal" android:paddingStart="@dimen/gap" android:paddingEnd="4dp">
+        <ImageButton android:id="@+id/soc_chat_loc"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/soc_chat_location" android:src="@drawable/ic_pin"
+            android:tint="?attr/colorPrimary" />
+        <EditText android:id="@+id/soc_chat_input"
+            android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:background="@null" android:hint="@string/soc_chat_hint"
+            android:importantForAutofill="no" android:inputType="textCapSentences|textMultiLine"
+            android:maxLength="4000" android:maxLines="5" android:minHeight="48dp"
+            android:paddingStart="@dimen/gap" android:paddingEnd="@dimen/gap" />
+        <ImageButton android:id="@+id/soc_chat_send"
+            android:layout_width="48dp" android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/soc_chat_send" android:src="@drawable/soc_ic_send"
+            android:tint="?attr/colorPrimary" />
+    </LinearLayout>
+</LinearLayout>

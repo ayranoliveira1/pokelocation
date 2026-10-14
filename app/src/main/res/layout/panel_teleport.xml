@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:orientation="vertical" android:padding="@dimen/panel_padding">
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+    <TextView android:id="@+id/tp_title" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:text="@string/teleport_title" android:textAppearance="@style/TextAppearance.PokeLocation.PanelTitle" />
     <EditText android:id="@+id/tp_text" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/gap_large" android:hint="@string/lat_lng_hint" android:importantForAutofill="no"

@@ -1,0 +1,356 @@
+package com.pokelocation.app.social.chat;
+
+import android.content.Context;
+import android.content.Intent;
+import android.util.Log;
+
+import com.pokelocation.app.App;
+import com.pokelocation.app.data.Prefs;
+import com.pokelocation.app.ipc.Intents;
+import com.pokelocation.app.model.Coord;
+import com.pokelocation.app.social.crypto.SignalLoader;
+import com.pokelocation.app.social.loc.Locations;
+import com.pokelocation.app.social.ws.Frames;
+
+import com.pokelocation.app.social.net.Api;
+import com.pokelocation.app.social.store.SocialDb;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/** Motor do chat para as telas. Tudo bloqueante: fora da main. Nada de rede dentro do SocialDb.atomic. */
+public final class Chat {
+    public static final int TEXT = 1, LOC = 2, LIVE_START = 3, LIVE_STOP = 4, UNREADABLE = 5, IDENTITY_CHANGED = 6;
+    public static final int SENDING = 1, SENT = 2, FAILED = 3;
+
+    /** myLiveUntil: minha live ativa nesta conversa (0 = nenhuma); liveUntil: a mais longa ativa de outro membro. */
+    public static final class Conv {
+        public String id, title; public boolean group; public String preview; public long lastTs; public int unread;
+        public long myLiveUntil, liveUntil;
+        public boolean left;   // grupo do qual saí ou fui removido: só leitura
+        public int previewType;   // tipo da última mensagem (TEXT, LOC…): preview só tem texto em TEXT
+    }
+    public static final class Msg {
+        public long id; public String clientMsgId, convId, from;   // from == null: minha
+        public int type, state; public String text; public double lat, lng; public long liveUntil, ts;
+        public int resend;   // só no aviso IDENTITY_CHANGED mais recente com pedido válido: N do 'Reenviar N'
+    }
+    public interface Listener { void onMessage(Msg m); void onConversationsChanged(); }   // entregue na main
+
+    private Chat() {}
+
+    public static List<Conv> conversations(Context c) { return db(c, () -> ChatDb.conversations(c), new ArrayList<>()); }
+
+    public static Conv conversation(Context c, String convId) { return db(c, () -> ChatDb.conversation(c, convId), null); }
+
+    /** Keyset: primeira página com beforeTs = Long.MAX_VALUE, beforeId = Long.MAX_VALUE; ordem ts DESC, id DESC. */
+    public static List<Msg> page(Context c, String convId, long beforeTs, long beforeId, int limit) {
+        return db(c, () -> {
+            List<Msg> p = ChatDb.page(c, convId, beforeTs, beforeId, limit);
+            int n = ChatDb.resendRequest(c, convId, System.currentTimeMillis() - Rules.RESEND_WINDOW_MS).size();
+            Msg notice = n == 0 ? null : ChatDb.latestNotice(c, convId);
+            if (notice != null) for (Msg m : p) if (m.id == notice.id) m.resend = n;
+            return p;
+        }, new ArrayList<>());
+    }
+
+    /** 0 = sem 'Reenviar N' (sem pedido, substituído ou com mais de 24 h). */
+    public static int pendingResend(Context c, String convId) {
+        return db(c, () -> ChatDb.resendRequest(c, convId, System.currentTimeMillis() - Rules.RESEND_WINDOW_MS).size(), 0);
+    }
+
+    /**
+     * Toque em 'Reenviar N': recifra pela sessão nova e reenvia (id novo, o original dentro do cifrado); sem WS, sai quando
+     * ele abrir. Nunca sai sem este toque. Devolve quantas; o aviso volta pelo onMessage com resend = 0.
+     */
+    public static int resend(Context c, String convId) throws IOException {
+        if (!SocialDb.useIfHeld()) throw new Rules.Unsent("closed");
+        if (App.process() != App.PROC_MAIN) ChatSocket.wantWs();
+        try {
+            String peer = Locations.atomic(c, () -> ChatDb.peer(c, convId));
+            if (peer == null) return 0;
+            List<String> ids = Locations.atomic(c, () -> {
+                List<String> l = ChatDb.resendRequest(c, convId, System.currentTimeMillis() - Rules.RESEND_WINDOW_MS);
+                ChatDb.clearResendRequest(c, convId);
+                return l;
+            });
+            if (!ids.isEmpty()) Inbox.resendApproved(c, peer, ids);
+            ChatSocket.dispatch(Locations.atomic(c, () -> ChatDb.latestNotice(c, convId)));
+            return ids.size();
+        } finally {
+            SocialDb.release();
+        }
+    }
+
+    public static String openDirect(Context c, String friendUserId, String label) {
+        String id = ChatDb.directId(friendUserId);
+        return db(c, () -> {
+            ChatDb.ensureConversation(c, id, false, friendUserId, label);
+            return id;
+        }, null);
+    }
+
+    public static Msg sendText(Context c, String convId, String text) throws IOException {
+        return send(c, convId, msg(TEXT, text, 0, 0, 0));
+    }
+
+    public static Msg sendLocation(Context c, String convId, double lat, double lng) throws IOException {
+        return send(c, convId, msg(LOC, "", lat, lng, 0));
+    }
+
+    public static Msg startLive(Context c, String convId, long durationMs) throws IOException {
+        Coord p = Prefs.lastPosition(c);
+        long until = System.currentTimeMillis() + durationMs;
+        Msg m = send(c, convId, msg(LIVE_START, "", p == null ? 0 : p.lat, p == null ? 0 : p.lng, until));
+        Locations.atomic(c, () -> {
+            ChatDb.setLive(c, convId, true, until);
+            return null;
+        });
+        Live.hint(c);
+        ChatSocket.dispatch(null);
+        return m;
+    }
+
+    public static void stopLive(Context c, String convId) throws IOException {
+        long now = System.currentTimeMillis();
+        Conv conv = conversation(c, convId);
+        if (conv == null || conv.myLiveUntil <= now) return;
+        String start = Locations.atomic(c, () -> ChatDb.myLiveStart(c, convId));
+        if (start == null) return;
+        Coord p = Prefs.lastPosition(c);
+        send(c, convId, msg(LIVE_STOP, start, p == null ? 0 : p.lat, p == null ? 0 : p.lng, now));
+        Msg ended = Locations.atomic(c, () -> {
+            ChatDb.setLive(c, convId, true, 0);
+            Msg s = ChatDb.byClientId(c, null, start);
+            return s == null ? null : ChatDb.updateLive(c, convId, null, start, s.lat, s.lng, now);
+        });
+        Live.hint(c);
+        ChatSocket.dispatch(ended);
+    }
+
+    public static Msg retry(Context c, long msgId) throws IOException {
+        if (!SocialDb.useIfHeld()) throw new Rules.Unsent("closed");
+        if (App.process() != App.PROC_MAIN) ChatSocket.wantWs();
+        try {
+            Msg m = Locations.atomic(c, () -> {
+                ChatDb.setState(c, msgId, SENDING);
+                return ChatDb.byId(c, msgId);
+            });
+            if (m != null) transmit(c, m);
+            return m;
+        } finally {
+            SocialDb.release();
+        }
+    }
+
+    /** O nome nunca vai ao servidor: viaja cifrado com a sender key. */
+    public static String createGroup(Context c, String name, List<String> memberUserIds) throws IOException {
+        requireLib();
+        String id = Api.createGroup(c, memberUserIds);
+        Api.Group g = Api.group(c, id);
+        String me = Groups.myId(c);
+        Locations.atomic(c, () -> {
+            ChatDb.ensureConversation(c, id, true, null, name);
+            ChatDb.setMembers(c, id, Groups.others(g.members, me));
+            return null;
+        });
+        if (ChatSocket.isOpen()) Groups.distribute(c, id);
+        ChatSocket.dispatch(null);
+        return id;
+    }
+
+    public static void addMember(Context c, String convId, String userId) throws IOException {
+        Api.addGroupMember(c, convId, userId);
+        Groups.sync(c, convId);
+        ChatSocket.dispatch(null);
+    }
+
+    public static void removeMember(Context c, String convId, String userId) throws IOException {
+        Api.removeGroupMember(c, convId, userId);
+        Groups.sync(c, convId);
+        ChatSocket.dispatch(null);
+    }
+
+    public static void leaveGroup(Context c, String convId) throws IOException {
+        Api.removeGroupMember(c, convId, Groups.myId(c));
+        Groups.leave(c, convId);
+        ChatSocket.dispatch(null);
+    }
+
+    public static List<Api.Friend> members(Context c, String convId) { return db(c, () -> ChatDb.members(c, convId), new ArrayList<>()); }
+
+    public static String safetyNumber(Context c, String friendUserId) throws IOException {
+        requireLib();
+        return Groups.safetyNumber(c, friendUserId);
+    }
+
+    public static void markRead(Context c, String convId) {
+        db(c, () -> {
+            ChatDb.markRead(c, convId);
+            return null;
+        }, null);
+        Notify.cancel(c, convId);
+        broadcastUnread(c);
+    }
+
+    public static void listen(Context c, Listener l) { ChatSocket.listen(c, l); }
+
+    public static void unlisten(Listener l) { ChatSocket.unlisten(l); }
+
+    /** :overlay, painel aberto: segura o social.db e pede o WS do :overlay (abre no próximo tick do LocationSharer). */
+    public static void overlayOpened(Context c, Listener l) {
+        SocialDb.use();
+        ChatSocket.panel(l, true);
+    }
+
+    public static void overlayClosed(Listener l) {
+        ChatSocket.panel(l, false);
+        SocialDb.release();
+    }
+
+    /** Conversa na tela (null = nenhuma): o que chega nela entra lido e não notifica. */
+    public static void viewing(Context c, String convId) {
+        ChatSocket.viewing = convId;
+        if (convId != null) markRead(c, convId);
+    }
+
+    static boolean hasOutbox(Context c) {
+        SocialDb.use();
+        try {
+            return db(c, () -> !ChatDb.sendingIds(c).isEmpty(), false);
+        } finally {
+            SocialDb.release();
+        }
+    }
+
+    static void failOutbox(Context c) {
+        SocialDb.use();
+        try {
+            db(c, () -> {
+                ChatDb.failSending(c);
+                return null;
+            }, null);
+        } finally {
+            SocialDb.release();
+        }
+    }
+
+    /** Na subida do :overlay, sem painel aberto: abre e fecha sozinho. */
+    public static int unreadTotal(Context c) {
+        SocialDb.use();
+        try {
+            return db(c, () -> ChatDb.unreadTotal(c), 0);
+        } finally {
+            SocialDb.release();
+        }
+    }
+
+    /** O contador do :overlay escuta só enquanto ele vive: nada sobe por causa disto. */
+    public static void broadcastUnread(Context c) {
+        int n = db(c, () -> ChatDb.unreadTotal(c), -1);
+        if (n >= 0) broadcastUnread(c, n);
+    }
+
+    /** Logout: o :overlay esconde o botão do chat e fecha o painel. */
+    public static void broadcastLoggedOut(Context c) {
+        c.sendBroadcast(new Intent(Intents.INT_CHAT_UNREAD).setPackage(c.getPackageName()).putExtra(Intents.EXTRA_UNREAD, 0)
+                .putExtra(Intents.EXTRA_LOGGED_OUT, true), c.getPackageName() + ".permission.INTERNAL");
+    }
+
+    public static void broadcastUnread(Context c, int n) {
+        c.sendBroadcast(new Intent(Intents.INT_CHAT_UNREAD).setPackage(c.getPackageName()).putExtra(Intents.EXTRA_UNREAD, n),
+                c.getPackageName() + ".permission.INTERNAL");
+    }
+
+    private static void requireLib() throws IOException {
+        if (!SignalLoader.loaded()) throw new IOException("signal not loaded");
+    }
+
+    private static Msg msg(int type, String text, double lat, double lng, long liveUntil) {
+        Msg m = new Msg();
+        m.type = type;
+        m.text = text;
+        m.lat = lat;
+        m.lng = lng;
+        m.liveUntil = liveUntil;
+        return m;
+    }
+
+    private static Msg send(Context c, String convId, Msg m) throws IOException {
+        m.clientMsgId = UUID.randomUUID().toString();
+        m.convId = convId;
+        m.state = SENDING;
+        m.ts = System.currentTimeMillis();
+        if (!SocialDb.useIfHeld()) throw new Rules.Unsent("closed");
+        if (App.process() != App.PROC_MAIN) ChatSocket.wantWs();
+        try {
+            Locations.atomic(c, () -> ChatDb.insert(c, m));
+            transmit(c, m);
+        } finally {
+            SocialDb.release();
+        }
+        return m;
+    }
+
+    private static void transmit(Context c, Msg m) {
+        Rules.sendOrFail(() -> {
+            if (SignalLoader.unavailable()) throw new Rules.Unsent("signal unavailable");
+            if (!SignalLoader.loaded() || !ChatSocket.isOpen()) return;
+            byte[] plain = Content.msg(m);
+            byte[] frame;
+            if (Locations.atomic(c, () -> ChatDb.isGroup(c, m.convId))) {
+                if (Locations.atomic(c, () -> ChatDb.gone(c, m.convId))) throw new Rules.Unsent("left");
+                Groups.distribute(c, m.convId);
+                String me = Groups.myId(c);
+                frame = Frames.groupEnvelope(m.convId, m.clientMsgId, Locations.atomic(c, () -> Groups.encrypt(c, me, m.convId, plain, true)));
+            } else {
+                String peer = Locations.atomic(c, () -> ChatDb.peer(c, m.convId));
+                frame = Frames.envelope(peer, m.clientMsgId, Groups.seal1to1(c, peer, plain, null));
+            }
+            if (ChatSocket.sendMessage(c, frame, m)) {
+                Locations.atomic(c, () -> ChatDb.incTries(c, m.id));
+            }
+        }, () -> fail(c, m.id));
+    }
+
+    static void noAck(Context c, long id) {
+        Rules.sendOrFail(() -> {
+            Object[] st = Locations.atomic(c, () -> new Object[]{ChatDb.byId(c, id), ChatDb.tries(c, id)});
+            Msg m = (Msg) st[0];
+            if (m == null || m.state != SENDING) return;
+            if (Rules.resend((Integer) st[1])) transmit(c, m);
+            else fail(c, id);
+        }, () -> fail(c, id));
+    }
+
+    static void resendOutbox(Context c) {
+        List<Long> ids;
+        try {
+            ids = Locations.atomic(c, () -> ChatDb.sendingIds(c));
+        } catch (IOException | RuntimeException e) {
+            Log.w("Chat", "outbox: " + e.getClass().getSimpleName());
+            return;
+        }
+        for (long id : ids) noAck(c, id);
+    }
+
+    private static void fail(Context c, long id) { ChatSocket.setState(c, id, FAILED); }
+
+    private static <T> T db(Context c, SocialDb.Op<T> op, T none) {
+        if (!SocialDb.useIfHeld()) return none;
+        try {
+            return SocialDb.atomic(c, op);
+        } catch (IllegalStateException e) {
+            if ("logged out".equals(e.getMessage())) return none;
+            throw e;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("chat db", e);
+        } finally {
+            SocialDb.release();
+        }
+    }
+}

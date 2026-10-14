@@ -9,36 +9,54 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.EditText;
 
+import com.google.android.material.textfield.TextInputLayout;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.net.Api;
+import com.pokelocation.app.social.ui.chat.ChatListActivity;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.main.MainActivity;
 import com.pokelocation.app.util.Ui;
 
+import java.io.IOException;
+
 /** Login opcional: email/senha (entrar ou criar conta) ou Google no navegador (volta pela AuthCallbackActivity). */
 public final class LoginActivity extends BaseActivity {
     private static final String SIGNAL_STARTED = "signal_started";
-    /** Quem abre o Login diz para onde ir depois do sucesso (A4d). Sem o extra: volta à MainActivity. */
+    /** Quem abre o Login diz para onde ir depois do sucesso. Sem o extra: volta à MainActivity. */
     public static final String EXTRA_RETURN_TO = "return_to", RETURN_MAIN = "main", RETURN_FRIENDS = "friends",
-            RETURN_BACK = "back";
+            RETURN_BACK = "back", RETURN_CHATS = "chats";
     private String returnTo;
 
-    /** Pura (LoginRouteTest): tela a abrir depois do login; null = só fechar o Login (a de baixo atualiza no onResume). */
+    static Class<?> first(String returnTo, boolean hasUsername) {
+        return hasUsername ? next(returnTo) : UsernameActivity.class;
+    }
+
+    /** Tela a abrir depois do login; null = só fechar o Login (a de baixo atualiza no onResume). */
     static Class<?> next(String returnTo) {
         if (RETURN_FRIENDS.equals(returnTo)) return FriendsActivity.class;
+        if (RETURN_CHATS.equals(returnTo)) return ChatListActivity.class;
         if (RETURN_BACK.equals(returnTo)) return null;
         return MainActivity.class;
     }
 
     /**
-     * Sucesso do login (aqui ou na AuthCallbackActivity, para o Google): carrega a libsignal já (antes isso vinha do
-     * onCreate de Amigos; sem ela o Keys.ensure/A3 não roda) e vai para o destino da origem.
+     * Sucesso do login (aqui ou na AuthCallbackActivity): carrega a libsignal já, senão o Keys.ensure só rodaria quando
+     * alguém abrisse Amigos, e vai para o destino da origem.
      */
-    static void afterLogin(Activity a, String returnTo) {
+    static void afterLogin(Activity a, String returnTo, boolean hasUsername) {
         SignalLoader.start(a.getApplicationContext(), null);
+        if (first(returnTo, hasUsername) == UsernameActivity.class) {
+            a.startActivity(UsernameActivity.intent(a, returnTo, null));
+            a.finish();
+        } else {
+            go(a, returnTo);
+        }
+    }
+
+    static void go(Activity a, String returnTo) {
         Class<?> to = next(returnTo);
         if (to == MainActivity.class) {
             // a Main já existente vem para a frente (sem recriar a pilha); o handleIntent ignora intent sem action
@@ -48,7 +66,18 @@ public final class LoginActivity extends BaseActivity {
         }
         a.finish();
     }
-    private EditText email, password;
+
+    /** Falhou: segue; a tela social que receber username_required pede o nome. */
+    static boolean hasUsername(Context app) {
+        try {
+            return Api.me(app).username != null;
+        } catch (IOException e) {
+            return true;
+        }
+    }
+
+    private EditText email, password, username;
+    private TextInputLayout usernameBox;
     private View progress, signIn, signUp, google;
     private Io.Task task;
     private SignalProgress signal;
@@ -63,6 +92,9 @@ public final class LoginActivity extends BaseActivity {
         applyInsets(findViewById(R.id.soc_login_root));
         email = findViewById(R.id.soc_login_email);
         password = findViewById(R.id.soc_login_password);
+        username = findViewById(R.id.soc_login_username);
+        usernameBox = findViewById(R.id.soc_login_username_box);
+        UsernameActivity.validateLive(username, usernameBox);
         progress = findViewById(R.id.soc_login_progress);
         signIn = findViewById(R.id.soc_login_sign_in);
         signUp = findViewById(R.id.soc_login_sign_up);
@@ -101,21 +133,42 @@ public final class LoginActivity extends BaseActivity {
             Ui.toast(this, R.string.soc_fill_fields);
             return;
         }
+        String u;
+        if (register) {
+            if (usernameBox.getVisibility() != View.VISIBLE) {
+                usernameBox.setVisibility(View.VISIBLE);
+                username.requestFocus();
+                Ui.toast(this, R.string.soc_username_needed);
+                return;
+            }
+            u = Api.normalizeUsername(username.getText().toString());
+            if (u == null) {
+                usernameBox.setError(getString(R.string.soc_username_rules));
+                username.requestFocus();
+                return;
+            }
+        } else {
+            u = null;
+        }
         busy(true);
-        startSignal();   // em paralelo à autenticação (spec §3.1)
+        startSignal();   // em paralelo à autenticação
         Context app = getApplicationContext();
         task = Io.run(() -> {
-            if (register) Api.register(app, e, p);
-            else Api.login(app, e, p);
-            return Boolean.TRUE;
+            if (register) {
+                Api.register(app, e, p, u);
+                return Boolean.TRUE;
+            }
+            Api.login(app, e, p);
+            return hasUsername(app);
         }, new Io.Callback<Boolean>() {
-            @Override public void onResult(Boolean ok) {
-                afterLogin(LoginActivity.this, returnTo);
+            @Override public void onResult(Boolean has) {
+                afterLogin(LoginActivity.this, returnTo, has);
             }
             @Override public void onError(Throwable t) {
                 task = null;
                 busy(false);
-                Ui.toast(LoginActivity.this, Errors.message(t));
+                if (Errors.aboutUsername(t)) usernameBox.setError(getString(Errors.message(t)));
+                else Ui.toast(LoginActivity.this, Errors.message(t));
             }
         });
     }

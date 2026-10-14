@@ -1,6 +1,5 @@
 #!/bin/zsh
-# Prepara os .so da libsignal para download (spec §3.1). Reproduzível: mesmo AAR + mesmo NDK → mesmos hashes.
-# Fonte: o AAR do cache do Gradle (o mesmo da parte Java do APK), conferido pelo SHA-1.
+# Prepara os .so da libsignal para download. Reproduzível: mesmo AAR + mesmo NDK → mesmos hashes.
 # Uso: tools/libsignal/prepare.sh [versão]   → tools/libsignal/out/<versão>/libsignal_jni-<abi>.so.gz
 # Publicar os .gz no release "libsignal-<versão>" do GitHub e em /static/libsignal-<versão>/ do servidor.
 # A última linha impressa é o valor do buildConfigField LIBSIGNAL_SO (abi:sha256:bytes do .so descomprimido).
@@ -13,8 +12,7 @@ OUT=$P/tools/libsignal/out/$V
 TMP=$(mktemp -d)
 trap 'rm -rf $TMP' EXIT
 mkdir -p $OUT
-# O MESMO AAR que o Gradle usa na parte Java (cache do Gradle; rode um build antes). O diretório do cache é o SHA-1
-# do arquivo: confere a integridade.
+# O mesmo AAR da parte Java do APK (rode um build antes); o diretório do cache do Gradle é o SHA-1 do arquivo.
 AAR=$(echo $HOME/.gradle/caches/modules-2/files-2.1/org.signal/libsignal-android/$V/*/libsignal-android-$V.aar(N[1]))
 [[ -f $AAR ]] || { echo "AAR $V fora do cache do Gradle: rode tools/gbuild.sh :app:assembleDebug antes" >&2; exit 1; }
 [[ $(shasum -a 1 $AAR | cut -d' ' -f1) == ${AAR:h:t} ]] || { echo "SHA-1 do AAR não bate com o cache: $AAR" >&2; exit 1; }

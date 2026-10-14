@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="soc_chat_title">Chats</string>
+    <string name="soc_chat_empty">No chats yet. Tap a friend to start one.</string>
+    <string name="soc_chat_open">Open chat</string>
+    <string name="soc_chat_hint">Message</string>
+    <string name="soc_chat_send">Send</string>
+    <string name="soc_chat_new_messages">New messages</string>
+    <string name="soc_chat_sending">Waiting to send</string>
+    <string name="soc_chat_failed">Not sent · tap to retry</string>
+    <string name="soc_chat_unreadable">Couldn\'t read this message</string>
+    <string name="soc_chat_identity_changed">The security code changed</string>
+
+    <string name="soc_chat_location">Location</string>
+    <string name="soc_chat_loc_current">Current location</string>
+    <string name="soc_chat_loc_live">Live location for %s</string>
+    <string name="soc_chat_loc_stop">Stop sharing live location</string>
+    <string name="soc_chat_no_position">No position yet. Start the joystick or choose a place first.</string>
+    <string name="soc_teleport_title">Teleport to location</string>
+    <string name="soc_chat_live_location">Live location</string>
+    <string name="soc_chat_live">Live</string>
+    <string name="soc_chat_live_until">Live until %s</string>
+    <string name="soc_chat_msg_live">Live location · until %s</string>
+    <string name="soc_chat_msg_live_ended">Live location ended</string>
+    <string name="soc_chat_msg_live_stop">Stopped sharing live location</string>
+
+    <string name="soc_chat_safety">Security code</string>
+    <string name="soc_chat_safety_hint">Compare this code with your friend\'s. If they match, this chat is end-to-end encrypted.</string>
+
+    <string name="soc_chat_new_group">New group</string>
+    <string name="soc_chat_pick_friends">Choose friends</string>
+    <string name="soc_chat_no_friends">Add friends first.</string>
+    <string name="soc_chat_group_name">Group name</string>
+    <string name="soc_chat_next">Next</string>
+    <string name="soc_chat_create">Create</string>
+    <string name="soc_chat_left">You\'re no longer in this group.</string>
+    <string name="soc_chat_identity_changed_of">%s\'s security code changed</string>
+    <string name="soc_chat_view_code">View code</string>
+    <string name="soc_chat_resend">Resend %d</string>
+    <plurals name="soc_chat_resend_pending">
+        <item quantity="one">1 of your messages may not have arrived.</item>
+        <item quantity="other">%d of your messages may not have arrived.</item>
+    </plurals>
+    <string name="soc_chat_members">Members</string>
+    <string name="soc_chat_add_member">Add</string>
+    <string name="soc_chat_remove_member_confirm">Remove %s from the group?</string>
+    <string name="soc_chat_leave">Leave group</string>
+    <string name="soc_chat_leave_confirm">Leave this group?</string>
+</resources>

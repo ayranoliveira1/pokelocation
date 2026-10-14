@@ -24,23 +24,24 @@ import org.signal.libsignal.protocol.state.SignedPreKeyRecord;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Stores do Signal (A7) sobre o social.db. Sessões, identidades dos amigos e sender keys: Envelope (software, chave em
- * memória); prekeys e a identity própria: Vault (raros). Com login e SignalLoader.loaded() (o nativo chama estes
- * métodos por JNI; a regra *Store do proguard os mantém). Toda operação que usa este store (encrypt, decrypt,
- * bundle/SKDM) roda inteira dentro de SocialDb.atomic (regra multiprocesso): fora dele, db() lança.
- * Em memória só o imutável na vida do login (chave-envelope aberta, identity própria); registros sempre do arquivo.
+ * Stores do Signal sobre o social.db. Sessões, identidades dos amigos e sender keys: Envelope (software, chave em
+ * memória); prekeys e a identity própria: Vault (raros). O nativo chama estes métodos por JNI (a regra *Store do
+ * proguard os mantém). Toda operação que usa este store (encrypt, decrypt, bundle/SKDM) roda inteira dentro de
+ * SocialDb.atomic: fora dele, db() lança. Em memória só o imutável na vida do login (chave-envelope, identity própria).
  * Falha de cripto/registro dentro de um callback do nativo vira IllegalStateException (as interfaces não declaram).
  */
 public final class SignalStore implements SignalProtocolStore {
-    private static volatile byte[] sEnvelope;
     private static volatile IdentityKeyPair sIdentity;
     private static volatile int sRegId;
 
     private final Context app;
+    private final Set<String> replaced = new HashSet<>(1);
 
     public SignalStore(Context c) { app = c.getApplicationContext(); }
 
@@ -51,32 +52,15 @@ public final class SignalStore implements SignalProtocolStore {
 
     /** Logout (SocialDb.delete): esquece o que está em memória. */
     static void forget() {
-        sEnvelope = null;
         sIdentity = null;
         sRegId = 0;
     }
 
-    /** Chave-envelope: gerada uma vez, guardada selada pelo Vault; o Keystore só é tocado aqui, uma vez por processo. */
     private byte[] envelope() {
-        byte[] k = sEnvelope;
-        if (k != null) return k;
-        synchronized (SignalStore.class) {
-            if (sEnvelope != null) return sEnvelope;
-            try {
-                byte[] sealed = blob("SELECT blob FROM envelope", (String[]) null);
-                if (sealed != null) {
-                    k = Vault.open(sealed);
-                } else {
-                    k = Envelope.newKey();
-                    ContentValues v = new ContentValues(2);
-                    v.put("id", 0);
-                    v.put("blob", Vault.seal(k));
-                    db().insertOrThrow("envelope", null, v);
-                }
-            } catch (GeneralSecurityException e) {
-                throw new IllegalStateException("envelope", e);
-            }
-            return sEnvelope = k;
+        try {
+            return Envelope.key(app);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("envelope", e);
         }
     }
 
@@ -126,8 +110,6 @@ public final class SignalStore implements SignalProtocolStore {
 
     private static String[] key(SignalProtocolAddress a) { return new String[]{a.getName(), String.valueOf(a.getDeviceId())}; }
 
-    // ---- IdentityKeyStore ----
-
     @Override
     public IdentityKeyPair getIdentityKeyPair() {
         IdentityKeyPair id = sIdentity;
@@ -156,10 +138,14 @@ public final class SignalStore implements SignalProtocolStore {
         ContentValues v = new ContentValues(2);
         v.put("name", a.getName());
         putEnv("identities", v, k, "i|" + a.getName());
-        return old == null ? IdentityChange.NEW_OR_UNCHANGED : IdentityChange.REPLACED_EXISTING;
+        if (old == null) return IdentityChange.NEW_OR_UNCHANGED;
+        replaced.add(a.getName());
+        return IdentityChange.REPLACED_EXISTING;
     }
 
-    /** Spec §7: confiança no primeiro uso; troca (reinstalação) é aceita e avisada, nunca bloqueia a conversa. */
+    public boolean replaced(String name) { return replaced.contains(name); }
+
+    /** Confiança no primeiro uso: a troca (reinstalação) é aceita e avisada, nunca bloqueia a conversa. */
     @Override
     public boolean isTrustedIdentity(SignalProtocolAddress a, IdentityKey key, Direction direction) { return true; }
 
@@ -173,10 +159,7 @@ public final class SignalStore implements SignalProtocolStore {
         }
     }
 
-    /** Pura (SignalStoreTest): a chave guardada existia e é outra. */
     static boolean replaced(byte[] stored, byte[] incoming) { return stored != null && !Arrays.equals(stored, incoming); }
-
-    // ---- SessionStore ----
 
     @Override
     public SessionRecord loadSession(SignalProtocolAddress a) {
@@ -227,8 +210,6 @@ public final class SignalStore implements SignalProtocolStore {
 
     @Override
     public void deleteAllSessions(String name) { db().delete("sessions", "name = ?", new String[]{name}); }
-
-    // ---- PreKeyStore / SignedPreKeyStore (tabela prekeys do A3, Vault) ----
 
     private byte[] prekey(int id, int signed) throws InvalidKeyIdException {
         byte[] b = blob("SELECT blob FROM prekeys WHERE signed = ? AND id = ?", String.valueOf(signed), String.valueOf(id));
@@ -310,8 +291,6 @@ public final class SignalStore implements SignalProtocolStore {
     @Override
     public void removeSignedPreKey(int id) { db().delete("prekeys", "signed = 1 AND id = ?", new String[]{String.valueOf(id)}); }
 
-    // ---- KyberPreKeyStore ----
-
     @Override
     public KyberPreKeyRecord loadKyberPreKey(int id) throws InvalidKeyIdException {
         byte[] b = blob("SELECT blob FROM kyber_prekeys WHERE id = ?", String.valueOf(id));
@@ -373,8 +352,6 @@ public final class SignalStore implements SignalProtocolStore {
         }
     }
 
-    // ---- SenderKeyStore (localização: loc:{id}; grupos no chat) ----
-
     private static String ka(SignalProtocolAddress a, UUID dist) { return "k|" + a.getName() + "|" + a.getDeviceId() + "|" + dist; }
 
     @Override
@@ -385,6 +362,14 @@ public final class SignalStore implements SignalProtocolStore {
         v.put("dist", dist.toString());
         putEnv("sender_keys", v, r.serialize(), ka(a, dist));
     }
+
+    /** Rotação: a próxima GroupSessionBuilder.create gera uma chave nova (quem saiu do grupo não lê o que vem depois). */
+    public void deleteSenderKey(SignalProtocolAddress a, UUID dist) {
+        db().delete("sender_keys", "name = ? AND device = ? AND dist = ?",
+                new String[]{a.getName(), String.valueOf(a.getDeviceId()), dist.toString()});
+    }
+
+    public void deleteSenderKeys(UUID dist) { db().delete("sender_keys", "dist = ?", new String[]{dist.toString()}); }
 
     @Override
     public SenderKeyRecord loadSenderKey(SignalProtocolAddress a, UUID dist) {

@@ -10,6 +10,7 @@ import android.os.Process;
 import android.util.Log;
 import android.view.MotionEvent;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.data.Prefs;
@@ -20,6 +21,7 @@ import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.loc.Locations;
 import com.pokelocation.app.social.loc.Locations.FriendLoc;
+import com.pokelocation.app.social.ui.chat.ChatActivity;
 import com.pokelocation.app.util.Ui;
 
 import org.osmdroid.util.GeoPoint;
@@ -34,9 +36,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Amigos no mapa do principal (A9): um único Overlay desenha todos (círculo + 4 primeiros chars do código, um Paint,
- * sem Marker nem bitmap por amigo). Polling de Locations.fetch a cada 5 s, na thread NET, só com o mapa visível.
- * Criada pelo RouteMapView só com login; sem a libsignal carregada não busca nada (start do loader e espera onReady).
+ * Amigos no mapa do principal: um único Overlay desenha todos (círculo + 4 primeiros chars do código, um Paint, sem
+ * Marker nem bitmap por amigo). Polling de Locations.fetch a cada 5 s, na thread NET, só com o mapa visível. Criada
+ * pelo RouteMapView só com login; sem a libsignal carregada não busca nada.
  */
 public final class FriendLayer extends Overlay implements SignalLoader.Listener {
     private static final long POLL_MS = 5_000, MAX_AGE_MS = 60_000, STALE_S = 15;
@@ -78,8 +80,6 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
         mv.getOverlays().add(this);
     }
 
-    // ---------------------------------------------------------------- ciclo (RouteMapView)
-
     public void resume() {
         resumed = true;
         if (SignalLoader.loaded()) poll();
@@ -120,17 +120,21 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
         Io.Task t = task = new Io.Task();
         NET.execute(() -> {
             List<FriendLoc> got = null;
+            boolean noName = false;
             try {
                 got = Locations.fetch(app);
             } catch (Exception e) {   // rede/servidor: as últimas posições ficam e somem por idade
+                noName = Errors.usernameRequired(e);
                 Log.w("FriendLayer", "fetch: " + e.getClass().getSimpleName());
             }
             List<FriendLoc> l = got;
+            boolean pause = noName;
             Io.main().post(() -> {
                 if (t.isCancelled()) return;
                 task = null;
                 if (l != null) apply(l);
-                next();
+                if (pause) { if (mv != null) mv.invalidate(); }   // conta sem @nome: tenta de novo só no próximo resume
+                else next();
             });
         });
     }
@@ -138,7 +142,7 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
     private void apply(List<FriendLoc> l) {
         locs = l;
         labels = new String[l.size()];
-        for (int i = 0; i < labels.length; i++) labels[i] = initials(l.get(i).friendCode);
+        for (int i = 0; i < labels.length; i++) labels[i] = marker(l.get(i).username, l.get(i).friendCode);
     }
 
     private void next() {
@@ -151,8 +155,6 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
     @Override public void onProgress(long done, long total) {}
     @Override public void onError(java.io.IOException e) {}   // sem lib: sem camada (o Amigos mostra o erro)
     @Override public void onUnavailable() {}
-
-    // ---------------------------------------------------------------- desenho e toque
 
     @Override
     public void draw(Canvas c, Projection pj) {
@@ -181,12 +183,16 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
             if (dx * dx + dy * dy <= radius * radius) hit = f;
         }
         if (hit == null) return false;
-        String code = FriendsActivity.pretty(hit.friendCode);
+        String code = FriendsActivity.label(hit.username, hit.friendCode);
         long age = ageSeconds(hit.at, now);
         Coord me = Prefs.lastPosition(app);
-        Ui.toast(app, me == null ? app.getString(R.string.soc_friend_tap_nodist, code, age)
+        String info = me == null ? app.getString(R.string.soc_friend_tap_nodist, code, age)
                 : app.getString(R.string.soc_friend_tap, code,
-                        Cooldown.formatDistance(Geo.distance(me.lat, me.lng, hit.lat, hit.lng)), age));
+                        Cooldown.formatDistance(Geo.distance(me.lat, me.lng, hit.lat, hit.lng)), age);
+        FriendLoc f = hit;
+        Snackbar.make(map, info, Snackbar.LENGTH_LONG)
+                .setAction(R.string.soc_chat_open, v -> v.getContext().startActivity(ChatActivity.friend(v.getContext(), f.userId, code)))
+                .show();
         return true;
     }
 
@@ -195,8 +201,6 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
         pj.toPixels(gp, px);
     }
 
-    // ---------------------------------------------------------------- puro (FriendLayerTest)
-
     /** Some com mais de 60 s. at no futuro (relógio do amigo adiantado) conta como agora. */
     static boolean visible(long at, long now) {
         return now - at <= MAX_AGE_MS;
@@ -204,6 +208,10 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
 
     static long ageSeconds(long at, long now) {
         return Math.max(0, now - at) / 1000;
+    }
+
+    static String marker(String username, String code) {
+        return username == null ? initials(code) : username.length() <= 4 ? username : username.substring(0, 4);
     }
 
     static String initials(String code) {

@@ -10,7 +10,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class LocationsTest {
-    /** Contrato A8↔A9: f64 lat, f64 lng, i64 epochMs big-endian = 24 B. */
+    /** f64 lat, f64 lng, i64 epochMs big-endian = 24 B. */
     @Test public void positionIs24BytesBigEndian() {
         byte[] p = Locations.position(-23.5, -46.625, 1_700_000_000_123L);
         assertEquals(24, p.length);
@@ -42,8 +42,8 @@ public class LocationsTest {
     }
 
     /**
-     * A8b (Granito/api.md): Ack só depois de processar ou se for ilegível para sempre; falha transitória (lock,
-     * Keystore, banco) ou kind que este processo não trata → sem Ack, o servidor entrega de novo.
+     * Ack só depois de processar ou se for ilegível para sempre; falha transitória (lock, Keystore, banco) ou kind que
+     * este processo não trata → sem Ack, o servidor entrega de novo.
      */
     @Test public void ackCriteria() {
         assertTrue(Locations.ack(null)); // SKDM aplicada, ou duplicado já visto (dedup)
@@ -56,8 +56,10 @@ public class LocationsTest {
         assertFalse(Locations.ack(new java.io.IOException("keystore", new java.security.GeneralSecurityException())));
         assertFalse(Locations.ack(new java.io.IOException("signal",
                 new IllegalStateException("vault", new java.security.GeneralSecurityException()))));
-        assertFalse(Locations.ack(new java.io.IOException("signal", new Locations.UnhandledKind(2))));
         assertFalse(Locations.ack(new java.io.IOException("lock")));
+        // transitório que embrulha uma exceção da libsignal: o tipo próprio vale antes da causa
+        assertFalse(Locations.ack(new Locations.Transient("sender key ainda não chegou",
+                new org.signal.libsignal.protocol.NoSessionException("x"))));
         // payload malformado (vazio/curto) de um cliente alterado: ilegível para sempre, senão 50 deles travam a fila
         assertTrue(Locations.ack(new java.io.IOException("signal", new IllegalArgumentException("vazio"))));
     }

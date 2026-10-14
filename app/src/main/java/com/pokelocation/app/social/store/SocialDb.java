@@ -4,6 +4,7 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import com.pokelocation.app.App;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.crypto.SignalLoader;
 
@@ -13,18 +14,14 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
 
 /**
- * Banco do social (chaves do Signal, A3), separado do pokelocation.db: fica FORA do DbBackup (restaurar ratchet/prekeys
- * velhos corrompe sessões; os blobs dependem da chave do Keystore, que não viaja). Só aberto com login; logout apaga o arquivo.
- * v1 (A3): identity/prekeys/kyber_prekeys, blob = Vault.seal(registro); pub/sig = parte pública em claro (vai ao
- * servidor sem abrir o Vault); up = já enviado no PUT /v1/keys.
- * v2 (A7): sessions/identities/sender_keys, blob = Envelope.seal(chave-envelope, registro, endereço da linha);
- * envelope = a chave-envelope selada pelo Vault (Keystore só ao abrir); kyber_base_keys = base keys já vistas na last resort.
- * v3 (A1b): session = access/refresh selados pelo Vault (linha única).
- * v4 (A-api): seen_envelopes = dedup de envelopes por (remetente, client_msg_id).
+ * Banco do social, separado do pokelocation.db e fora do DbBackup: restaurar ratchet/prekeys velhos corrompe sessões,
+ * e os blobs dependem da chave do Keystore, que não viaja. Só existe com login; o logout apaga o arquivo.
+ * identity/prekeys/kyber_prekeys: blob = Vault.seal(registro); pub/sig em claro para o PUT /v1/keys sem abrir o Vault;
+ * up = já aceito pelo servidor. sessions/identities/sender_keys: blob = Envelope.seal com aad = endereço da linha.
  *
- * Multiprocesso (decisão do maestro; principal: chat/FCM, :overlay: localização): o arquivo é a ÚNICA fonte da verdade e
- * toda operação Signal que lê e grava estado roda inteira em atomic(): files/social.lock (FileLock, entre processos) e
- * BEGIN IMMEDIATE, nessa ordem. Nunca na main (pode esperar o outro processo).
+ * Multiprocesso (principal e :overlay): o arquivo é a única fonte da verdade e toda operação Signal que lê e grava
+ * estado roda inteira em atomic(): files/social.lock (FileLock, entre processos) e BEGIN IMMEDIATE, nessa ordem.
+ * Nunca na main: pode esperar o outro processo.
  */
 public final class SocialDb extends SQLiteOpenHelper {
     public static final String NAME = "social.db";
@@ -41,7 +38,7 @@ public final class SocialDb extends SQLiteOpenHelper {
     public interface Op<T> { T run() throws Exception; }
 
     private SocialDb(Context c) {
-        super(c.getApplicationContext(), NAME, null, 4);
+        super(c.getApplicationContext(), NAME, null, 11);
         setWriteAheadLoggingEnabled(true);
     }
 
@@ -51,16 +48,45 @@ public final class SocialDb extends SQLiteOpenHelper {
         return sHelper.getWritableDatabase();
     }
 
-    /** O arquivo existe (sem criar). */
     public static boolean exists(Context c) { return c.getDatabasePath(NAME).exists(); }
 
+    private static int sUsers; // guardado pela classe
+
+    /** :overlay: quem usa o banco por um tempo segura; o último a soltar fecha a conexão (o principal nunca fecha). */
+    public static synchronized void use() { sUsers++; }
+
     /**
-     * Operação Signal que lê e grava estado (encrypt, decrypt, bundle/SKDM, gerar/consumir prekey): lock entre processos
-     * + transação IMMEDIATE. Reentrante no mesmo thread. IllegalStateException("logged out") se o outro processo saiu.
+     * Entra só se alguém já segura (painel aberto, LocationSharer) ou no principal: depois do último release, uma tarefa
+     * tardia do painel não reabre a conexão. Teste e incremento juntos: o release não fecha no meio.
+     */
+    public static boolean useIfHeld() { return useIfHeld(App.process() == App.PROC_MAIN); }
+
+    static synchronized boolean useIfHeld(boolean main) {
+        if (!main && sUsers == 0) return false;
+        sUsers++;
+        return true;
+    }
+
+    public static void release() {
+        synchronized (LOCK) { // nenhuma transação deste processo no meio
+            synchronized (SocialDb.class) {
+                if (sUsers > 0) sUsers--;
+                if (sUsers > 0 || sDepth > 0 || sHelper == null || App.process() == App.PROC_MAIN) return;
+                sHelper.close();
+                sHelper = null;
+            }
+        }
+    }
+
+    static synchronized int users() { return sUsers; }
+
+    /**
+     * Lock entre processos + transação IMMEDIATE, reentrante no mesmo thread. IllegalStateException("logged out") se o
+     * outro processo saiu.
      */
     public static <T> T atomic(Context c, Op<T> op) throws Exception { return atomic(c, false, op); }
 
-    /** create = pode criar o social.db (só o login, Session.save); senão sem arquivo = "logged out", nada de banco vazio. */
+    /** create = pode criar o social.db (só o login); senão, sem arquivo = "logged out", nunca um banco vazio. */
     public static <T> T atomic(Context c, boolean create, Op<T> op) throws Exception {
         return locked(c, () -> {
             if (sAtomic) return op.run(); // aninhada: já está na transação de fora
@@ -79,14 +105,14 @@ public final class SocialDb extends SQLiteOpenHelper {
         });
     }
 
-    /** Para o SignalStore recusar uso fora de atomic() (regra do maestro; a Lupa reprova chamada fora). */
+    /** Para o SignalStore recusar uso fora de atomic(). */
     static boolean inAtomic() {
         synchronized (LOCK) {
             return sAtomic;
         }
     }
 
-    /** Só o lock entre processos + conferência da geração (sem transação: leitura simples, ou o delete do logout). */
+    /** Sem transação: leitura simples ou o delete do logout. */
     public static <T> T locked(Context c, Op<T> op) throws Exception {
         return exclusive(new File(c.getFilesDir(), LOCK_FILE), () -> {
             if (sDepth == 1) sync(c); // 1ª entrada: o outro processo pode ter feito logout (e login)
@@ -94,7 +120,7 @@ public final class SocialDb extends SQLiteOpenHelper {
         });
     }
 
-    /** Puro (SocialLockTest): op sob o FileLock de lock, exclusivo entre processos e entre threads; reentrante. */
+    /** Exclusivo entre processos (FileLock) e entre threads (monitor); reentrante. */
     public static <T> T exclusive(File lock, Op<T> op) throws Exception {
         synchronized (LOCK) {
             if (sDepth > 0) { // mesmo thread (os outros esperam no monitor)
@@ -125,6 +151,9 @@ public final class SocialDb extends SQLiteOpenHelper {
         f.seek(0);
         return f.readLong();
     }
+
+    /** Mudou desde a última leitura = logout (e talvez login) no outro processo. */
+    public static synchronized long seenGeneration() { return sGen; }
 
     /** Logout: nova geração (o outro processo vê na próxima operação). Só sob o lock. */
     static long bumpGeneration() throws IOException {
@@ -161,11 +190,12 @@ public final class SocialDb extends SQLiteOpenHelper {
         sHelper = null;
         Session.forget();
         Vault.forget();
+        Envelope.forget();
         // sem a lib, os caches estão vazios e nada de org.signal é carregado à toa
         if (SignalLoader.loaded()) SignalStore.forget();
     }
 
-    /** Logout (só o processo principal, Session.clear): sob o lock, apaga o arquivo e abre uma nova geração. */
+    /** Logout (só o processo principal): sob o lock, apaga o arquivo e abre uma nova geração. */
     public static void delete(Context c) {
         try {
             locked(c, () -> {
@@ -180,7 +210,7 @@ public final class SocialDb extends SQLiteOpenHelper {
             // já apagado (geração nova vista no sync); nada a fazer
         } catch (Exception e) {
             // lock indisponível (I/O): apaga mesmo assim; logout nunca falha.
-            // ponytail: sem o incremento o :overlay só percebe no próximo login (advance); raro, aceito (Lupa).
+            // ponytail: sem o incremento o :overlay só percebe no próximo login; raro.
             synchronized (SocialDb.class) {
                 closeAndForget();
             }
@@ -199,6 +229,14 @@ public final class SocialDb extends SQLiteOpenHelper {
         createV2(db);
         createV3(db);
         createV4(db);
+        db.execSQL(SEEN_ENVELOPES_AT);
+        db.execSQL(SESSION_FCM);
+        for (String sql : CHAT) db.execSQL(sql);
+        db.execSQL(SESSION_USERNAME);
+        for (String sql : CHAT_V8) db.execSQL(sql);
+        db.execSQL(CHAT_V9);
+        db.execSQL(CHAT_V10);
+        for (String sql : CHAT_V11) db.execSQL(sql);
     }
 
     @Override
@@ -206,16 +244,69 @@ public final class SocialDb extends SQLiteOpenHelper {
         if (oldVersion < 2) createV2(db);
         if (oldVersion < 3) createV3(db);
         if (oldVersion < 4) createV4(db);
+        if (oldVersion < 5) db.execSQL(SEEN_ENVELOPES_AT);
+        if (oldVersion < 6) db.execSQL(SESSION_FCM);
+        if (oldVersion < 7) {
+            for (String sql : CHAT) db.execSQL(sql);
+            db.execSQL(SESSION_USERNAME);
+        }
+        if (oldVersion < 8) for (String sql : CHAT_V8) db.execSQL(sql);
+        if (oldVersion < 9) db.execSQL(CHAT_V9);
+        if (oldVersion < 10) db.execSQL(CHAT_V10);
+        if (oldVersion < 11) for (String sql : CHAT_V11) db.execSQL(sql);
     }
 
-    /** v4 (A-api): envelopes já processados, por (remetente, client_msg_id): o WS do :overlay e o REST do principal
-     *  podem trazer o mesmo antes do ack. Podado depois de 31 dias (a fila do servidor expira em 30). */
-    private static void createV4(SQLiteDatabase db) {
-        db.execSQL("CREATE TABLE seen_envelopes(sender TEXT NOT NULL, msg_id TEXT NOT NULL, at INTEGER NOT NULL,"
-                + " PRIMARY KEY(sender, msg_id)) WITHOUT ROWID");
-    }
+    /** O WS do :overlay e o REST do principal podem trazer o mesmo envelope antes do ack. Podado após 31 dias (a fila
+     *  do servidor expira em 30). */
+    static final String SEEN_ENVELOPES = "CREATE TABLE seen_envelopes(sender TEXT NOT NULL, msg_id TEXT NOT NULL,"
+            + " at INTEGER NOT NULL, PRIMARY KEY(sender, msg_id)) WITHOUT ROWID";
+    static final String SEEN_ENVELOPES_AT = "CREATE INDEX IF NOT EXISTS seen_envelopes_at ON seen_envelopes(at)";
 
-    /** v3 (A1b): access/refresh selados pelo Vault, linha única; fora do prefs para os dois processos verem o mesmo. */
+    /** Selado só o que o servidor não vê (title, preview, body); ids e @nome ele já conhece. sender '' = minha. */
+    public static final String[] CHAT = {
+            "CREATE TABLE conversations(id TEXT PRIMARY KEY, grp INTEGER NOT NULL, peer TEXT, title BLOB, preview BLOB,"
+                    + " preview_type INTEGER NOT NULL DEFAULT 0, last_ts INTEGER NOT NULL DEFAULT 0,"
+                    + " unread INTEGER NOT NULL DEFAULT 0, my_live_until INTEGER NOT NULL DEFAULT 0,"
+                    + " live_until INTEGER NOT NULL DEFAULT 0) WITHOUT ROWID",
+            "CREATE TABLE group_members(conv_id TEXT NOT NULL, user_id TEXT NOT NULL, label TEXT, PRIMARY KEY(conv_id, user_id))"
+                    + " WITHOUT ROWID",
+            "CREATE TABLE messages(id INTEGER PRIMARY KEY, conv_id TEXT NOT NULL, client_msg_id TEXT NOT NULL,"
+                    + " sender TEXT NOT NULL, type INTEGER NOT NULL, state INTEGER NOT NULL, ts INTEGER NOT NULL,"
+                    + " live_until INTEGER NOT NULL DEFAULT 0, body BLOB NOT NULL, UNIQUE(sender, client_msg_id))",
+            "CREATE INDEX messages_page ON messages(conv_id, ts DESC, id DESC)",
+    };
+
+    /** pending_group guarda o ciphertext como veio (já E2E). */
+    public static final String[] CHAT_V8 = {
+            "CREATE TABLE pending_group(sender TEXT NOT NULL, msg_id TEXT NOT NULL, group_id TEXT NOT NULL,"
+                    + " payload BLOB NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(sender, msg_id)) WITHOUT ROWID",
+            "CREATE INDEX pending_group_at ON pending_group(at)",
+            "ALTER TABLE messages ADD COLUMN tries INTEGER NOT NULL DEFAULT 0",
+    };
+
+    /** key_ok: escrito só pelo principal, que cria e distribui a sender key; o :overlay só manda a live com ela. */
+    public static final String CHAT_V9 = "ALTER TABLE conversations ADD COLUMN key_ok INTEGER NOT NULL DEFAULT 0";
+
+    /** gone: saí ou fui removido do grupo; a conversa fica, só leitura. */
+    public static final String CHAT_V10 = "ALTER TABLE conversations ADD COLUMN gone INTEGER NOT NULL DEFAULT 0";
+
+    /** Pedido de reenvio do par (ids separados por \n): só sai com o toque do usuário, que preserva o E2E contra servidor comprometido. */
+    public static final String[] CHAT_V11 = {
+            "ALTER TABLE conversations ADD COLUMN resend_ids TEXT",
+            "ALTER TABLE conversations ADD COLUMN resend_at INTEGER NOT NULL DEFAULT 0",
+    };
+
+    static final String SESSION_USERNAME = "ALTER TABLE session ADD COLUMN username BLOB";
+
+    /** Sem row values (o SQLite 3.9 do API 24 não tem): "ts <= ?" posiciona no índice e o OR só desempata o mesmo ts. */
+    public static final String PAGE = "SELECT id, client_msg_id, sender, type, state, ts, live_until, body FROM messages"
+            + " WHERE conv_id = ? AND ts <= ? AND (ts < ? OR id < ?) ORDER BY ts DESC, id DESC LIMIT ?";
+
+    static final String SESSION_FCM = "ALTER TABLE session ADD COLUMN fcm BLOB";
+
+    private static void createV4(SQLiteDatabase db) { db.execSQL(SEEN_ENVELOPES); }
+
+    /** Fora do prefs para os dois processos verem os mesmos tokens. */
     private static void createV3(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE session(id INTEGER PRIMARY KEY CHECK(id = 0), access BLOB NOT NULL, refresh BLOB NOT NULL)");
     }
