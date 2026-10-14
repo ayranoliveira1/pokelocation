@@ -602,6 +602,13 @@ public final class MainActivity extends BaseActivity {
             if (r != null) startWith(r);
         } else if (Intent.ACTION_VIEW.equals(action) && i.getData() != null) {
             onViewLink(i);
+        } else if (Intents.INT_FILL_LOCATION.equals(action)) {
+            double lat = Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN), lng = Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN);
+            // com o overlay rodando o openCoordinate teleportaria: aqui só se preenche o formulário
+            if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !Intents.isOverlayRunning(this)) {
+                if (mode == 1) setMode(0);
+                openCoordinate(lat, lng);
+            }
         }
     }
 

@@ -51,11 +51,16 @@ final class OverlayFlows {
 
     /** Antes de abrir guarda lastMockedTime = agora (10 §3.2): o cooldown conta a partir daqui. */
     void openTeleport(String text) {
+        openTeleport(text, null);
+    }
+
+    void openTeleport(String text, String title) {
         close();
         ov.lastMockedTime = System.currentTimeMillis();
         TeleportPanel.Args a = new TeleportPanel.Args();
         a.current = new Coord(ov.engine.lat(), ov.engine.lng(), ov.engine.alt());
         a.text = text;
+        a.title = title;
         a.walkMode = ov.walkMode;
         a.showBack = true;
         a.canGoBack = ov.host.hasPreviousPosition();

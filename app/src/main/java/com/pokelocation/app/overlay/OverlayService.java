@@ -219,7 +219,8 @@ public final class OverlayService extends Service
             case Intents.INT_TELEPORT_UI:
                 closeMap();
                 ui.openTeleport(Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN),
-                        Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN));
+                        Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN),
+                        Intents.getBool(i, Intents.EXTRA_FROM_CHAT, false) ? getString(com.pokelocation.app.R.string.soc_teleport_title) : null);
                 return true;
             case Intents.INT_SAVE_LOCATION:
                 closeMap();

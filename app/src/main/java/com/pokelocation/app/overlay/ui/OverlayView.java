@@ -249,9 +249,9 @@ public final class OverlayView implements View.OnClickListener {
     // ------------------------------------------------------------------ abrir fluxos
 
     /** INT_TELEPORT_UI: NaN,NaN = campo vazio. */
-    public void openTeleport(double lat, double lng) {
+    public void openTeleport(double lat, double lng, String title) {
         if (destroyed) return;
-        flows.openTeleport(Double.isNaN(lat) || Double.isNaN(lng) ? "" : CoordParser.text(lat, lng));
+        flows.openTeleport(Double.isNaN(lat) || Double.isNaN(lng) ? "" : CoordParser.text(lat, lng), title);
     }
 
     /** INT_SAVE_LOCATION: seletor "Current Location". */

@@ -27,6 +27,7 @@ public final class TeleportPanel {
     public static final class Args {
         public Coord current;                 // para a linha de distância
         public String text;                   // "lat, lng" inicial (pode ser "")
+        public String title;                  // null = o título padrão
         public boolean walkMode, showBack, canGoBack, showFavorites, showDistance;
         public long lastMockedTime;
     }
@@ -54,6 +55,7 @@ public final class TeleportPanel {
         double[] ll = new double[2];
 
         if (a.text != null) text.setText(a.text);
+        if (a.title != null) ((TextView) v.findViewById(R.id.tp_title)).setText(a.title);
         walk.setChecked(a.walkMode);
         Runnable labels = () -> {
             boolean w = walk.isChecked();

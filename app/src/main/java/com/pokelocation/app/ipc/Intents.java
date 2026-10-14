@@ -52,10 +52,12 @@ public final class Intents {
             INT_REQUEST_PERMISSIONS = "com.pokelocation.app.internal.REQUEST_PERMISSIONS",
             INT_START_AND_REPLAY = "com.pokelocation.app.internal.START_AND_REPLAY",
             INT_WIDGET_REFRESH = "com.pokelocation.app.internal.WIDGET_REFRESH",
-            INT_WIDGET_TOGGLE_TAB = "com.pokelocation.app.internal.WIDGET_TOGGLE_TAB";
+            INT_WIDGET_TOGGLE_TAB = "com.pokelocation.app.internal.WIDGET_TOGGLE_TAB",
+            INT_FILL_LOCATION = "com.pokelocation.app.internal.FILL_LOCATION";
     // Start do serviço = Intent explícito com action null.
 
     // --- Extras públicos ---
+    public static final String EXTRA_FROM_CHAT = "from_chat";   // INT_TELEPORT_UI: título do chat no painel
     public static final String EXTRA_LAT = "lat", EXTRA_LNG = "lng", EXTRA_ALT = "alt", EXTRA_NAME = "name",
             EXTRA_ID = "id", EXTRA_WAYPOINTS = "waypoints", EXTRA_TELEPORT = "teleport", EXTRA_SPEED = "speed",
             EXTRA_MODE = "mode", EXTRA_MARKER_COUNT = "marker_count", EXTRA_OFFSET = "offset",

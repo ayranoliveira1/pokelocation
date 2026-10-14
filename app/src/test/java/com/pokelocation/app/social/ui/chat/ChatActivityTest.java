@@ -2,6 +2,7 @@ package com.pokelocation.app.social.ui.chat;
 
 import static org.junit.Assert.assertEquals;
 
+import com.pokelocation.app.ipc.Intents;
 import com.pokelocation.app.social.chat.Chat;
 
 import org.junit.Test;
@@ -26,8 +27,9 @@ public class ChatActivityTest {
     }
 
     @Test
-    public void geoUriNeverUsesScientificNotation() {
-        assertEquals("geo:0.000100,-46.600000", ChatActivity.geo(0.0001, -46.6));
+    public void pinOpensTeleportPanelWithJoystickOnElseTheForm() {
+        assertEquals(Intents.INT_TELEPORT_UI, ChatActivity.pinAction(true));
+        assertEquals(Intents.INT_FILL_LOCATION, ChatActivity.pinAction(false));
     }
 
     @Test

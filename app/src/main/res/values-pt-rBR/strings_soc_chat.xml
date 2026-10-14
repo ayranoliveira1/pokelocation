@@ -17,8 +17,7 @@
     <string name="soc_chat_loc_live">Localização em tempo real por %s</string>
     <string name="soc_chat_loc_stop">Parar a localização em tempo real</string>
     <string name="soc_chat_no_position">Ainda sem posição. Inicie o joystick ou escolha um local antes.</string>
-    <string name="soc_chat_teleport_confirm">Teleportar para esta localização? Respeite o tempo de espera (cooldown).</string>
-    <string name="soc_chat_teleport">Teleportar</string>
+    <string name="soc_teleport_title">Teleportar para o local</string>
     <string name="soc_chat_live_location">Localização em tempo real</string>
     <string name="soc_chat_live">Ao vivo</string>
     <string name="soc_chat_live_until">Ao vivo até %s</string>

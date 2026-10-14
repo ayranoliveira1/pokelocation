@@ -17,8 +17,7 @@
     <string name="soc_chat_loc_live">Live location for %s</string>
     <string name="soc_chat_loc_stop">Stop sharing live location</string>
     <string name="soc_chat_no_position">No position yet. Start the joystick or choose a place first.</string>
-    <string name="soc_chat_teleport_confirm">Teleport to this location? Respect the cooldown time.</string>
-    <string name="soc_chat_teleport">Teleport</string>
+    <string name="soc_teleport_title">Teleport to location</string>
     <string name="soc_chat_live_location">Live location</string>
     <string name="soc_chat_live">Live</string>
     <string name="soc_chat_live_until">Live until %s</string>

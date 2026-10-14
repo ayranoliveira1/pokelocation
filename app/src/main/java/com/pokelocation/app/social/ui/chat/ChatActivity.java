@@ -3,7 +3,6 @@ package com.pokelocation.app.social.ui.chat;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Typeface;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Process;
 import android.util.Log;
@@ -40,7 +39,6 @@ import com.pokelocation.app.util.Ui;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -291,29 +289,26 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
             Context app = getApplicationContext();
             io(() -> Chat.retry(app, m.id), this::onMessage, null);
         } else if (m.type == Chat.LOC || m.type == Chat.LIVE_START) {
-            openMap(m.lat, m.lng);
+            openPin(m.lat, m.lng);
         } else if (m.type == Chat.IDENTITY_CHANGED && !group) {
             showSafety();
         }
     }
 
-    /** Joystick rodando: abrir a coordenada teleporta, então só com confirmação (cooldown). */
-    private void openMap(double lat, double lng) {
-        Intent map = new Intent(Intent.ACTION_VIEW, Uri.parse(geo(lat, lng)), this, MainActivity.class);
-        if (!Intents.isOverlayRunning(this)) {
-            startActivity(map);
-            return;
-        }
-        new MaterialAlertDialogBuilder(this)
-                .setMessage(R.string.soc_chat_teleport_confirm)
-                .setPositiveButton(R.string.soc_chat_teleport, (d, w) -> startActivity(map))
-                .setNegativeButton(R.string.cancel, null)
-                .show();
+    /** Nunca o mapa: em alguns celulares abri-lo durante o jogo bagunça a localização. */
+    static String pinAction(boolean overlayRunning) {
+        return overlayRunning ? Intents.INT_TELEPORT_UI : Intents.INT_FILL_LOCATION;
     }
 
-    /** Double.toString vira notação científica perto de 0 (1.0E-4), que o LinkParser leria errado. */
-    static String geo(double lat, double lng) {
-        return String.format(Locale.ROOT, "geo:%.6f,%.6f", lat, lng);
+    private void openPin(double lat, double lng) {
+        String action = pinAction(Intents.isOverlayRunning(this));
+        if (Intents.INT_TELEPORT_UI.equals(action)) {
+            Intents.sendToOverlay(this, Intents.overlay(this, action).putExtra(Intents.EXTRA_LAT, lat)
+                    .putExtra(Intents.EXTRA_LNG, lng).putExtra(Intents.EXTRA_FROM_CHAT, true));
+        } else {
+            startActivity(new Intent(action).setClass(this, MainActivity.class).putExtra(Intents.EXTRA_LAT, lat)
+                    .putExtra(Intents.EXTRA_LNG, lng));
+        }
     }
 
     private void locationMenu() {
