@@ -28,8 +28,6 @@
     <string name="soc_remove_confirm">Remover %s dos seus amigos?</string>
     <string name="soc_block_confirm">Bloquear %s? Essa pessoa não poderá te enviar pedidos.</string>
 
-    <string name="soc_account_row">Conta do PokeLocation</string>
-    <string name="soc_account_signed_out">Entre para adicionar amigos</string>
     <string name="soc_account_signed_in">Conectado</string>
     <string name="soc_logout">Sair</string>
     <string name="soc_share_location">Compartilhar minha localização</string>

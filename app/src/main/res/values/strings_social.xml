@@ -31,9 +31,7 @@
     <string name="soc_remove_confirm">Remove %s from your friends?</string>
     <string name="soc_block_confirm">Block %s? They won\'t be able to send you requests.</string>
 
-    <!-- Conta (Configurações) -->
-    <string name="soc_account_row">PokeLocation account</string>
-    <string name="soc_account_signed_out">Sign in to add friends</string>
+    <!-- Conta -->
     <string name="soc_account_signed_in">Signed in</string>
     <string name="soc_logout">Sign out</string>
     <string name="soc_share_location">Share my location</string>

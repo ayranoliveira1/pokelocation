@@ -24,8 +24,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.os.LocaleListCompat;
-import androidx.lifecycle.Lifecycle;
-import androidx.lifecycle.LifecycleEventObserver;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
@@ -33,9 +31,6 @@ import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.map.MapHelper;
-import com.pokelocation.app.social.Session;
-import com.pokelocation.app.social.net.Api;
-import com.pokelocation.app.social.ui.LoginActivity;
 import com.pokelocation.app.ipc.Intents;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.main.MainActivity;
@@ -107,7 +102,6 @@ public final class SettingsActivity extends BaseActivity {
         createDoc = registerForActivityResult(new ActivityResultContracts.CreateDocument("application/octet-stream"), this::onBackupTarget);
         openDoc = registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::onRestoreSource);
 
-        buildAccount();
         buildGeneral();
         buildJoystick();
         buildBackup();
@@ -182,76 +176,6 @@ public final class SettingsActivity extends BaseActivity {
             String name = Prefs.getString(this, Prefs.SETTINGS_AUTO_START_APP_NAME);
             autoStartApp.summary.setText(appLabels == null ? getString(R.string.loading)
                     : name.isEmpty() ? getString(R.string.set_none) : name);
-        };
-    }
-
-    private void buildAccount() {
-        category(R.string.soc_account);
-        String[] email = {null}, username = {null};
-        Io.Task[] me = {null};
-        Context app = getApplicationContext();
-        getLifecycle().addObserver((LifecycleEventObserver) (owner, ev) -> {
-            if (ev == Lifecycle.Event.ON_DESTROY && me[0] != null) me[0].cancel();
-        });
-        Row r = row(R.string.soc_account_row, 0, v -> {
-            if (!Session.loggedIn(this)) {
-                startActivity(new Intent(this, LoginActivity.class).putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_BACK));
-                return;
-            }
-            new MaterialAlertDialogBuilder(this)
-                    .setTitle(email[0] != null ? email[0] : getString(R.string.soc_account))
-                    .setMessage(R.string.soc_logout_confirm)
-                    .setPositiveButton(R.string.soc_logout, (d, w) -> {
-                        if (me[0] != null) me[0].cancel();
-                        me[0] = Io.run(() -> {
-                            Api.logout(app);
-                            return Boolean.TRUE;
-                        }, new Io.Callback<Boolean>() {
-                            @Override public void onResult(Boolean ok) {
-                                me[0] = null;
-                                email[0] = null;
-                                if (!dead()) refresh();
-                            }
-                        });
-                    })
-                    .setNegativeButton(R.string.cancel, null)
-                    .setNeutralButton(R.string.soc_username_change, (d, w) -> {
-                        String cur = username[0];
-                        email[0] = null;   // volta da troca: o bind busca o @nome novo
-                        startActivity(com.pokelocation.app.social.ui.UsernameActivity.intent(this, LoginActivity.RETURN_BACK, cur));
-                    })
-                    .show();
-        });
-        r.summary.setVisibility(View.VISIBLE);
-        // Só grava; o LocationSharer do :overlay lê a cada tick e envia o LocationOff.
-        Row share = row(R.string.soc_share_location, R.string.soc_share_location_summary, v -> {
-            Prefs.setShareLocation(this, !Prefs.shareLocation(this));
-            refresh();
-        });
-        share.sw.setVisibility(View.VISIBLE);
-        share.bind = () -> {
-            share.sw.setChecked(Prefs.shareLocation(this));
-            share.root.setVisibility(Session.loggedIn(this) ? View.VISIBLE : View.GONE);
-        };
-        r.bind = () -> {
-            boolean in = Session.loggedIn(this);
-            if (!in) email[0] = null;
-            r.summary.setText(!in ? getString(R.string.soc_account_signed_out)
-                    : email[0] == null ? getString(R.string.soc_account_signed_in)
-                    : username[0] != null ? "@" + username[0] + " · " + email[0] : email[0]);
-            if (!in || email[0] != null || me[0] != null) return;
-            me[0] = Io.run(() -> Api.me(app), new Io.Callback<Api.Me>() {
-                @Override public void onResult(Api.Me m) {
-                    me[0] = null;
-                    email[0] = m.email;
-                    username[0] = m.username;
-                    if (!dead()) refresh();
-                }
-                @Override public void onError(Throwable t) {
-                    me[0] = null;
-                    if (!Session.loggedIn(app) && !dead()) refresh();   // 401: a Api já limpou a sessão
-                }
-            });
         };
     }
 
