@@ -99,8 +99,12 @@ final class MsgAdapter extends ListAdapter<Chat.Msg, MsgAdapter.VH> {
         long now = System.currentTimeMillis();
         String when = DateUtils.formatSameDayTime(m.ts, now, DateFormat.SHORT, DateFormat.SHORT).toString();
         h.meta.setTextColor(mine && m.state == Chat.FAILED ? danger : muted);
-        if (!mine || notice) h.meta.setText(when);
-        else if (m.state == Chat.SENDING) h.meta.setText(c.getString(R.string.soc_chat_sending));
+        // Na fila (sem WS) pode ficar assim até a próxima conexão: relógio discreto, não um "enviando…" parado.
+        boolean queued = mine && !notice && m.state == Chat.SENDING;
+        h.meta.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, queued ? R.drawable.soc_ic_clock : 0, 0);
+        h.meta.setCompoundDrawableTintList(queued ? ColorStateList.valueOf(muted) : null);
+        h.meta.setContentDescription(queued ? when + ", " + c.getString(R.string.soc_chat_sending) : null);
+        if (!mine || notice || queued) h.meta.setText(when);
         else if (m.state == Chat.FAILED) h.meta.setText(c.getString(R.string.soc_chat_failed));
         else h.meta.setText(when + "  ✓");
 

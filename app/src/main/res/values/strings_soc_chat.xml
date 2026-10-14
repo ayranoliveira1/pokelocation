@@ -7,7 +7,7 @@
     <string name="soc_chat_hint">Message</string>
     <string name="soc_chat_send">Send</string>
     <string name="soc_chat_new_messages">New messages</string>
-    <string name="soc_chat_sending">Sending…</string>
+    <string name="soc_chat_sending">Waiting to send</string>
     <string name="soc_chat_failed">Not sent · tap to retry</string>
     <string name="soc_chat_unreadable">Couldn\'t read this message</string>
     <string name="soc_chat_identity_changed">The security code changed</string>
