@@ -9,17 +9,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.service.notification.StatusBarNotification;
-import android.util.Log;
 
 import com.pokelocation.app.R;
 import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.ipc.Intents;
-import com.pokelocation.app.social.loc.Locations;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.ui.chat.ChatActivity;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 public final class Notify {
@@ -38,7 +35,6 @@ public final class Notify {
             if (m.type == Chat.UNREADABLE && !UNREADABLE.allow(m.convId, System.currentTimeMillis())) continue;
             Chat.Conv conv = Chat.conversation(c, m.convId);
             if (conv == null) continue;
-            if (!conv.group && conv.title == null) conv.title = nameDirect(c, conv.id, m.from);
             post(c, conv, m);
         }
     }
@@ -115,23 +111,6 @@ public final class Notify {
 
     private static String label(Context c, String convId, String userId) {
         for (Api.Friend f : Chat.members(c, convId)) if (f.userId.equals(userId)) return f.label;
-        return null;
-    }
-
-    private static String nameDirect(Context c, String convId, String userId) {
-        try {
-            for (Api.Friend f : Api.friends(c).accepted) {
-                if (!f.userId.equals(userId)) continue;
-                String label = f.username != null ? "@" + f.username : f.friendCode;
-                Locations.atomic(c, () -> {
-                    ChatDb.ensureConversation(c, convId, false, userId, label);
-                    return null;
-                });
-                return label;
-            }
-        } catch (IOException e) {
-            Log.w("Notify", "name: " + e.getClass().getSimpleName());
-        }
         return null;
     }
 

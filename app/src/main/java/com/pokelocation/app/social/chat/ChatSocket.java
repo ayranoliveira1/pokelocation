@@ -184,8 +184,14 @@ final class ChatSocket {
             Log.w(TAG, "prune: " + e.getClass().getSimpleName());
         }
         Chat.resendOutbox(app);
+        Groups.leaveMissing(app);
         Groups.distributeLives(app);
         Inbox.sendPendingResets(app, from::send);
+        try {
+            Locations.drain(app); // uma página: o servidor também empurra o backlog pelo WS depois do Auth
+        } catch (IOException e) {
+            Log.w(TAG, "fila: " + e.getClass().getSimpleName());
+        }
     }
 
     private static void frame(Context app, WsClient from, Frames.Frame f) {

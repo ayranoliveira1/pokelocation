@@ -131,7 +131,9 @@ public final class Api {
     public static Me me(Context c) throws IOException {
         try {
             Me m = parseMe(call(c, "GET", "/v1/me", null));
+            boolean had = Session.username(c) != null;
             Session.username(c, m.username);
+            if (!had && m.username != null) SignalLoader.kick(c); // as chaves esperavam o @nome
             return m;
         } catch (JSONException e) {
             throw new IOException("bad response"); // sem causa: a mensagem do JSONTokener traz o corpo

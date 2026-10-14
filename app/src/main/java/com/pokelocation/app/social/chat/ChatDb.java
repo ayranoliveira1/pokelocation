@@ -20,7 +20,7 @@ final class ChatDb {
     static final int PREVIEW_CHARS = 80, CONVERSATIONS_LIMIT = 200, MEMBERS_LIMIT = 60;
     private static final String MINE = "";
     private static final String CONV = "SELECT id, grp, title, preview, preview_type, last_ts, unread, my_live_until,"
-            + " live_until FROM conversations";
+            + " live_until, gone FROM conversations";
     private static final String MSG = "SELECT id, client_msg_id, sender, type, state, ts, live_until, body, conv_id"
             + " FROM messages";
 
@@ -88,12 +88,13 @@ final class ChatDb {
         long id = db(c).insertWithOnConflict("messages", null, v, SQLiteDatabase.CONFLICT_IGNORE);
         if (id == -1) return -1;
         m.id = id;
-        // fila offline entrega atrasada: uma mais antiga não vira a prévia (o UPDATE lê os valores antigos da linha)
+        // hora de chegada, não o relógio do remetente; o CASE segura um relógio local que voltou (o UPDATE lê a linha antiga)
+        long at = System.currentTimeMillis();
         db(c).execSQL("UPDATE conversations SET preview = CASE WHEN ? >= last_ts THEN ? ELSE preview END,"
                         + " preview_type = CASE WHEN ? >= last_ts THEN ? ELSE preview_type END,"
                         + " last_ts = MAX(last_ts, ?), unread = unread + ? WHERE id = ?",
-                new Object[]{m.ts, m.type == Chat.TEXT ? seal(c, preview(m.text), "cp|" + m.convId) : null, m.ts, m.type,
-                        m.ts, m.from == null ? 0 : 1, m.convId});
+                new Object[]{at, m.type == Chat.TEXT ? seal(c, preview(m.text), "cp|" + m.convId) : null, at, m.type,
+                        at, m.from == null ? 0 : 1, m.convId});
         return id;
     }
 
@@ -181,11 +182,31 @@ final class ChatDb {
         }
     }
 
-    static void deleteConversation(Context c, String convId) {
-        String[] a = {convId};
-        db(c).delete("messages", "conv_id = ?", a);
+    static void leave(Context c, String groupId) {
+        String[] a = {groupId};
+        db(c).execSQL("UPDATE conversations SET gone = 1, key_ok = 0, my_live_until = 0 WHERE id = ?", a);
+        db(c).execSQL("UPDATE messages SET state = " + Chat.FAILED + " WHERE conv_id = ? AND sender = '' AND state = "
+                + Chat.SENDING, a);
         db(c).delete("group_members", "conv_id = ?", a);
-        db(c).delete("conversations", "id = ?", a);
+        db(c).delete("pending_group", "group_id = ?", a);
+    }
+
+    static void rejoin(Context c, String groupId) {
+        db(c).execSQL("UPDATE conversations SET gone = 0 WHERE id = ?", new Object[]{groupId});
+    }
+
+    static boolean gone(Context c, String convId) {
+        try (Cursor q = db(c).rawQuery("SELECT gone FROM conversations WHERE id = ?", new String[]{convId})) {
+            return q.moveToFirst() && q.getInt(0) == 1;
+        }
+    }
+
+    static List<String> activeGroups(Context c) {
+        List<String> out = new ArrayList<>();
+        try (Cursor q = db(c).rawQuery("SELECT id FROM conversations WHERE grp = 1 AND gone = 0", null)) {
+            while (q.moveToNext()) out.add(q.getString(0));
+        }
+        return out;
     }
 
     static List<Long> sendingIds(Context c) {
@@ -321,6 +342,7 @@ final class ChatDb {
         v.unread = q.getInt(6);
         v.myLiveUntil = q.getLong(7);
         v.liveUntil = q.getLong(8);
+        v.left = q.getInt(9) == 1;
         return v;
     }
 

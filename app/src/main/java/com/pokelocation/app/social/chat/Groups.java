@@ -1,6 +1,8 @@
 package com.pokelocation.app.social.chat;
 
 import android.content.Context;
+
+import com.pokelocation.app.App;
 import android.util.Log;
 
 import com.pokelocation.app.social.Session;
@@ -54,12 +56,13 @@ final class Groups {
             g = Api.group(c, groupId);
         } catch (Api.Error e) {
             if (e.http != 404) throw e;
-            forget(c, groupId);
+            leave(c, groupId);
             return;
         }
         List<Api.Friend> now = others(g.members, me);
         boolean someoneLeft = Locations.atomic(c, () -> {
             ChatDb.ensureConversation(c, groupId, true, null, null);
+            ChatDb.rejoin(c, groupId);
             Set<String> before = new HashSet<>(), after = new HashSet<>();
             for (Api.Friend f : ChatDb.members(c, groupId)) before.add(f.userId);
             for (Api.Friend f : now) after.add(f.userId);
@@ -73,13 +76,25 @@ final class Groups {
         if (someoneLeft) SENT.remove(groupId);
     }
 
-    static void forget(Context c, String groupId) throws IOException {
+    static void leave(Context c, String groupId) throws IOException {
         Locations.atomic(c, () -> {
-            ChatDb.deleteConversation(c, groupId);
+            ChatDb.leave(c, groupId);
             new SignalStore(c).deleteSenderKeys(UUID.fromString(groupId));
             return null;
         });
         SENT.remove(groupId);
+        if (App.process() == App.PROC_MAIN) Live.hint(c); // o social_share só tem um escritor
+    }
+
+    /** Sem WS na hora, o GroupChanged não fica guardado: grupo local que sumiu da lista do servidor = saí. */
+    static void leaveMissing(Context c) {
+        try {
+            Set<String> now = new HashSet<>();
+            for (Api.Group g : Api.groups(c)) now.add(g.id);
+            for (String gid : Locations.atomic(c, () -> ChatDb.activeGroups(c))) if (!now.contains(gid)) leave(c, gid);
+        } catch (IOException e) {
+            Log.w("Groups", "groups: " + e.getClass().getSimpleName());
+        }
     }
 
     static byte[] seal1to1(Context c, String peer, byte[] plain, Api.Bundle bundle) throws IOException {

@@ -89,6 +89,15 @@ public class SocialDbSchemaTest {
         assertEquals("0", sqlite(db, ".mode list\nSELECT key_ok FROM conversations;").trim());
     }
 
+    @Test public void v10GroupNotGoneByDefault() throws Exception {
+        Assume.assumeTrue(new File(SQLITE).canExecute());
+        File db = new File(tmp.getRoot(), "v10.db");
+        sqlite(db, String.join(";", SocialDb.CHAT) + ";" + String.join(";", SocialDb.CHAT_V8) + ";" + SocialDb.CHAT_V9 + ";"
+                + "INSERT INTO conversations(id, grp) VALUES ('g', 1);");
+        sqlite(db, SocialDb.CHAT_V10 + ";");
+        assertEquals("0", sqlite(db, ".mode list\nSELECT gone FROM conversations;").trim());
+    }
+
     /** Troca os ? em ordem: o sqlite3 da linha de comando não tem parâmetros. */
     private static String bind(String sql, String... values) {
         for (String v : values) sql = sql.replaceFirst("\\?", v);

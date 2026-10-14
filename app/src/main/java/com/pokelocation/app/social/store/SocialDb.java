@@ -37,7 +37,7 @@ public final class SocialDb extends SQLiteOpenHelper {
     public interface Op<T> { T run() throws Exception; }
 
     private SocialDb(Context c) {
-        super(c.getApplicationContext(), NAME, null, 9);
+        super(c.getApplicationContext(), NAME, null, 10);
         setWriteAheadLoggingEnabled(true);
     }
 
@@ -204,6 +204,7 @@ public final class SocialDb extends SQLiteOpenHelper {
         db.execSQL(SESSION_USERNAME);
         for (String sql : CHAT_V8) db.execSQL(sql);
         db.execSQL(CHAT_V9);
+        db.execSQL(CHAT_V10);
     }
 
     @Override
@@ -219,6 +220,7 @@ public final class SocialDb extends SQLiteOpenHelper {
         }
         if (oldVersion < 8) for (String sql : CHAT_V8) db.execSQL(sql);
         if (oldVersion < 9) db.execSQL(CHAT_V9);
+        if (oldVersion < 10) db.execSQL(CHAT_V10);
     }
 
     /** O WS do :overlay e o REST do principal podem trazer o mesmo envelope antes do ack. Podado após 31 dias (a fila
@@ -251,6 +253,9 @@ public final class SocialDb extends SQLiteOpenHelper {
 
     /** key_ok: escrito só pelo principal, que cria e distribui a sender key; o :overlay só manda a live com ela. */
     public static final String CHAT_V9 = "ALTER TABLE conversations ADD COLUMN key_ok INTEGER NOT NULL DEFAULT 0";
+
+    /** gone: saí ou fui removido do grupo; a conversa fica, só leitura. */
+    public static final String CHAT_V10 = "ALTER TABLE conversations ADD COLUMN gone INTEGER NOT NULL DEFAULT 0";
 
     static final String SESSION_USERNAME = "ALTER TABLE session ADD COLUMN username BLOB";
 

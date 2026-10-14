@@ -40,7 +40,7 @@ final class Keys {
 
     /** Banco sob SocialDb.atomic; rede fora do lock (um PUT lento não trava o :overlay). */
     static void ensure(Context c) throws IOException {
-        if (!SignalLoader.loaded() || !Session.loggedIn(c)) return;
+        if (!SignalLoader.loaded() || !Session.loggedIn(c) || Session.username(c) == null) return; // sem @nome: 403
         try {
             boolean pending = SocialDb.atomic(c, () -> {
                 SQLiteDatabase db = SocialDb.get(c);

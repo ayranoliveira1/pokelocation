@@ -26,6 +26,7 @@ public final class Chat {
     public static final class Conv {
         public String id, title; public boolean group; public String preview; public long lastTs; public int unread;
         public long myLiveUntil, liveUntil;
+        public boolean left;   // grupo do qual saí ou fui removido: só leitura
         public int previewType;   // tipo da última mensagem (TEXT, LOC…): preview só tem texto em TEXT
     }
     public static final class Msg {
@@ -130,7 +131,7 @@ public final class Chat {
 
     public static void leaveGroup(Context c, String convId) throws IOException {
         Api.removeGroupMember(c, convId, Groups.myId(c));
-        Groups.forget(c, convId);
+        Groups.leave(c, convId);
         ChatSocket.dispatch(null);
     }
 
@@ -184,6 +185,7 @@ public final class Chat {
             byte[] plain = Content.msg(m);
             byte[] frame;
             if (Locations.atomic(c, () -> ChatDb.isGroup(c, m.convId))) {
+                if (Locations.atomic(c, () -> ChatDb.gone(c, m.convId))) throw new IOException("left");
                 Groups.distribute(c, m.convId);
                 String me = Groups.myId(c);
                 frame = Frames.groupEnvelope(m.convId, m.clientMsgId, Locations.atomic(c, () -> Groups.encrypt(c, me, m.convId, plain, true)));

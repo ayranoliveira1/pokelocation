@@ -76,7 +76,7 @@ public final class Inbox {
             plain = groupId != null ? new GroupCipher(st, a).decrypt(payload) : decrypt1to1(st, a, payload);
         } catch (NoSessionException e) {
             if (groupId == null) return unreadable(c, st, a, null, from, msgId, e, r);
-            if (eph) return r;
+            if (eph || ChatDb.gone(c, groupId)) return r; // cópia gravada antes de eu sair: a chave já foi apagada
             // a SKDM vem num 1:1 separado e pode chegar depois: na fila o Ack é seguro; teto por remetente (quem nunca a
             // manda não enche o disco)
             if (ChatDb.pendingCount(c, from) >= Rules.MAX_PENDING_PER_SENDER) {
@@ -227,6 +227,7 @@ public final class Inbox {
 
     /** Fora do atomic, depois do Ack: pode usar rede. send = o WS deste processo (null: o do chat, se aberto). */
     public static void deliver(Context c, Result r, Predicate<byte[]> send) {
+        nameNew(c, r.fresh);
         for (Chat.Msg m : r.msgs) ChatSocket.dispatch(m);
         Notify.fresh(c, r.fresh);
         if (r.groupInfo != null) acceptGroupInfo(c, r.groupInfo);
@@ -242,6 +243,32 @@ public final class Inbox {
             RESET_LATER.remove(peer);
             if (RESETS.allow(peer, System.currentTimeMillis())) sendReset(c, peer, send);
         }
+    }
+
+    /** O envelope só traz o id: o 1:1 que começou pelo outro lado ganha o @nome pela lista de amigos. */
+    private static void nameNew(Context c, List<Chat.Msg> fresh) {
+        for (Chat.Msg m : fresh) {
+            if (m.from == null || Content.isGroupId(m.convId)) continue;
+            Chat.Conv conv = Chat.conversation(c, m.convId);
+            if (conv != null && conv.title == null) nameDirect(c, m.convId, m.from);
+        }
+    }
+
+    private static String nameDirect(Context c, String convId, String userId) {
+        try {
+            for (Api.Friend f : Api.friends(c).accepted) {
+                if (!f.userId.equals(userId)) continue;
+                String label = f.username != null ? "@" + f.username : f.friendCode;
+                Locations.atomic(c, () -> {
+                    ChatDb.ensureConversation(c, convId, false, userId, label);
+                    return null;
+                });
+                return label;
+            }
+        } catch (IOException e) {
+            Log.w("Inbox", "name: " + e.getClass().getSimpleName());
+        }
+        return null;
     }
 
     private static void acceptGroupInfo(Context c, String[] g) {
