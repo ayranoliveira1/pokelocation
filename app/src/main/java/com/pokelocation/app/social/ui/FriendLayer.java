@@ -120,17 +120,21 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
         Io.Task t = task = new Io.Task();
         NET.execute(() -> {
             List<FriendLoc> got = null;
+            boolean noName = false;
             try {
                 got = Locations.fetch(app);
             } catch (Exception e) {   // rede/servidor: as últimas posições ficam e somem por idade
+                noName = Errors.usernameRequired(e);
                 Log.w("FriendLayer", "fetch: " + e.getClass().getSimpleName());
             }
             List<FriendLoc> l = got;
+            boolean pause = noName;
             Io.main().post(() -> {
                 if (t.isCancelled()) return;
                 task = null;
                 if (l != null) apply(l);
-                next();
+                if (pause) { if (mv != null) mv.invalidate(); }   // conta sem @nome: tenta de novo só no próximo resume
+                else next();
             });
         });
     }
@@ -138,7 +142,7 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
     private void apply(List<FriendLoc> l) {
         locs = l;
         labels = new String[l.size()];
-        for (int i = 0; i < labels.length; i++) labels[i] = initials(l.get(i).friendCode);
+        for (int i = 0; i < labels.length; i++) labels[i] = marker(l.get(i).username, l.get(i).friendCode);
     }
 
     private void next() {
@@ -179,7 +183,7 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
             if (dx * dx + dy * dy <= radius * radius) hit = f;
         }
         if (hit == null) return false;
-        String code = FriendsActivity.pretty(hit.friendCode);
+        String code = FriendsActivity.label(hit.username, hit.friendCode);
         long age = ageSeconds(hit.at, now);
         Coord me = Prefs.lastPosition(app);
         String info = me == null ? app.getString(R.string.soc_friend_tap_nodist, code, age)
@@ -187,7 +191,7 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
                         Cooldown.formatDistance(Geo.distance(me.lat, me.lng, hit.lat, hit.lng)), age);
         FriendLoc f = hit;
         Snackbar.make(map, info, Snackbar.LENGTH_LONG)
-                .setAction(R.string.soc_chat_open, v -> v.getContext().startActivity(ChatActivity.friend(v.getContext(), f.userId, f.friendCode)))
+                .setAction(R.string.soc_chat_open, v -> v.getContext().startActivity(ChatActivity.friend(v.getContext(), f.userId, code)))
                 .show();
         return true;
     }
@@ -204,6 +208,11 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
 
     static long ageSeconds(long at, long now) {
         return Math.max(0, now - at) / 1000;
+    }
+
+    /** Rótulo dentro do círculo: começo do @nome, ou do código enquanto não houver nome. */
+    static String marker(String username, String code) {
+        return username == null ? initials(code) : username.length() <= 4 ? username : username.substring(0, 4);
     }
 
     static String initials(String code) {

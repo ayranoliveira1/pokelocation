@@ -146,7 +146,7 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
     private void pickMembers(List<Api.Friend> friends) {
         CharSequence[] codes = new CharSequence[friends.size()];
         boolean[] checked = new boolean[codes.length];
-        for (int i = 0; i < codes.length; i++) codes[i] = FriendsActivity.pretty(friends.get(i).friendCode);
+        for (int i = 0; i < codes.length; i++) codes[i] = FriendsActivity.label(friends.get(i).username, friends.get(i).friendCode);
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.soc_chat_pick_friends)
                 .setMultiChoiceItems(codes, checked, (d, which, on) -> checked[which] = on)
@@ -190,6 +190,18 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
                 .show();
     }
 
+    private String preview(Chat.Conv c) {
+        switch (c.previewType) {
+            case Chat.TEXT: return c.preview == null ? "" : c.preview;
+            case Chat.LOC: return getString(R.string.soc_chat_location);
+            case Chat.LIVE_START: return getString(R.string.soc_chat_live_location);
+            case Chat.LIVE_STOP: return getString(R.string.soc_chat_msg_live_stop);
+            case Chat.UNREADABLE: return getString(R.string.soc_chat_unreadable);
+            case Chat.IDENTITY_CHANGED: return getString(R.string.soc_chat_identity_changed);
+            default: return "";
+        }
+    }
+
     private void fail(Throwable t) {
         if (Errors.unauthorized(t)) toLogin();
         else Ui.toast(this, Errors.message(t));
@@ -200,7 +212,7 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
         finish();
     }
 
-    /** soc_row: título (código ou nome do grupo) e prévia com as não lidas. */
+    /** soc_row: título (@nome, código ou nome do grupo) e prévia com as não lidas. */
     private final class Rows extends RecyclerView.Adapter<Rows.VH> {
         private List<Chat.Conv> items = Collections.emptyList();
 
@@ -219,11 +231,9 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
         @Override
         public void onBindViewHolder(@NonNull VH h, int position) {
             Chat.Conv c = items.get(position);
-            String title = c.group ? c.title : FriendsActivity.pretty(c.title);
-            h.title.setText(title);
-            h.title.setTypeface(c.group ? null : android.graphics.Typeface.MONOSPACE, c.unread > 0
-                    ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
-            String preview = c.preview == null ? "" : c.preview;
+            h.title.setText(c.title);
+            h.title.setTypeface(null, c.unread > 0 ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            String preview = preview(c);
             if (c.unread > 0) preview = getString(R.string.soc_chat_unread, c.unread, preview);
             if (ChatActivity.liveUntil(c, System.currentTimeMillis()) > 0) preview = getString(R.string.soc_chat_live) + " · " + preview;
             h.sub.setText(preview);

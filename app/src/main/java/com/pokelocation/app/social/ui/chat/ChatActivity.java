@@ -84,9 +84,9 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
                 .putExtra(EXTRA_GROUP, group);
     }
 
-    /** 1:1 com o amigo: o convId sai do Chat.openDirect (banco) fora da main, já aqui dentro. */
-    public static Intent friend(Context c, String userId, String friendCode) {
-        return new Intent(c, ChatActivity.class).putExtra(EXTRA_FRIEND, userId).putExtra(EXTRA_TITLE, friendCode);
+    /** 1:1 com o amigo: o convId sai do Chat.openDirect (banco) fora da main, já aqui dentro. label: "@nome" ou o código. */
+    public static Intent friend(Context c, String userId, String label) {
+        return new Intent(c, ChatActivity.class).putExtra(EXTRA_FRIEND, userId).putExtra(EXTRA_TITLE, label);
     }
 
     @Override
@@ -102,7 +102,7 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         group = in.getBooleanExtra(EXTRA_GROUP, false);
         String title = in.getStringExtra(EXTRA_TITLE);
         setContentView(R.layout.soc_chat);
-        setupToolbar(group ? title : FriendsActivity.pretty(title), true);
+        setupToolbar(title, true);
         applyInsets(findViewById(R.id.soc_chat_root));
         state = findViewById(R.id.soc_chat_state);
         rv = findViewById(R.id.soc_chat_rv);
@@ -155,7 +155,8 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
     private void start() {
         Context app = getApplicationContext();
         if (convId == null) {
-            read(() -> Chat.openDirect(app, friendUserId), id -> {
+            String label = getIntent().getStringExtra(EXTRA_TITLE);
+            read(() -> Chat.openDirect(app, friendUserId, label), id -> {
                 convId = id;
                 if (getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED)) listen();
                 start();
@@ -171,9 +172,9 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         String id = convId;
         read(() -> Chat.members(app, id), m -> {
             members = m;
-            Map<String, String> codes = new HashMap<>();
-            for (Api.Friend f : m) codes.put(f.userId, f.friendCode);
-            adapter.setCodes(codes);
+            Map<String, String> labels = new HashMap<>();
+            for (Api.Friend f : m) labels.put(f.userId, f.label);
+            adapter.setLabels(labels);
         }, null);
     }
 
@@ -420,7 +421,7 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         Context app = getApplicationContext();
         String id = convId;
         CharSequence[] codes = new CharSequence[members.size()];
-        for (int i = 0; i < codes.length; i++) codes[i] = FriendsActivity.pretty(members.get(i).friendCode);
+        for (int i = 0; i < codes.length; i++) codes[i] = members.get(i).label;
         new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.soc_chat_members)
                 .setItems(codes, (d, which) -> {
@@ -449,7 +450,7 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
                 return;
             }
             CharSequence[] codes = new CharSequence[out.size()];
-            for (int i = 0; i < codes.length; i++) codes[i] = FriendsActivity.pretty(out.get(i).friendCode);
+            for (int i = 0; i < codes.length; i++) codes[i] = FriendsActivity.label(out.get(i).username, out.get(i).friendCode);
             new MaterialAlertDialogBuilder(this)
                     .setTitle(R.string.soc_chat_add_member)
                     .setItems(codes, (d, which) -> io(() -> {

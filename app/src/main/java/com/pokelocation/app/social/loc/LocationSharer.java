@@ -109,7 +109,10 @@ public final class LocationSharer {
                 return;
             }
             if (myId == null) myId = Api.me(app).id;
-            if (ws == null) startWs();
+            if (ws == null) {
+                if (Session.username(app) == null) return; // sem @nome o Auth é recusado; depois, o Error username_required cobre
+                startWs();
+            }
             sharing = true;
             if (!open) return;
             if (ticks++ % FRIENDS_EVERY == 0) distribute();
@@ -201,6 +204,8 @@ public final class LocationSharer {
             } else if (f.type == Frames.ACK) { // S→C (api.md §6): o servidor gravou meu envelope
                 String to = skdmPending.remove(f.msgId);
                 if (to != null) skdmSent.add(to);
+            } else if (f.type == Frames.ERROR && "username_required".equals(f.code)) {
+                halt(); // só volta quando o principal gravar o @nome (o tick confere antes de abrir o WS)
             } else if (f.type == Frames.ERROR && "unauthorized".equals(f.code)) {
                 // logout/reuso/vínculo Google derrubam o WS: renova já (não só se o JWT venceu); refresh revogado → 401 →
                 // halt sem laço; refresh bom → a reconexão usa o token novo

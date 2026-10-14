@@ -30,6 +30,8 @@ public final class Session {
     private static final String FILE = "social", IN = "in", VERIFIER = "pv", STATE = "ps", RETURN_TO = "pr";
     /** Último access lido/gravado no banco por este processo; num 401 a Api relê do banco sob o lock. */
     private static volatile String sAccess;
+    /** O @nome troca mas nunca volta a null: em memória até a geração mudar (forget), sem Keystore a cada leitura. */
+    private static volatile String sUsername;
 
     private Session() {}
 
@@ -85,7 +87,10 @@ public final class Session {
     }
 
     /** SocialDb.sync: a geração mudou, o access em memória é da conta/sessão velha. */
-    public static void forget() { sAccess = null; }
+    public static void forget() {
+        sAccess = null;
+        sUsername = null;
+    }
 
     /** {access, refresh} do banco (null sem arquivo/linha), sob o social.lock ou o token.lock. Atualiza o access em memória. */
     public static String[] readTokens(Context c) throws IOException {
@@ -97,6 +102,35 @@ public final class Session {
             sAccess = a;
             return new String[]{a, r};
         }
+    }
+
+    /** @nome desta conta (selado na sessão); null = falta escolher. O :overlay só lê. */
+    public static String username(Context c) throws IOException {
+        String u = sUsername;
+        if (u != null) return u;
+        return locked(c, () -> {
+            if (!SocialDb.exists(c)) return null;
+            try (Cursor q = SocialDb.get(c).rawQuery("SELECT username FROM session", null)) {
+                return sUsername = q.moveToFirst() ? open(q.getBlob(0)) : null;
+            }
+        });
+    }
+
+    /** Só o principal escreve (escritor único). */
+    public static void username(Context c, String username) throws IOException {
+        if (App.process() != App.PROC_MAIN || username == null) return;
+        locked(c, () -> {
+            if (!SocialDb.exists(c)) return null;
+            ContentValues v = new ContentValues(1);
+            try {
+                v.put("username", Vault.seal(username.getBytes(StandardCharsets.UTF_8)));
+            } catch (GeneralSecurityException e) {
+                throw new IOException("keystore", e);
+            }
+            SocialDb.get(c).update("session", v, null, null);
+            sUsername = username;
+            return null;
+        });
     }
 
     /** Último token do FCM aceito pelo servidor; null se nenhum ou ilegível. */

@@ -32,6 +32,49 @@ public class SocialDbSchemaTest {
         assertEquals("1", sqlite(db, "SELECT COUNT(*) FROM seen_envelopes;").trim());
     }
 
+    /** v7: tabelas do chat; a página por cursor usa o índice e não duplica nem pula com mensagem nova no meio. */
+    @Test public void v7PagesByCursorWithTheIndex() throws Exception {
+        Assume.assumeTrue(new File(SQLITE).canExecute());
+        File db = new File(tmp.getRoot(), "chat.db");
+        sqlite(db, String.join(";", SocialDb.CHAT) + ";");
+        StringBuilder rows = new StringBuilder();
+        for (int i = 1; i <= 7; i++) { // ts repetidos de propósito: o desempate é o id
+            rows.append("INSERT INTO messages(conv_id, client_msg_id, sender, type, state, ts, body) VALUES ('c', 'm")
+                    .append(i).append("', 'u', 1, 2, ").append(i / 2).append(", x'00');");
+        }
+        rows.append("INSERT INTO messages(conv_id, client_msg_id, sender, type, state, ts, body) VALUES ('outra', 'z', 'u', 1, 2, 9, x'00');");
+        sqlite(db, rows.toString());
+
+        String plan = sqlite(db, "EXPLAIN QUERY PLAN " + bind(SocialDb.PAGE, "'c'", "9", "9", "9", "3") + ";");
+        assertTrue(plan, plan.contains("SEARCH messages USING INDEX messages_page") && !plan.contains("TEMP B-TREE"));
+
+        java.util.List<String> seen = new java.util.ArrayList<>();
+        long ts = Long.MAX_VALUE, id = Long.MAX_VALUE;
+        for (int page = 0; page < 5; page++) {
+            String out = sqlite(db, ".mode list\n" + bind("SELECT id, ts, client_msg_id FROM messages WHERE conv_id = ? AND ts <= ?"
+                    + " AND (ts < ? OR id < ?) ORDER BY ts DESC, id DESC LIMIT ?", "'c'", "" + ts, "" + ts, "" + id, "3") + ";").trim();
+            if (out.isEmpty()) break;
+            for (String line : out.split("\n")) {
+                String[] f = line.split("\\|");
+                seen.add(f[2]);
+                ts = Long.parseLong(f[1]);
+                id = Long.parseLong(f[0]);
+            }
+            if (page == 0) { // chega uma nova depois da 1ª página: não pode aparecer nem empurrar as antigas
+                sqlite(db, "INSERT INTO messages(conv_id, client_msg_id, sender, type, state, ts, body) VALUES ('c', 'nova', 'u', 1, 2, 50, x'00');");
+            }
+        }
+        assertEquals(java.util.Arrays.asList("m7", "m6", "m5", "m4", "m3", "m2", "m1"), seen);
+        assertTrue(sqlite(db, "INSERT OR IGNORE INTO messages(conv_id, client_msg_id, sender, type, state, ts, body)"
+                + " VALUES ('c', 'm1', 'u', 1, 2, 0, x'00'); SELECT changes();").trim().endsWith("0")); // dedup
+    }
+
+    /** Troca os ? em ordem: o sqlite3 da linha de comando não tem parâmetros. */
+    private static String bind(String sql, String... values) {
+        for (String v : values) sql = sql.replaceFirst("\\?", v);
+        return sql;
+    }
+
     private static String prunePlan(File db) throws Exception {
         return sqlite(db, "EXPLAIN QUERY PLAN DELETE FROM seen_envelopes WHERE at < 5;");
     }

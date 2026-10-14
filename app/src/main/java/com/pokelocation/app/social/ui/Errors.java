@@ -27,6 +27,10 @@ public final class Errors {
                 case "unauthorized": return R.string.soc_err_unauthorized;
                 case "invalid_grant": return R.string.soc_err_invalid_grant;
                 case "unavailable": return R.string.soc_err_unavailable;
+                case "username_taken": return R.string.soc_err_username_taken;
+                case "invalid_username": return R.string.soc_err_invalid_username;
+                case "username_reserved": return R.string.soc_err_username_reserved;
+                case "username_required": return R.string.soc_err_username_required;
                 default: return R.string.soc_err_generic;
             }
         }
@@ -38,6 +42,18 @@ public final class Errors {
     /** O próprio usuário cancelou no Google (callback error=access_denied): sem mensagem nenhuma. */
     static boolean cancelled(Throwable t) {
         return t instanceof Api.Error && "access_denied".equals(((Api.Error) t).code);
+    }
+
+    /** Conta sem @nome: a tela abre "Escolha seu @nome" (UsernameActivity). */
+    public static boolean usernameRequired(Throwable t) {
+        return t instanceof Api.Error && "username_required".equals(((Api.Error) t).code);
+    }
+
+    /** Erro do próprio @nome digitado: vai no campo, não num toast. */
+    static boolean aboutUsername(Throwable t) {
+        if (!(t instanceof Api.Error)) return false;
+        String c = ((Api.Error) t).code;
+        return "username_taken".equals(c) || "invalid_username".equals(c) || "username_reserved".equals(c);
     }
 
     /** Sessão morreu (a Api já limpou): a tela volta ao login. */

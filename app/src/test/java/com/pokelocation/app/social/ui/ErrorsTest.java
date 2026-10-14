@@ -27,6 +27,17 @@ public class ErrorsTest {
     }
 
     @Test
+    public void usernameErrorsHaveOwnMessage() {
+        assertEquals(R.string.soc_err_username_taken, Errors.message(new Api.Error(409, "username_taken")));
+        assertEquals(R.string.soc_err_invalid_username, Errors.message(new Api.Error(400, "invalid_username")));
+        assertEquals(R.string.soc_err_username_reserved, Errors.message(new Api.Error(400, "username_reserved")));
+        assertEquals(R.string.soc_err_username_required, Errors.message(new Api.Error(403, "username_required")));
+        assertTrue(Errors.usernameRequired(new Api.Error(403, "username_required")));
+        assertFalse(Errors.usernameRequired(new Api.Error(409, "username_taken")));
+        assertFalse(Errors.usernameRequired(new IOException()));
+    }
+
+    @Test
     public void googleExpiredAndServerDownHaveOwnMessage() {
         assertEquals(R.string.soc_err_invalid_grant, Errors.message(new Api.Error(400, "invalid_grant")));
         assertEquals(R.string.soc_err_unavailable, Errors.message(new Api.Error(503, "unavailable")));

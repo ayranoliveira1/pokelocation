@@ -35,7 +35,6 @@ import java.util.UUID;
  * Falha de cripto/registro dentro de um callback do nativo vira IllegalStateException (as interfaces não declaram).
  */
 public final class SignalStore implements SignalProtocolStore {
-    private static volatile byte[] sEnvelope;
     private static volatile IdentityKeyPair sIdentity;
     private static volatile int sRegId;
 
@@ -50,32 +49,15 @@ public final class SignalStore implements SignalProtocolStore {
 
     /** Logout (SocialDb.delete): esquece o que está em memória. */
     static void forget() {
-        sEnvelope = null;
         sIdentity = null;
         sRegId = 0;
     }
 
-    /** Chave-envelope: gerada uma vez, guardada selada pelo Vault; o Keystore só é tocado aqui, uma vez por processo. */
     private byte[] envelope() {
-        byte[] k = sEnvelope;
-        if (k != null) return k;
-        synchronized (SignalStore.class) {
-            if (sEnvelope != null) return sEnvelope;
-            try {
-                byte[] sealed = blob("SELECT blob FROM envelope", (String[]) null);
-                if (sealed != null) {
-                    k = Vault.open(sealed);
-                } else {
-                    k = Envelope.newKey();
-                    ContentValues v = new ContentValues(2);
-                    v.put("id", 0);
-                    v.put("blob", Vault.seal(k));
-                    db().insertOrThrow("envelope", null, v);
-                }
-            } catch (GeneralSecurityException e) {
-                throw new IllegalStateException("envelope", e);
-            }
-            return sEnvelope = k;
+        try {
+            return Envelope.key(app);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("envelope", e);
         }
     }
 

@@ -20,14 +20,9 @@
     <string name="soc_my_code">My friend code</string>
     <string name="soc_share_code">Add me on PokeLocation! My friend code: %s</string>
     <string name="soc_add_friend">Add friend</string>
-    <string name="soc_code_hint">Friend code</string>
     <string name="soc_add">Add</string>
-    <string name="soc_invalid_code">Invalid code. It has 8 letters and numbers.</string>
     <string name="soc_request_sent">Request sent!</string>
-    <string name="soc_incoming">Requests received</string>
     <string name="soc_outgoing">Requests sent</string>
-    <string name="soc_your_friends">Your friends</string>
-    <string name="soc_no_friends">No friends yet. Share your code!</string>
     <string name="soc_pending">Waiting for a reply</string>
     <string name="soc_accept">Accept</string>
     <string name="soc_decline">Decline</string>

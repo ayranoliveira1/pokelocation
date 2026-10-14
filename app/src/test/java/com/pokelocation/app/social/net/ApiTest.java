@@ -218,6 +218,52 @@ public class ApiTest {
         assertTrue(off.isNull("token"));
     }
 
+    /** api.md §8: 3–20 [a-z0-9_.], começa com letra, sem "..", sem "." no fim; o app baixa maiúsculas e tira o "@". */
+    @Test public void normalizeUsername() {
+        assertEquals("ana.b_9", Api.normalizeUsername("  @Ana.B_9 "));
+        assertEquals("abc", Api.normalizeUsername("abc"));
+        assertEquals("a2345678901234567890", Api.normalizeUsername("a2345678901234567890"));
+        assertNull(Api.normalizeUsername("ab"));
+        assertNull(Api.normalizeUsername("a23456789012345678901"));
+        assertNull(Api.normalizeUsername("1abc"));
+        assertNull(Api.normalizeUsername("_abc"));
+        assertNull(Api.normalizeUsername("ab..c"));
+        assertNull(Api.normalizeUsername("abc."));
+        assertNull(Api.normalizeUsername("joão"));
+        assertNull(Api.normalizeUsername("ab-c"));
+        assertNull(Api.normalizeUsername("@"));
+        assertNull(Api.normalizeUsername(null));
+    }
+
+    /** "@" → só nome; código válido → código e, se também for um @nome válido, o nome depois; senão → só nome. */
+    @Test public void friendRequestCandidates() throws JSONException {
+        assertEquals(java.util.Collections.singletonList("{\"username\":\"ana\"}"), bodies(Api.friendRequests("@Ana")));
+        assertEquals(java.util.Arrays.asList("{\"code\":\"AB1C0DE1\"}"), bodies(Api.friendRequests("ab-iC o-de l")));
+        assertEquals(java.util.Arrays.asList("{\"code\":\"ABCDEFGH\"}", "{\"username\":\"abcdefgh\"}"),
+                bodies(Api.friendRequests("abcdefgh")));
+        assertEquals(java.util.Collections.singletonList("{\"username\":\"maria.silva\"}"),
+                bodies(Api.friendRequests("Maria.Silva")));
+        assertEquals(0, Api.friendRequests("??").size());
+    }
+
+    private static java.util.List<String> bodies(java.util.List<org.json.JSONObject> l) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (org.json.JSONObject o : l) out.add(o.toString());
+        return out;
+    }
+
+    @Test public void usernameInModels() throws JSONException {
+        assertEquals("ana", Api.parseMe("{\"id\":\"u\",\"email\":null,\"friend_code\":\"C\",\"username\":\"ana\"}").username);
+        assertNull(Api.parseMe("{\"id\":\"u\",\"email\":null,\"friend_code\":\"C\",\"username\":null}").username);
+        Api.Friends f = Api.parseFriends("{\"friends\":[{\"user_id\":\"u2\",\"friend_code\":\"C2\",\"username\":\"bia\"}],"
+                + "\"incoming\":[{\"id\":\"r\",\"user_id\":\"u3\",\"friend_code\":\"C3\",\"username\":\"caio\",\"created_at\":1}],"
+                + "\"outgoing\":[]}");
+        assertEquals("bia", f.accepted.get(0).username);
+        assertEquals("caio", f.incoming.get(0).username);
+        assertEquals("bia", Api.parseLocations("{\"locations\":[{\"user_id\":\"u2\",\"friend_code\":\"C2\",\"username\":\"bia\","
+                + "\"payload\":\"AA==\"}]}").get(0).username);
+    }
+
     @Test public void keyCount() throws JSONException {
         assertArrayEquals(new int[]{19, 100}, Api.parseKeyCount("{\"ec\":19,\"kyber\":100}"));
     }

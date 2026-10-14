@@ -56,7 +56,7 @@ public final class Push {
     static void upload(Context app, String token) {
         Io.run(() -> {
             try {
-                if (token.equals(Session.fcmSent(app))) return;
+                if (Session.username(app) == null || token.equals(Session.fcmSent(app))) return; // sem @nome: 403
                 Api.putFcmToken(app, token);
                 Session.fcmSent(app, token);
             } catch (Api.Error e) {

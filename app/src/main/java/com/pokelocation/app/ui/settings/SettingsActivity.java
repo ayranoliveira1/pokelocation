@@ -187,7 +187,7 @@ public final class SettingsActivity extends BaseActivity {
 
     private void buildAccount() {
         category(R.string.soc_account);
-        String[] email = {null};
+        String[] email = {null}, username = {null};
         Io.Task[] me = {null};
         Context app = getApplicationContext();
         getLifecycle().addObserver((LifecycleEventObserver) (owner, ev) -> {
@@ -215,6 +215,11 @@ public final class SettingsActivity extends BaseActivity {
                         });
                     })
                     .setNegativeButton(R.string.cancel, null)
+                    .setNeutralButton(R.string.soc_username_change, (d, w) -> {
+                        String cur = username[0];
+                        email[0] = null;   // volta da troca: o bind busca o @nome novo
+                        startActivity(com.pokelocation.app.social.ui.UsernameActivity.intent(this, LoginActivity.RETURN_BACK, cur));
+                    })
                     .show();
         });
         r.summary.setVisibility(View.VISIBLE);
@@ -232,12 +237,14 @@ public final class SettingsActivity extends BaseActivity {
             boolean in = Session.loggedIn(this);
             if (!in) email[0] = null;
             r.summary.setText(!in ? getString(R.string.soc_account_signed_out)
-                    : email[0] != null ? email[0] : getString(R.string.soc_account_signed_in));
+                    : email[0] == null ? getString(R.string.soc_account_signed_in)
+                    : username[0] != null ? "@" + username[0] + " · " + email[0] : email[0]);
             if (!in || email[0] != null || me[0] != null) return;
             me[0] = Io.run(() -> Api.me(app), new Io.Callback<Api.Me>() {
                 @Override public void onResult(Api.Me m) {
                     me[0] = null;
                     email[0] = m.email;
+                    username[0] = m.username;
                     if (!dead()) refresh();
                 }
                 @Override public void onError(Throwable t) {

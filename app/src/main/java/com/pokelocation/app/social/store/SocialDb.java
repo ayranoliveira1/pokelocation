@@ -37,7 +37,7 @@ public final class SocialDb extends SQLiteOpenHelper {
     public interface Op<T> { T run() throws Exception; }
 
     private SocialDb(Context c) {
-        super(c.getApplicationContext(), NAME, null, 6);
+        super(c.getApplicationContext(), NAME, null, 7);
         setWriteAheadLoggingEnabled(true);
     }
 
@@ -156,6 +156,7 @@ public final class SocialDb extends SQLiteOpenHelper {
         sHelper = null;
         Session.forget();
         Vault.forget();
+        Envelope.forget();
         // sem a lib, os caches estão vazios e nada de org.signal é carregado à toa
         if (SignalLoader.loaded()) SignalStore.forget();
     }
@@ -196,6 +197,8 @@ public final class SocialDb extends SQLiteOpenHelper {
         createV4(db);
         db.execSQL(SEEN_ENVELOPES_AT);
         db.execSQL(SESSION_FCM);
+        for (String sql : CHAT) db.execSQL(sql);
+        db.execSQL(SESSION_USERNAME);
     }
 
     @Override
@@ -205,6 +208,10 @@ public final class SocialDb extends SQLiteOpenHelper {
         if (oldVersion < 4) createV4(db);
         if (oldVersion < 5) db.execSQL(SEEN_ENVELOPES_AT);
         if (oldVersion < 6) db.execSQL(SESSION_FCM);
+        if (oldVersion < 7) {
+            for (String sql : CHAT) db.execSQL(sql);
+            db.execSQL(SESSION_USERNAME);
+        }
     }
 
     /** O WS do :overlay e o REST do principal podem trazer o mesmo envelope antes do ack. Podado após 31 dias (a fila
@@ -213,6 +220,34 @@ public final class SocialDb extends SQLiteOpenHelper {
             + " at INTEGER NOT NULL, PRIMARY KEY(sender, msg_id)) WITHOUT ROWID";
     /** A poda por data roda a cada envelope recebido; sem o índice percorre a tabela inteira. */
     static final String SEEN_ENVELOPES_AT = "CREATE INDEX IF NOT EXISTS seen_envelopes_at ON seen_envelopes(at)";
+
+    /**
+     * Chat (v7). Selado pelo Envelope só o que o servidor não vê: nome do grupo (title), preview e body; ids e @nome
+     * (peer, user_id, sender, label) ele já conhece e ficam em claro. sender '' = minha (UNIQUE(sender, client_msg_id) também
+     * deduplica as minhas). *_live_until: fim da localização em tempo real; ativa = maior que o relógio, sem job.
+     */
+    public static final String[] CHAT = {
+            "CREATE TABLE conversations(id TEXT PRIMARY KEY, grp INTEGER NOT NULL, peer TEXT, title BLOB, preview BLOB,"
+                    + " preview_type INTEGER NOT NULL DEFAULT 0, last_ts INTEGER NOT NULL DEFAULT 0,"
+                    + " unread INTEGER NOT NULL DEFAULT 0, my_live_until INTEGER NOT NULL DEFAULT 0,"
+                    + " live_until INTEGER NOT NULL DEFAULT 0) WITHOUT ROWID",
+            "CREATE TABLE group_members(conv_id TEXT NOT NULL, user_id TEXT NOT NULL, label TEXT, PRIMARY KEY(conv_id, user_id))"
+                    + " WITHOUT ROWID",
+            "CREATE TABLE messages(id INTEGER PRIMARY KEY, conv_id TEXT NOT NULL, client_msg_id TEXT NOT NULL,"
+                    + " sender TEXT NOT NULL, type INTEGER NOT NULL, state INTEGER NOT NULL, ts INTEGER NOT NULL,"
+                    + " live_until INTEGER NOT NULL DEFAULT 0, body BLOB NOT NULL, UNIQUE(sender, client_msg_id))",
+            "CREATE INDEX messages_page ON messages(conv_id, ts DESC, id DESC)",
+    };
+
+    /** @nome da conta (selado): o :overlay só abre o WS com ele (o servidor recusa sem). */
+    static final String SESSION_USERNAME = "ALTER TABLE session ADD COLUMN username BLOB";
+
+    /**
+     * Página por cursor (ts, id), mais novas primeiro. Sem row values: o SQLite do API 24 (3.9) não tem; "ts <= ?"
+     * posiciona no índice e o OR só desempata o mesmo ts.
+     */
+    public static final String PAGE = "SELECT id, client_msg_id, sender, type, state, ts, live_until, body FROM messages"
+            + " WHERE conv_id = ? AND ts <= ? AND (ts < ? OR id < ?) ORDER BY ts DESC, id DESC LIMIT ?";
 
     /** Último token do FCM aceito pelo servidor (selado): o PUT só sai quando ele muda. */
     static final String SESSION_FCM = "ALTER TABLE session ADD COLUMN fcm BLOB";

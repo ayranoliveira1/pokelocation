@@ -9,18 +9,25 @@ import java.nio.charset.StandardCharsets;
  * big-endian; str = u16 + UTF-8; bin = u32 + bytes. Puro, sem I/O.
  */
 public final class Frames {
-    public static final int AUTH = 1, ENVELOPE = 2, ACK = 3, LOCATION = 4, LOCATION_UPDATE = 5, LOCATION_OFF = 6, ERROR = 7;
+    public static final int AUTH = 1, ENVELOPE = 2, ACK = 3, LOCATION = 4, LOCATION_UPDATE = 5, LOCATION_OFF = 6, ERROR = 7,
+            GROUP_ENVELOPE = 8, GROUP_CHANGED = 9;
 
     /**
-     * peer: destinatário/remetente (Envelope, Ack), from (LocationUpdate, LocationOff do servidor), token (Auth);
-     * msgId: Envelope/Ack; code: Error; payload: Envelope/Location/LocationUpdate. O que não se aplica fica null.
+     * peer: destinatário/remetente (Envelope, Ack), from (LocationUpdate, LocationOff e GroupEnvelope do servidor),
+     * token (Auth); msgId: Envelope/Ack/GroupEnvelope; code: Error; groupId: GroupEnvelope/GroupChanged;
+     * payload: Envelope/Location/LocationUpdate/GroupEnvelope. O que não se aplica fica null.
      */
     public static final class Frame {
         public final int type;
-        public final String peer, msgId, code;
+        public final String peer, msgId, code, groupId;
         public final byte[] payload;
 
         Frame(int type, String peer, String msgId, String code, byte[] payload) {
+            this(type, peer, msgId, code, payload, null);
+        }
+
+        Frame(int type, String peer, String msgId, String code, byte[] payload, String groupId) {
+            this.groupId = groupId;
             this.type = type;
             this.peer = peer;
             this.msgId = msgId;
@@ -43,6 +50,11 @@ public final class Frames {
 
     public static byte[] locationOff() { return new byte[]{LOCATION_OFF}; }
 
+    /** O servidor faz o fan-out para os membros atuais (api.md §7); payload = ciphertext do GroupCipher. */
+    public static byte[] groupEnvelope(String groupId, String msgId, byte[] payload) {
+        return new W(GROUP_ENVELOPE).str(groupId).str(msgId).bin(payload).out();
+    }
+
     /** ProtocolException: vazio, tipo desconhecido, tamanho que passa do frame ou bytes sobrando. */
     public static Frame decode(byte[] f) throws ProtocolException {
         R r = new R(f);
@@ -56,6 +68,13 @@ public final class Frames {
             case LOCATION_UPDATE: out = new Frame(type, r.str(), null, null, r.bin()); break;
             case LOCATION_OFF: out = new Frame(type, r.left() == 0 ? null : r.str(), null, null, null); break; // C→S vazio
             case ERROR: out = new Frame(type, null, null, r.str(), null); break;
+            case GROUP_ENVELOPE: { // do servidor vem com o from no fim: o C→S é prefixo dele
+                String g = r.str(), m = r.str();
+                byte[] p = r.bin();
+                out = new Frame(type, r.left() == 0 ? null : r.str(), m, null, p, g);
+                break;
+            }
+            case GROUP_CHANGED: out = new Frame(type, null, null, null, null, r.str()); break;
             default: throw new ProtocolException("type " + type);
         }
         if (r.left() != 0) throw new ProtocolException("trailing");

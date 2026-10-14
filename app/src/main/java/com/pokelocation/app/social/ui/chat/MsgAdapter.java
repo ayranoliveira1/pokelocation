@@ -19,7 +19,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.color.MaterialColors;
 import com.pokelocation.app.R;
 import com.pokelocation.app.social.chat.Chat;
-import com.pokelocation.app.social.ui.FriendsActivity;
 import com.pokelocation.app.util.Ui;
 
 import java.text.DateFormat;
@@ -44,7 +43,7 @@ final class MsgAdapter extends ListAdapter<Chat.Msg, MsgAdapter.VH> {
     private final Consumer<Chat.Msg> onTap;
     private final DateFormat time;
     private final int mineBg, mineFg, theirsBg, theirsFg, muted, danger;
-    private Map<String, String> codes = Collections.emptyMap();
+    private Map<String, String> labels = Collections.emptyMap();
 
     MsgAdapter(Context c, boolean group, Consumer<Chat.Msg> onTap) {
         super(DIFF);
@@ -60,9 +59,9 @@ final class MsgAdapter extends ListAdapter<Chat.Msg, MsgAdapter.VH> {
         danger = MaterialColors.getColor(c, androidx.appcompat.R.attr.colorError, 0);
     }
 
-    /** userId → friend_code dos membros do grupo (rótulo de quem mandou). */
-    void setCodes(Map<String, String> codes) {
-        this.codes = codes;
+    /** userId → rótulo pronto dos membros do grupo (quem mandou). */
+    void setLabels(Map<String, String> labels) {
+        this.labels = labels;
         if (group) notifyItemRangeChanged(0, getItemCount());
     }
 
@@ -87,8 +86,8 @@ final class MsgAdapter extends ListAdapter<Chat.Msg, MsgAdapter.VH> {
         boolean showFrom = group && !mine && !notice;
         h.from.setVisibility(showFrom ? View.VISIBLE : View.GONE);
         if (showFrom) {
-            String code = codes.get(m.from);
-            h.from.setText(code != null ? FriendsActivity.pretty(code) : "…");
+            String label = labels.get(m.from);
+            h.from.setText(label != null ? label : "…");
         }
 
         h.body.setTextColor(notice || m.type == Chat.UNREADABLE ? muted : fg);

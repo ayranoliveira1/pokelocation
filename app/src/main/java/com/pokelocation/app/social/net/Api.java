@@ -27,6 +27,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * REST do pokelocation-server (pokelocation-server/docs/api.md); único lugar que conhece o JSON. Bloqueante: nunca na
@@ -38,6 +40,7 @@ public final class Api {
     static final int MAX_BODY = 64 * 1024, LOCATIONS_MAX_BODY = 256 * 1024;
     private static final Object TOKEN_LOCK = new Object();
     private static final String CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+    private static final Pattern USERNAME = Pattern.compile("[a-z][a-z0-9_.]{2,19}");
     private static final char[] B64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".toCharArray();
     private static final char[] B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
 
@@ -53,9 +56,10 @@ public final class Api {
         }
     }
 
-    public static final class Me { public String id, email, friendCode; }
-    public static final class Friend { public String userId, friendCode; }
-    public static final class Request { public String id, userId, friendCode; public long createdAt; /* epoch ms */ }
+    public static final class Me { public String id, email, friendCode, username; }
+    /** label: rótulo pronto para exibir, só nos membros do Chat ("@nome" ou o que a tela passou no openDirect). */
+    public static final class Friend { public String userId, friendCode, username, label; }
+    public static final class Request { public String id, userId, friendCode, username; public long createdAt; /* epoch ms */ }
     public static final class Friends { public List<Friend> accepted; public List<Request> incoming, outgoing; }
 
     /** sig = assinatura pela identity; null nas one-time EC. */
@@ -70,8 +74,19 @@ public final class Api {
 
     private Api() {}
 
-    public static void register(Context c, String email, String password) throws IOException {
-        store(c, http(c, "POST", "/v1/auth/register", null, obj("email", email, "password", password)));
+    public static void register(Context c, String email, String password, String username) throws IOException {
+        store(c, http(c, "POST", "/v1/auth/register", null, obj("email", email, "password", password, "username", username)));
+        if (username == null) return;
+        Session.username(c, normalizeUsername(username));
+        SignalLoader.kick(c); // chaves e FCM levaram 403 username_required até agora
+    }
+
+    public static void register(Context c, String email, String password) throws IOException { register(c, email, password, null); }
+
+    public static void setUsername(Context c, String username) throws IOException {
+        call(c, "PUT", "/v1/me/username", obj("username", username));
+        Session.username(c, normalizeUsername(username));
+        SignalLoader.kick(c); // chaves e FCM levaram 403 username_required até agora
     }
 
     public static void login(Context c, String email, String password) throws IOException {
@@ -116,7 +131,9 @@ public final class Api {
 
     public static Me me(Context c) throws IOException {
         try {
-            return parseMe(call(c, "GET", "/v1/me", null));
+            Me m = parseMe(call(c, "GET", "/v1/me", null));
+            Session.username(c, m.username); // o :overlay só lê: sem @nome não abre o WS
+            return m;
         } catch (JSONException e) {
             throw new IOException("bad response"); // sem causa: a mensagem do JSONTokener traz o corpo
         }
@@ -130,9 +147,23 @@ public final class Api {
         }
     }
 
-    /** code já normalizado (normalizeCode). */
-    public static void requestFriend(Context c, String code) throws IOException {
-        call(c, "POST", "/v1/friends/requests", obj("code", code));
+    /** Aceita "@nome", "nome" ou código de amigo. */
+    public static void requestFriend(Context c, String usernameOrCode) throws IOException {
+        List<JSONObject> tries;
+        try {
+            tries = friendRequests(usernameOrCode);
+        } catch (JSONException e) {
+            throw new IOException("bad request");
+        }
+        if (tries.isEmpty()) throw new Error(404, "code_not_found");
+        for (int i = 0; ; i++) {
+            try {
+                call(c, "POST", "/v1/friends/requests", tries.get(i));
+                return;
+            } catch (Error e) {
+                if (!"code_not_found".equals(e.code) || i == tries.size() - 1) throw e;
+            }
+        }
     }
 
     public static void accept(Context c, String requestId) throws IOException {
@@ -158,7 +189,7 @@ public final class Api {
     /** preKey = one-time EC; null quando acabaram no servidor. */
     public static final class Bundle { public int registrationId; public byte[] identity; public PreKey signed, kyber, preKey; }
     public static final class Envelope { public String id, from, clientMsgId; public byte[] payload; }
-    public static final class Location { public String userId, friendCode; public byte[] payload; }
+    public static final class Location { public String userId, friendCode, username; public byte[] payload; }
 
     /** Token do FCM deste aparelho: o servidor manda o ping de "há fila" para ele. */
     public static void putFcmToken(Context c, String token) throws IOException {
@@ -252,12 +283,16 @@ public final class Api {
             JSONObject j = a.getJSONObject(i);
             Location l = new Location();
             l.userId = j.getString("user_id");
-            l.friendCode = j.isNull("friend_code") ? null : j.getString("friend_code");
+            l.friendCode = optString(j, "friend_code");
+            l.username = optString(j, "username");
             l.payload = unb64(j.getString("payload"));
             out.add(l);
         }
         return out;
     }
+
+    /** Ausente ou null → null (o optString(k, null) do Android devolve "null"). */
+    private static String optString(JSONObject o, String k) throws JSONException { return o.isNull(k) ? null : o.getString(k); }
 
     /** Base64 padrão (com ou sem '='); IllegalArgumentException se tiver caractere fora do alfabeto. */
     static byte[] unb64(String s) {
@@ -295,6 +330,29 @@ public final class Api {
         } catch (JSONException e) {
             throw new IOException("bad response");
         }
+    }
+
+    /** api.md §8: minúsculas, sem o "@"; 3–20 [a-z0-9_.], começa com letra, sem ".." e sem "." no fim. null se inválido. */
+    public static String normalizeUsername(String raw) {
+        if (raw == null) return null;
+        String s = raw.trim();
+        if (s.startsWith("@")) s = s.substring(1);
+        s = s.toLowerCase(Locale.ROOT);
+        return USERNAME.matcher(s).matches() && !s.contains("..") && !s.endsWith(".") ? s : null;
+    }
+
+    /**
+     * Corpos a tentar, em ordem: "@" → só o nome; código válido → o código e, se o texto também for um @nome válido
+     * (8 letras Crockford), o nome depois de um code_not_found.
+     */
+    static List<JSONObject> friendRequests(String raw) throws JSONException {
+        List<JSONObject> out = new ArrayList<>(2);
+        if (raw == null) return out;
+        String t = raw.trim();
+        String code = t.startsWith("@") ? null : normalizeCode(t), user = normalizeUsername(t);
+        if (code != null) out.add(new JSONObject().put("code", code));
+        if (user != null) out.add(new JSONObject().put("username", user));
+        return out;
     }
 
     /** Crockford base32, 8 chars: maiúsculas, I/L→1, O→0, sem espaços e '-'. null se inválido. */
@@ -563,6 +621,7 @@ public final class Api {
         m.id = o.getString("id");
         m.email = o.isNull("email") ? null : o.getString("email"); // optString(k, null) do Android devolve "null"
         m.friendCode = o.getString("friend_code");
+        m.username = optString(o, "username");
         return m;
     }
 
@@ -577,6 +636,7 @@ public final class Api {
             Friend x = new Friend();
             x.userId = j.getString("user_id");
             x.friendCode = j.getString("friend_code");
+            x.username = optString(j, "username");
             f.accepted.add(x);
         }
         f.incoming = requests(o.optJSONArray("incoming"));
@@ -593,6 +653,7 @@ public final class Api {
             r.id = j.getString("id");
             r.userId = j.getString("user_id");
             r.friendCode = j.getString("friend_code");
+            r.username = optString(j, "username");
             r.createdAt = j.optLong("created_at");
             out.add(r);
         }

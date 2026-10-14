@@ -17,14 +17,9 @@
     <string name="soc_my_code">Meu código de amigo</string>
     <string name="soc_share_code">Me adicione no PokeLocation! Meu código de amigo: %s</string>
     <string name="soc_add_friend">Adicionar amigo</string>
-    <string name="soc_code_hint">Código de amigo</string>
     <string name="soc_add">Adicionar</string>
-    <string name="soc_invalid_code">Código inválido. Ele tem 8 letras e números.</string>
     <string name="soc_request_sent">Pedido enviado!</string>
-    <string name="soc_incoming">Pedidos recebidos</string>
     <string name="soc_outgoing">Pedidos enviados</string>
-    <string name="soc_your_friends">Seus amigos</string>
-    <string name="soc_no_friends">Nenhum amigo ainda. Compartilhe seu código!</string>
     <string name="soc_pending">Aguardando resposta</string>
     <string name="soc_accept">Aceitar</string>
     <string name="soc_decline">Recusar</string>

@@ -30,13 +30,14 @@ public final class AuthCallbackActivity extends BaseActivity {
         Context app = getApplicationContext();
         task = Io.run(() -> {
             Api.googleFinish(app, data);
-            return Session.takeReturnTo(app);
-        }, new Io.Callback<String>() {
-            @Override public void onResult(String returnTo) {
-                LoginActivity.afterLogin(AuthCallbackActivity.this, returnTo);
+            String returnTo = Session.takeReturnTo(app);
+            return new Object[]{returnTo, LoginActivity.hasUsername(app)};
+        }, new Io.Callback<Object[]>() {
+            @Override public void onResult(Object[] r) {
+                LoginActivity.afterLogin(AuthCallbackActivity.this, (String) r[0], (Boolean) r[1]);
             }
             @Override public void onError(Throwable t) {
-                if (Session.loggedIn(app)) onResult(null);   // recriada: a 1ª instância já trocou o code (volta à Main)
+                if (Session.loggedIn(app)) LoginActivity.go(AuthCallbackActivity.this, null);   // recriada: a 1ª instância já trocou o code (volta à Main)
                 else if (Errors.cancelled(t)) finish();   // cancelou no Google: volta ao Login (na pilha), sem toast
                 else {
                     Ui.toast(app, Errors.message(t));

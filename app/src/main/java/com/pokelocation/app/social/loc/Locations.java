@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
+import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.store.SignalStore;
 import com.pokelocation.app.social.store.SocialDb;
@@ -47,7 +48,7 @@ import java.util.UUID;
  * Envelope 1:1 = [tipo da mensagem Signal u8][ciphertext]; conteúdo decifrado = [kind u8][dados].
  */
 public final class Locations {
-    public static final class FriendLoc { public String userId, friendCode; public double lat, lng; public long at; }
+    public static final class FriendLoc { public String userId, friendCode, username; public double lat, lng; public long at; }
 
     static final int KIND_SKDM = 1;
     private static final int DEVICE = 1;
@@ -66,6 +67,7 @@ public final class Locations {
      * ilegível fica de fora: nunca lança por um amigo só.
      */
     public static List<FriendLoc> fetch(Context c) throws IOException {
+        requireUsername(c);
         drain(c);
         List<Api.Location> ls = Api.locations(c);
         List<FriendLoc> out = new ArrayList<>(ls.size());
@@ -93,6 +95,7 @@ public final class Locations {
                         FriendLoc f = new FriendLoc();
                         f.userId = l.userId;
                         f.friendCode = l.friendCode;
+                        f.username = l.username;
                         f.lat = p[0];
                         f.lng = p[1];
                         f.at = (long) p[2];
@@ -113,16 +116,31 @@ public final class Locations {
         return out;
     }
 
-    /** friend_code faltando: completa pela lista de amigos, só quando precisa. */
+    private static volatile boolean sMeChecked;
+
+    /** Sem @nome o servidor responde 403 a tudo: nada de rede a cada 5 s; um GET /v1/me por processo para conferir. */
+    private static void requireUsername(Context c) throws IOException {
+        if (Session.username(c) != null) return;
+        if (!sMeChecked) {
+            sMeChecked = true;
+            if (Api.me(c).username != null) return;
+        }
+        throw new Api.Error(403, "username_required");
+    }
+
+    /** friend_code/username faltando: completa pela lista de amigos, só quando precisa. */
     private static void fillCodes(Context c, List<FriendLoc> out) throws IOException {
-        Map<String, String> codes = null;
+        Map<String, Api.Friend> byId = null;
         for (FriendLoc f : out) {
-            if (f.friendCode != null) continue;
-            if (codes == null) {
-                codes = new HashMap<>();
-                for (Api.Friend x : Api.friends(c).accepted) codes.put(x.userId, x.friendCode);
+            if (f.friendCode != null && f.username != null) continue;
+            if (byId == null) {
+                byId = new HashMap<>();
+                for (Api.Friend x : Api.friends(c).accepted) byId.put(x.userId, x);
             }
-            f.friendCode = codes.get(f.userId);
+            Api.Friend x = byId.get(f.userId);
+            if (x == null) continue;
+            if (f.friendCode == null) f.friendCode = x.friendCode;
+            if (f.username == null) f.username = x.username;
         }
     }
 

@@ -24,4 +24,12 @@ public class LoginRouteTest {
     @Test public void backOriginJustCloses() {
         assertNull(LoginActivity.next(LoginActivity.RETURN_BACK));
     }
+
+    /** Conta sem @nome (1º login com o Google ou conta antiga): escolhe o nome antes de qualquer destino. */
+    @Test public void missingUsernameGoesToChooseItFirst() {
+        assertEquals(UsernameActivity.class, LoginActivity.first(LoginActivity.RETURN_FRIENDS, false));
+        assertEquals(UsernameActivity.class, LoginActivity.first(LoginActivity.RETURN_BACK, false));
+        assertEquals(FriendsActivity.class, LoginActivity.first(LoginActivity.RETURN_FRIENDS, true));
+        assertNull(LoginActivity.first(LoginActivity.RETURN_BACK, true));
+    }
 }

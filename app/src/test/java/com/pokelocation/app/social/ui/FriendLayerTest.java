@@ -30,4 +30,11 @@ public class FriendLayerTest {
         assertEquals("AB", FriendLayer.initials("AB"));
         assertNull(FriendLayer.initials(null));
     }
+
+    @Test
+    public void markerShowsUsernameStartElseCode() {
+        assertEquals("ana.", FriendLayer.marker("ana.lu", "ABCD1234"));
+        assertEquals("bo", FriendLayer.marker("bo", "ABCD1234"));
+        assertEquals("ABCD", FriendLayer.marker(null, "ABCD1234"));
+    }
 }
