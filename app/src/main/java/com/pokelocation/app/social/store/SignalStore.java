@@ -28,11 +28,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Stores do Signal (A7) sobre o social.db. Sessões, identidades dos amigos e sender keys: Envelope (software, chave em
- * memória); prekeys e a identity própria: Vault (raros). Com login e SignalLoader.loaded() (o nativo chama estes
- * métodos por JNI; a regra *Store do proguard os mantém). Toda operação que usa este store (encrypt, decrypt,
- * bundle/SKDM) roda inteira dentro de SocialDb.atomic (regra multiprocesso): fora dele, db() lança.
- * Em memória só o imutável na vida do login (chave-envelope aberta, identity própria); registros sempre do arquivo.
+ * Stores do Signal sobre o social.db. Sessões, identidades dos amigos e sender keys: Envelope (software, chave em
+ * memória); prekeys e a identity própria: Vault (raros). O nativo chama estes métodos por JNI (a regra *Store do
+ * proguard os mantém). Toda operação que usa este store (encrypt, decrypt, bundle/SKDM) roda inteira dentro de
+ * SocialDb.atomic: fora dele, db() lança. Em memória só o imutável na vida do login (chave-envelope, identity própria).
  * Falha de cripto/registro dentro de um callback do nativo vira IllegalStateException (as interfaces não declaram).
  */
 public final class SignalStore implements SignalProtocolStore {
@@ -126,8 +125,6 @@ public final class SignalStore implements SignalProtocolStore {
 
     private static String[] key(SignalProtocolAddress a) { return new String[]{a.getName(), String.valueOf(a.getDeviceId())}; }
 
-    // ---- IdentityKeyStore ----
-
     @Override
     public IdentityKeyPair getIdentityKeyPair() {
         IdentityKeyPair id = sIdentity;
@@ -159,7 +156,7 @@ public final class SignalStore implements SignalProtocolStore {
         return old == null ? IdentityChange.NEW_OR_UNCHANGED : IdentityChange.REPLACED_EXISTING;
     }
 
-    /** Spec §7: confiança no primeiro uso; troca (reinstalação) é aceita e avisada, nunca bloqueia a conversa. */
+    /** Confiança no primeiro uso: a troca (reinstalação) é aceita e avisada, nunca bloqueia a conversa. */
     @Override
     public boolean isTrustedIdentity(SignalProtocolAddress a, IdentityKey key, Direction direction) { return true; }
 
@@ -173,10 +170,7 @@ public final class SignalStore implements SignalProtocolStore {
         }
     }
 
-    /** Pura (SignalStoreTest): a chave guardada existia e é outra. */
     static boolean replaced(byte[] stored, byte[] incoming) { return stored != null && !Arrays.equals(stored, incoming); }
-
-    // ---- SessionStore ----
 
     @Override
     public SessionRecord loadSession(SignalProtocolAddress a) {
@@ -227,8 +221,6 @@ public final class SignalStore implements SignalProtocolStore {
 
     @Override
     public void deleteAllSessions(String name) { db().delete("sessions", "name = ?", new String[]{name}); }
-
-    // ---- PreKeyStore / SignedPreKeyStore (tabela prekeys do A3, Vault) ----
 
     private byte[] prekey(int id, int signed) throws InvalidKeyIdException {
         byte[] b = blob("SELECT blob FROM prekeys WHERE signed = ? AND id = ?", String.valueOf(signed), String.valueOf(id));
@@ -310,8 +302,6 @@ public final class SignalStore implements SignalProtocolStore {
     @Override
     public void removeSignedPreKey(int id) { db().delete("prekeys", "signed = 1 AND id = ?", new String[]{String.valueOf(id)}); }
 
-    // ---- KyberPreKeyStore ----
-
     @Override
     public KyberPreKeyRecord loadKyberPreKey(int id) throws InvalidKeyIdException {
         byte[] b = blob("SELECT blob FROM kyber_prekeys WHERE id = ?", String.valueOf(id));
@@ -372,8 +362,6 @@ public final class SignalStore implements SignalProtocolStore {
             throw new ReusedBaseKeyException();
         }
     }
-
-    // ---- SenderKeyStore (localização: loc:{id}; grupos no chat) ----
 
     private static String ka(SignalProtocolAddress a, UUID dist) { return "k|" + a.getName() + "|" + a.getDeviceId() + "|" + dist; }
 

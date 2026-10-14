@@ -185,7 +185,6 @@ public final class SettingsActivity extends BaseActivity {
         };
     }
 
-    /** Conta social (opcional): sem login abre o login; com login mostra o email e oferece sair. */
     private void buildAccount() {
         category(R.string.soc_account);
         String[] email = {null};
@@ -219,7 +218,7 @@ public final class SettingsActivity extends BaseActivity {
                     .show();
         });
         r.summary.setVisibility(View.VISIBLE);
-        // Só grava (arquivo social_share); o LocationSharer do :overlay (A8) lê a cada tick e envia o LocationOff
+        // Só grava; o LocationSharer do :overlay lê a cada tick e envia o LocationOff.
         Row share = row(R.string.soc_share_location, R.string.soc_share_location_summary, v -> {
             Prefs.setShareLocation(this, !Prefs.shareLocation(this));
             refresh();
@@ -242,7 +241,7 @@ public final class SettingsActivity extends BaseActivity {
                     if (!dead()) refresh();
                 }
                 @Override public void onError(Throwable t) {
-                    me[0] = null;   // sem rede: fica "Conectado" e tenta de novo no próximo onResume
+                    me[0] = null;
                     if (!Session.loggedIn(app) && !dead()) refresh();   // 401: a Api já limpou a sessão
                 }
             });

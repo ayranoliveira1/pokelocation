@@ -104,7 +104,7 @@ public class RouteMapView extends FrameLayout {
     private Marker startMarker, currentMarker, nextOnlyMarker;
     private final ArrayList<Marker> wpMarkers = new ArrayList<>();
     private MarkerLayer layer;
-    private FriendLayer friends;   // social (A9): só no MODE_MAIN e com login; null = nada carregado
+    private FriendLayer friends;   // null sem login: nada social carregado
     private final ArrayList<GeoPoint> linePts = new ArrayList<>();
     private boolean lineSimplified;
 
@@ -344,7 +344,7 @@ public class RouteMapView extends FrameLayout {
     public void onResume() {
         resumed = true;
         if (mv != null) mv.onResume();
-        // login feito depois do mapa criado (Amigos → login → volta): cria aqui
+        // Login feito com o mapa já criado.
         if (friends == null && mode == MODE_MAIN && mv != null && Session.loggedIn(getContext())) friends = new FriendLayer(getContext(), mv);
         if (friends != null) friends.resume();
     }

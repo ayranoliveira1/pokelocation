@@ -41,10 +41,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Posições dos amigos (A8 ↔ A9). Cada um cifra a própria posição com a sender key "loc:{id}" e entrega a SKDM (a
- * mensagem que dá a sender key) aos amigos por envelope 1:1. Só com SignalLoader.loaded().
- * Regras do maestro: rede SEMPRE fora do SocialDb.atomic (HTTP primeiro, depois um atomic curto só de cripto + banco);
- * rede periódica numa thread do social (a do mapa no principal, "pl-loc" no :overlay), nunca no Io.
+ * Posições dos amigos: cada um cifra a própria com a sender key "loc:{id}" e entrega a SKDM aos amigos por envelope
+ * 1:1. Só com SignalLoader.loaded(). Rede sempre fora do SocialDb.atomic (HTTP primeiro, depois um atomic curto de
+ * cripto + banco) e numa thread do social, nunca no Io.
  * Envelope 1:1 = [tipo da mensagem Signal u8][ciphertext]; conteúdo decifrado = [kind u8][dados].
  */
 public final class Locations {
@@ -63,9 +62,8 @@ public final class Locations {
     private Locations() {}
 
     /**
-     * Bloqueante, numa thread do social (nunca o Io), só com SignalLoader.loaded(). Busca a fila de envelopes pendentes
-     * (processa SKDMs), GET /v1/locations e decifra. Amigo sem sender key ainda ou payload ilegível fica de fora (nunca
-     * lança por um amigo só). Rede fora do lock; cripto e banco sob o lock+transação da regra multiprocesso.
+     * Bloqueante. Processa a fila de envelopes (SKDMs) e decifra as posições. Amigo sem sender key ainda ou payload
+     * ilegível fica de fora: nunca lança por um amigo só.
      */
     public static List<FriendLoc> fetch(Context c) throws IOException {
         drain(c);
@@ -115,7 +113,7 @@ public final class Locations {
         return out;
     }
 
-    /** O servidor pode não mandar friend_code (JSON provisório): completa pela lista de amigos, só quando falta. */
+    /** friend_code faltando: completa pela lista de amigos, só quando precisa. */
     private static void fillCodes(Context c, List<FriendLoc> out) throws IOException {
         Map<String, String> codes = null;
         for (FriendLoc f : out) {
@@ -129,8 +127,8 @@ public final class Locations {
     }
 
     /**
-     * Fila 1:1 pendente (SKDMs dos amigos; 1 página por fetch): baixa, processa cada envelope no seu atomic (uma falha
-     * desfaz só ele: transação aninhada no Android não volta parcial) e apaga do servidor só o que ack() aceita.
+     * Uma página por fetch. Cada envelope no seu atomic: transação aninhada no Android não volta parcial, então uma
+     * falha desfaria todos. Apaga do servidor só o que ack() aceita.
      */
     static void drain(Context c) throws IOException {
         List<Api.Envelope> es = Api.envelopes(c);
@@ -156,16 +154,15 @@ public final class Locations {
         Api.ack(c, ids);
     }
 
-    /** Kind que este processo ainda não trata: lançado DENTRO do atomic para o rollback desfazer o avanço do ratchet. */
+    /** Lançado dentro do atomic para o rollback desfazer o avanço do ratchet. */
     static final class UnhandledKind extends Exception {
         UnhandledKind(int kind) { super("kind " + kind); }
     }
 
     /**
-     * Pura (A8b, LocationsTest): confirmar (Ack) o envelope ao servidor? Sim se processado (failure null, inclui o
-     * duplicado já visto) ou ilegível para sempre (erro de mensagem da libsignal na cadeia de causas). Não se a falha
-     * for transitória (lock, Keystore, banco, timeout) ou o kind não for tratado aqui (o chat grava antes do Ack):
-     * o servidor entrega de novo.
+     * Ack ao servidor? Sim se processado (null, inclui o duplicado já visto) ou ilegível para sempre (erro de mensagem
+     * da libsignal ou payload malformado na cadeia de causas). Não em falha transitória (lock, Keystore, banco, timeout)
+     * nem em kind não tratado aqui: o servidor entrega de novo.
      */
     static boolean ack(Throwable failure) {
         if (failure == null) return true;
@@ -187,10 +184,9 @@ public final class Locations {
     }
 
     /**
-     * Envelope 1:1 de um amigo, DENTRO de SocialDb.atomic: decifra e, se for SKDM, guarda a sender key dele. O mesmo
-     * envelope pode vir pelo WS (:overlay) e pelo REST (principal) antes do ack: o 2º é ignorado (dedup por
-     * (from, client_msg_id), decisão do Tear) — decifrar de novo falharia e avançaria nada. Qualquer exceção desfaz
-     * tudo (o atomic volta): marca de dedup e ratchet. Kind ≠ SKDM → UnhandledKind (sem Ack; o chat A13/A14 trata).
+     * Dentro de SocialDb.atomic. O mesmo envelope pode vir pelo WS (:overlay) e pelo REST (principal) antes do ack:
+     * dedup por (from, client_msg_id), porque decifrar de novo falharia. Qualquer exceção volta tudo (marca de dedup e
+     * ratchet). Kind ≠ SKDM → UnhandledKind, sem Ack.
      */
     static void receive(Context c, String from, String msgId, byte[] payload) throws Exception {
         ContentValues seen = new ContentValues(3);
@@ -208,15 +204,15 @@ public final class Locations {
         byte[] plain = kind(payload) == CiphertextMessage.PREKEY_TYPE
                 ? sc.decrypt(new PreKeySignalMessage(ct)) : sc.decrypt(new SignalMessage(ct));
         if (plain.length == 0) return; // vazio: ilegível para sempre (marcado e confirmado)
-        // ponytail (A14): depois do chat, kind desconhecido (versões misturadas) também precisa de Ack ou gravar+Ack,
-        // senão a mesma trava da fila aparece
+        // ponytail: com o chat, kind desconhecido (versões misturadas) também precisa de Ack ou gravar+Ack, senão a
+        // mesma trava da fila aparece
         if (kind(plain) != KIND_SKDM) throw new UnhandledKind(kind(plain)); // rollback: decifrável de novo pelo chat
         new GroupSessionBuilder(st).process(a, new SenderKeyDistributionMessage(body(plain)));
     }
 
     /**
-     * DENTRO de SocialDb.atomic: envelope 1:1 com a SKDM da minha sender key loc:{meuId} para o amigo. bundle != null
-     * abre a sessão (veio de Api.keyBundle, fora do lock); bundle == null e sem sessão → null (busque o bundle).
+     * Dentro de SocialDb.atomic: envelope 1:1 com a SKDM da minha sender key loc:{meuId}. bundle != null abre a sessão
+     * (buscado fora do lock); bundle == null e sem sessão → null (busque o bundle).
      */
     static byte[] skdmFor(Context c, String myId, String friendId, Api.Bundle bundle) throws Exception {
         SignalStore st = new SignalStore(c);
@@ -228,7 +224,7 @@ public final class Locations {
         return frame(m.getType(), m.serialize());
     }
 
-    /** DENTRO de SocialDb.atomic: minha posição cifrada com a sender key loc:{meuId} (criada na 1ª vez). */
+    /** Dentro de SocialDb.atomic. A sender key é criada na 1ª vez. */
     static byte[] encrypt(Context c, String myId, double lat, double lng, long at) throws Exception {
         SignalStore st = new SignalStore(c);
         SignalProtocolAddress me = address(myId);
@@ -251,7 +247,7 @@ public final class Locations {
 
     private static SignalProtocolAddress address(String userId) { return new SignalProtocolAddress(userId, DEVICE); }
 
-    /** SocialDb.atomic (só cripto + banco: nada de rede aqui dentro). Logout no outro processo = sessão morta. */
+    /** Só cripto + banco aqui dentro, nunca rede. Logout no outro processo = sessão morta. */
     static <T> T atomic(Context c, SocialDb.Op<T> op) throws IOException {
         try {
             return SocialDb.atomic(c, op);
@@ -266,9 +262,7 @@ public final class Locations {
         }
     }
 
-    // ---- puros (LocationsTest) ----
-
-    /** Contrato A8↔A9: f64 lat, f64 lng, i64 epochMs big-endian = 24 B. */
+    /** f64 lat, f64 lng, i64 epochMs big-endian = 24 B. */
     static byte[] position(double lat, double lng, long at) {
         return ByteBuffer.allocate(24).putDouble(lat).putDouble(lng).putLong(at).array();
     }
@@ -292,6 +286,6 @@ public final class Locations {
 
     static byte[] body(byte[] f) { return Arrays.copyOfRange(f, 1, f.length); }
 
-    /** Distribuição da sender key de localização de um usuário: "loc:{id}" → UUID v3 (igual em todos os aparelhos). */
+    /** "loc:{id}" → UUID v3: a mesma distribuição em todos os aparelhos. */
     static UUID distribution(String userId) { return UUID.nameUUIDFromBytes(("loc:" + userId).getBytes(StandardCharsets.UTF_8)); }
 }

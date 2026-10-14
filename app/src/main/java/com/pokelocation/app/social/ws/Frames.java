@@ -5,8 +5,8 @@ import java.net.ProtocolException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Payload dos frames binários do WebSocket (contrato do subprojeto 2, PROVISÓRIO até o wire/frames.go do servidor; só
- * esta classe muda). [tipo u8][campos]; inteiros big-endian; str = u16 + UTF-8; bin = u32 + bytes. Puro, sem I/O.
+ * Payload dos frames binários do WebSocket, espelho do wire do servidor (api.md §6): [tipo u8][campos]; inteiros
+ * big-endian; str = u16 + UTF-8; bin = u32 + bytes. Puro, sem I/O.
  */
 public final class Frames {
     public static final int AUTH = 1, ENVELOPE = 2, ACK = 3, LOCATION = 4, LOCATION_UPDATE = 5, LOCATION_OFF = 6, ERROR = 7;

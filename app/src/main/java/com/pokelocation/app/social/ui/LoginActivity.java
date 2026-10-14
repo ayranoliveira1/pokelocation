@@ -21,12 +21,12 @@ import com.pokelocation.app.util.Ui;
 /** Login opcional: email/senha (entrar ou criar conta) ou Google no navegador (volta pela AuthCallbackActivity). */
 public final class LoginActivity extends BaseActivity {
     private static final String SIGNAL_STARTED = "signal_started";
-    /** Quem abre o Login diz para onde ir depois do sucesso (A4d). Sem o extra: volta à MainActivity. */
+    /** Quem abre o Login diz para onde ir depois do sucesso. Sem o extra: volta à MainActivity. */
     public static final String EXTRA_RETURN_TO = "return_to", RETURN_MAIN = "main", RETURN_FRIENDS = "friends",
             RETURN_BACK = "back";
     private String returnTo;
 
-    /** Pura (LoginRouteTest): tela a abrir depois do login; null = só fechar o Login (a de baixo atualiza no onResume). */
+    /** Tela a abrir depois do login; null = só fechar o Login (a de baixo atualiza no onResume). */
     static Class<?> next(String returnTo) {
         if (RETURN_FRIENDS.equals(returnTo)) return FriendsActivity.class;
         if (RETURN_BACK.equals(returnTo)) return null;
@@ -34,8 +34,8 @@ public final class LoginActivity extends BaseActivity {
     }
 
     /**
-     * Sucesso do login (aqui ou na AuthCallbackActivity, para o Google): carrega a libsignal já (antes isso vinha do
-     * onCreate de Amigos; sem ela o Keys.ensure/A3 não roda) e vai para o destino da origem.
+     * Sucesso do login (aqui ou na AuthCallbackActivity): carrega a libsignal já, senão o Keys.ensure só rodaria quando
+     * alguém abrisse Amigos, e vai para o destino da origem.
      */
     static void afterLogin(Activity a, String returnTo) {
         SignalLoader.start(a.getApplicationContext(), null);
@@ -102,7 +102,7 @@ public final class LoginActivity extends BaseActivity {
             return;
         }
         busy(true);
-        startSignal();   // em paralelo à autenticação (spec §3.1)
+        startSignal();   // em paralelo à autenticação
         Context app = getApplicationContext();
         task = Io.run(() -> {
             if (register) Api.register(app, e, p);

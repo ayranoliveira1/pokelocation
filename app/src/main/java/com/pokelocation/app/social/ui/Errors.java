@@ -30,7 +30,7 @@ final class Errors {
                 default: return R.string.soc_err_generic;
             }
         }
-        // Keystore falhou agora (contrato com o Quartzo: IOException com causa GeneralSecurityException): não é rede
+        // Keystore falhou agora (IOException com causa GeneralSecurityException): não é rede
         if (t instanceof IOException && !(t.getCause() instanceof GeneralSecurityException)) return R.string.soc_err_network;
         return R.string.soc_err_generic;
     }

@@ -7,7 +7,7 @@ import com.pokelocation.app.ui.main.MainActivity;
 
 import org.junit.Test;
 
-/** A4d: para onde o app vai depois do login (email/senha ou Google), conforme quem abriu o Login. */
+/** Para onde o app vai depois do login (email/senha ou Google), conforme quem abriu o Login. */
 public class LoginRouteTest {
     @Test public void defaultGoesBackToMain() {
         assertEquals(MainActivity.class, LoginActivity.next(null));

@@ -26,13 +26,10 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * A8: compartilha minha posição com os amigos, no :overlay (criado/destruído pelo OverlayService; o motor não muda).
- * A cada 5 s a main só lê engine.lat()/lng() e entrega à thread "pl-loc", que decide: social.db existe (senão nada
- * social é carregado) → "Compartilhar" ligado (senão LocationOff na transição e fecha o WS) → sessão viva no banco
- * (Session.access: geração nova/logout → para tudo; o :overlay nunca limpa sessão) → libsignal carregada (só aqui,
- * com login + compartilhar) → WS aberto → moveu > 5 m → cifra com a sender key loc:{meuId} sob o SocialDb.atomic e
- * envia. A SKDM vai por envelope 1:1 aos amigos que ainda não a receberam nesta sessão do joystick. Rede sempre fora
- * do lock; nada disto roda no Io.
+ * Compartilha minha posição com os amigos, no :overlay; o OverlayService só o cria com login (o motor não muda).
+ * A cada 5 s a main só lê lat/lng e entrega à "pl-loc", que segue nesta ordem: sem social.db → nada; "Compartilhar"
+ * desligado → LocationOff na transição e fecha o WS; sem sessão no banco (logout/geração nova) → para, nunca limpa;
+ * lib carregada; WS aberto; moveu > 5 m → cifra sob o SocialDb.atomic e envia. Rede sempre fora do lock.
  */
 public final class LocationSharer {
     private static final String TAG = "LocationSharer";
@@ -55,7 +52,7 @@ public final class LocationSharer {
     // ponytail: SKDM 1 vez por amigo por sessão do joystick (em memória), confirmada pelo Ack S→C do servidor (gravou:
     // entrega garantida pela fila dele); sem Ack até cair, reenvia na próxima conexão.
     // ponytail: a sender key loc:{meuId} não rotaciona ao remover/bloquear um amigo (ele guarda a chave; hoje só o
-    // servidor deixa de entregar). Rotacionar = nova distribuição + SKDM aos que ficam (o chat/grupos do subprojeto 3).
+    // servidor deixa de entregar). Rotacionar = nova distribuição + SKDM aos que ficam (com o chat/grupos).
     private final Set<String> skdmSent = new HashSet<>();
     private final Map<String, String> skdmPending = new HashMap<>(); // client_msg_id → amigo, até o Ack S→C
 
@@ -198,7 +195,7 @@ public final class LocationSharer {
                 } catch (IOException e) {
                     fail = e;
                 }
-                // A8b: Ack só se processado ou ilegível para sempre; transitório/kind não tratado → o servidor reentrega
+                // Ack só se processado ou ilegível para sempre; transitório/kind não tratado → o servidor reentrega
                 if (Locations.ack(fail)) ws.send(Frames.ack(f.peer, f.msgId));
                 else Log.w(TAG, "envelope sem ack: " + Locations.rootName(fail));
             } else if (f.type == Frames.ACK) { // S→C (api.md §6): o servidor gravou meu envelope
@@ -239,7 +236,7 @@ public final class LocationSharer {
         }
     }
 
-    /** Pura (LocationsTest): manda se nada foi enviado ainda ou se andou mais de 5 m. */
+    /** Manda se nada foi enviado ainda ou se andou mais de 5 m. */
     static boolean moved(double lat0, double lng0, double lat, double lng) {
         return Double.isNaN(lat0) || Geo.distance(lat0, lng0, lat, lng) > MIN_MOVE_M;
     }

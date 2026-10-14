@@ -29,15 +29,14 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
 /**
- * WebSocket mínimo (RFC 6455) sobre SSLSocket, sem OkHttp: só wss, só frames binários (payload = Frames), frames do
- * cliente mascarados, ping → pong, close. Thread "pl-ws" conecta, manda Auth, lê e reconecta com espera 1–60 s + jitter;
- * thread "pl-ws-w" escreve o que send()/stop() enfileiram: quem chama (inclusive a main) nunca faz I/O de rede.
- * Conexão morta: o servidor pinga a cada 30 s (S6); sem nada em 75 s, cai e reconecta.
- * Callbacks na thread "pl-ws". Quem cria (A8, :overlay) só faz isso com login.
+ * WebSocket mínimo (RFC 6455) sobre SSLSocket, sem OkHttp: só wss, só frames binários, frames do cliente mascarados,
+ * ping → pong, close. "pl-ws" conecta, manda Auth, lê e reconecta com espera 1–60 s + jitter; "pl-ws-w" escreve o que
+ * send()/stop() enfileiram, então quem chama (inclusive a main) nunca faz I/O de rede. O servidor pinga a cada 30 s;
+ * sem nada em 75 s, cai e reconecta. Callbacks na "pl-ws".
  */
 public final class WsClient {
     static final int CONT = 0, TEXT = 1, BIN = 2, CLOSE = 8, PING = 9, PONG = 10;
-    // v1 só tem texto e localização (spec §10, sem mídia): 64 KB por mensagem sobra e limita o pico de RAM no :overlay
+    // só texto e localização (sem mídia): 64 KB por mensagem sobra e limita o pico de RAM no :overlay
     private static final int MAX = 64 * 1024, QUEUE = 64, TIMEOUT_MS = 15_000, READ_TIMEOUT_MS = 75_000, HEAD_MAX = 8192;
     private static final long STABLE_MS = 60_000, MAX_WAIT_MS = 60_000;
     private static final String GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
@@ -48,10 +47,9 @@ public final class WsClient {
         /** Conectado e com o Auth enviado. */
         void onOpen();
 
-        /** Frame do servidor. */
         void onFrame(Frames.Frame f);
 
-        /** Caiu (não chamado depois de stop); reconecta sozinho. why.getMessage() "unauthorized" = token null. */
+        /** Não chamado depois de stop; reconecta sozinho. why.getMessage() "unauthorized" = token null. */
         void onClosed(IOException why);
     }
 
@@ -167,7 +165,7 @@ public final class WsClient {
                 why = new IOException("closed by server");
             } catch (IOException e) {
                 why = e;
-            } catch (Exception e) { // token, NPE de socket fechado por stop(), etc.: nunca mata o processo
+            } catch (Exception e) { // token, socket fechado por stop() etc.: nunca mata o processo
                 why = new IOException(e);
             }
             close();
@@ -181,7 +179,7 @@ public final class WsClient {
             try {
                 listener.onClosed(why);
             } catch (RuntimeException ignored) {
-                // código do A8 não derruba a "pl-ws" nem o processo
+                // o listener não derruba a "pl-ws" nem o processo
             }
             if (opened > 0 && System.currentTimeMillis() - opened >= STABLE_MS) attempt = 0;
             try {
@@ -242,8 +240,6 @@ public final class WsClient {
         }
         return b.toString("ISO-8859-1");
     }
-
-    // ---- puros (WsClientTest) ----
 
     /** Sec-WebSocket-Accept esperado: base64(SHA-1(key + GUID)). */
     static String accept(String key) {

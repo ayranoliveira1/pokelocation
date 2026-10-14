@@ -29,22 +29,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * REST do pokelocation-server (padrão de net/Elevation), conforme pokelocation-server/docs/api.md. BLOQUEANTE: fora da
- * main (Io para ações do usuário; rede periódica numa thread do social).
- * Único lugar que conhece o JSON do servidor (parse em métodos estáticos puros, testados em ApiTest).
- * 401 numa chamada autenticada → renova o access token uma vez e repete; refresh morto → limpa a sessão e lança
- * Error(401, "unauthorized").
+ * REST do pokelocation-server (pokelocation-server/docs/api.md); único lugar que conhece o JSON. Bloqueante: nunca na
+ * main. 401 numa chamada autenticada → renova o access uma vez e repete; refresh morto → limpa a sessão.
  */
 public final class Api {
     private static final int TIMEOUT_MS = 15_000, REFRESH_TIMEOUT_MS = 10_000;
-    /** Limite de leitura por chamada (A-api2): 64 KiB em geral; GET /v1/locations 256 KiB (o servidor corta em 192). */
+    /** 64 KiB em geral; GET /v1/locations até 256 KiB (o servidor corta em 192 KiB). */
     static final int MAX_BODY = 64 * 1024, LOCATIONS_MAX_BODY = 256 * 1024;
     private static final Object TOKEN_LOCK = new Object();
     private static final String CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
     private static final char[] B64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".toCharArray();
     private static final char[] B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
 
-    /** Erro do servidor. code = campo "error" do JSON ("unknown" se não houver); http = status. */
+    /** code = campo "error" do servidor ("unknown" se não veio o JSON esperado). */
     public static final class Error extends IOException {
         public final int http;
         public final String code;
@@ -61,9 +58,9 @@ public final class Api {
     public static final class Request { public String id, userId, friendCode; public long createdAt; /* epoch ms */ }
     public static final class Friends { public List<Friend> accepted; public List<Request> incoming, outgoing; }
 
-    /** Chave pública do Signal para o servidor. sig = assinatura pela identity (null nas one-time EC). */
+    /** sig = assinatura pela identity; null nas one-time EC. */
     public static final class PreKey { public int id; public byte[] pub, sig; }
-    /** Pacote de chaves públicas do aparelho (A3). ec/kyber = one-time ainda não enviadas. */
+    /** ec/kyber = one-time ainda não enviadas. */
     public static final class KeyBundle {
         public int registrationId;
         public byte[] identity;
@@ -73,8 +70,6 @@ public final class Api {
 
     private Api() {}
 
-    // ---- conta ----
-
     public static void register(Context c, String email, String password) throws IOException {
         store(c, http(c, "POST", "/v1/auth/register", null, obj("email", email, "password", password)));
     }
@@ -83,7 +78,7 @@ public final class Api {
         store(c, http(c, "POST", "/v1/auth/login", null, obj("email", email, "password", password)));
     }
 
-    /** Gera PKCE (verifier S256) + state, guarda, devolve a URL para abrir no navegador (ACTION_VIEW). Bloqueia (Keystore): chamar no Io. */
+    /** PKCE (S256) e state vão selados pelo Vault (Keystore), por isso bloqueia: fora da main. Devolve a URL do navegador. */
     public static Uri googleStart(Context c, String returnTo) throws IOException {
         String verifier = random(32), state = random(16);
         Session.savePkce(c, verifier, state, returnTo);
@@ -94,7 +89,6 @@ public final class Api {
                 .build();
     }
 
-    /** Recebe o Uri pokelocationauth://callback?code=…&state=…; confere state, troca o code, grava a sessão. */
     public static void googleFinish(Context c, Uri callback) throws IOException {
         String err = callback.getQueryParameter("error"), code = callback.getQueryParameter("code");
         // state antes de consumir: um callback forjado não aborta o login pendente
@@ -123,8 +117,6 @@ public final class Api {
             throw new IOException("bad response"); // sem causa: a mensagem do JSONTokener traz o corpo
         }
     }
-
-    // ---- amigos ----
 
     public static Friends friends(Context c) throws IOException {
         try {
@@ -159,14 +151,10 @@ public final class Api {
         call(c, "DELETE", "/v1/blocks/" + Uri.encode(userId), null);
     }
 
-    /** Pacote de chaves públicas de um amigo (para abrir sessão 1:1). preKey = one-time EC, null se esgotadas. */
+    /** preKey = one-time EC; null quando acabaram no servidor. */
     public static final class Bundle { public int registrationId; public byte[] identity; public PreKey signed, kyber, preKey; }
-    /** Envelope 1:1 pendente na fila do servidor. */
     public static final class Envelope { public String id, from, clientMsgId; public byte[] payload; }
-    /** Última posição cifrada de um amigo (sender key loc:{userId}). */
     public static final class Location { public String userId, friendCode; public byte[] payload; }
-
-    // ---- localização e envelopes (A8). JSON PROVISÓRIO (plano S6/S7, sem api.md): só esta classe muda. ----
 
     public static Bundle keyBundle(Context c, String userId) throws IOException {
         try {
@@ -176,7 +164,7 @@ public final class Api {
         }
     }
 
-    /** Fila de envelopes 1:1 pendentes (1ª página; o resto vem nas próximas chamadas, depois do ack). */
+    /** Uma página; a próxima vem depois do ack. */
     public static List<Envelope> envelopes(Context c) throws IOException {
         try {
             return parseEnvelopes(call(c, "GET", "/v1/envelopes", null));
@@ -185,7 +173,6 @@ public final class Api {
         }
     }
 
-    /** Apaga do servidor os envelopes já processados. */
     public static void ack(Context c, List<String> ids) throws IOException {
         if (ids.isEmpty()) return;
         try {
@@ -195,7 +182,6 @@ public final class Api {
         }
     }
 
-    /** Última posição cifrada dos amigos online (MGET no Redis; some em 60 s). */
     public static List<Location> locations(Context c) throws IOException {
         try {
             return parseLocations(call(c, "GET", "/v1/locations", null, LOCATIONS_MAX_BODY));
@@ -276,8 +262,6 @@ public final class Api {
         return out;
     }
 
-    // ---- chaves do Signal (A3). JSON provisório até o docs/api.md do servidor; só esta classe muda. ----
-
     public static void putKeys(Context c, KeyBundle k) throws IOException {
         try {
             call(c, "PUT", "/v1/keys", keysJson(k));
@@ -286,7 +270,7 @@ public final class Api {
         }
     }
 
-    /** {ec, kyber}: one-time prekeys que o servidor ainda tem deste aparelho. */
+    /** {ec, kyber}: one-time que o servidor ainda tem deste aparelho. */
     public static int[] keyCount(Context c) throws IOException {
         try {
             return parseKeyCount(call(c, "GET", "/v1/keys/count", null));
@@ -295,7 +279,7 @@ public final class Api {
         }
     }
 
-    /** Crockford base32, 8 chars: maiúsculas, I/L→1, O→0, remove espaços e '-'. null se inválido. Puro, sem rede. */
+    /** Crockford base32, 8 chars: maiúsculas, I/L→1, O→0, sem espaços e '-'. null se inválido. */
     public static String normalizeCode(String raw) {
         if (raw == null) return null;
         StringBuilder sb = new StringBuilder(8);
@@ -310,20 +294,17 @@ public final class Api {
         return sb.length() == 8 ? sb.toString() : null;
     }
 
-    // ---- transporte ----
-
-    /** Linha de tokens no social.db (sob o lock). */
+    /** Linha de tokens no social.db; usar com o token.lock. */
     interface Tokens {
         String[] read() throws Exception;
         void save(String access, String refresh) throws Exception;
     }
 
-    /** POST /v1/auth/refresh → {access, refresh}. */
     interface Refresher { String[] refresh(String refreshToken) throws IOException; }
 
     /**
-     * Puro (ApiTest), já com o lock entre processos: RELÊ do banco; se outro processo já renovou (access diferente do
-     * velho), usa o novo sem chamar /refresh, porque reusar o refresh revoga a família. null = sessão morta.
+     * Já com o token.lock: relê do banco; se outro processo já renovou (access diferente do velho), usa o novo sem
+     * chamar /refresh, porque reusar o refresh revoga a família. null = sessão morta.
      */
     static String renewLocked(Tokens t, String stale, Refresher r) throws Exception {
         String[] cur = t.read();
@@ -341,7 +322,6 @@ public final class Api {
         return fresh[0];
     }
 
-    /** Chamada autenticada com renovação única em 401. */
     private static String call(Context c, String method, String path, JSONObject body) throws IOException {
         return call(c, method, path, body, MAX_BODY);
     }
@@ -363,17 +343,16 @@ public final class Api {
     }
 
     /**
-     * Renovação sob files/token.lock (decisão do maestro), SEPARADO do social.lock: um /refresh lento (até 10 s) nunca
-     * segura o estado Signal. Principal e :overlay nunca gastam o mesmo refresh (renewLocked relê do banco). Antes de
-     * reler, confere a geração no social.lock (relance curto): sem isso, um processo com o arquivo velho aberto leria
-     * tokens fantasmas e um 401 deles limparia a sessão nova. Ordem sempre token → social (nada pega o token.lock
-     * dentro do social.lock). Sessão morta → limpa FORA dos locks (o clear apaga o social.db).
+     * Sob files/token.lock, separado do social.lock: um /refresh lento (até 10 s) não segura o estado Signal. Antes de
+     * reler os tokens passa pelo social.lock para conferir a geração: um processo com o arquivo velho aberto leria
+     * tokens fantasmas, e o 401 deles limparia a sessão nova. Ordem sempre token → social. Sessão morta → limpa fora
+     * dos locks (o clear apaga o social.db).
      */
     private static String renew(Context c, String stale) throws IOException {
         String fresh;
         try {
             fresh = tokenLocked(new File(c.getFilesDir(), "token.lock"), () -> {
-                SocialDb.locked(c, () -> null); // geração: esquece caches/arquivo velhos; logout lá → IllegalStateException
+                SocialDb.locked(c, () -> null); // geração; logout no outro processo → IllegalStateException
                 return renewLocked(new Tokens() {
                     @Override public String[] read() throws IOException { return Session.readTokens(c); }
 
@@ -392,16 +371,16 @@ public final class Api {
         } catch (IOException e) {
             throw e;
         } catch (IllegalStateException e) {
-            fresh = null; // o outro processo fez logout (SocialDb sem o arquivo)
+            fresh = null; // logout no outro processo
         } catch (Exception e) {
             throw new IOException("renew", e);
         }
         if (fresh == null) throw unauthorized(c);
-        SignalLoader.kick(c); // refresh = checagem periódica das prekeys (A3)
+        SignalLoader.kick(c); // cada refresh também confere se faltam prekeys
         return fresh;
     }
 
-    /** files/token.lock: exclusivo entre processos (FileLock) e entre threads daqui (monitor). Não reentrante. */
+    /** Exclusivo entre processos (FileLock) e entre threads (monitor); não reentrante. */
     static <T> T tokenLocked(File lock, SocialDb.Op<T> op) throws Exception {
         synchronized (TOKEN_LOCK) {
             try (RandomAccessFile f = new RandomAccessFile(lock, "rw"); FileLock ignored = f.getChannel().lock()) {
@@ -411,9 +390,8 @@ public final class Api {
     }
 
     /**
-     * Renova agora, mesmo com o access ainda válido (o JWT é stateless: vale até 15 min depois de logout/revogação).
-     * Para o WS: Error "unauthorized" + 1008 (logout, reuso do refresh, vínculo Google) → refresh revogado → 401 →
-     * quem chama para, sem laço de reconexão; refresh bom (access só venceu) → token novo para a reconexão.
+     * Renova mesmo com o access ainda válido: o JWT vale até 15 min depois de logout/revogação. Refresh revogado → 401,
+     * e quem chama para em vez de reconectar em laço.
      */
     public static void renewNow(Context c) throws IOException {
         String a = Session.access(c);
@@ -426,7 +404,6 @@ public final class Api {
         return new Error(401, "unauthorized");
     }
 
-    /** Login: grava os tokens da resposta. */
     private static void store(Context c, String body) throws IOException {
         String[] t;
         try {
@@ -437,7 +414,6 @@ public final class Api {
         Session.save(c, t[0], t[1]);
     }
 
-    /** Uma ida ao servidor; status ≥ 400 vira Error. Devolve o corpo ("" se vazio). */
     private static String http(Context c, String method, String path, String token, JSONObject body) throws IOException {
         return http(c, method, path, token, body, TIMEOUT_MS, MAX_BODY);
     }
@@ -476,7 +452,6 @@ public final class Api {
         }
     }
 
-    /** Corpo até max bytes (o buffer cresce com o real; nada pré-alocado). */
     static String read(InputStream in, int max) throws IOException {
         if (in == null) return "";
         ByteArrayOutputStream bo = new ByteArrayOutputStream(256);
@@ -507,8 +482,6 @@ public final class Api {
         return b64url(b);
     }
 
-    // ---- puros (ApiTest) ----
-
     /** PKCE S256: base64url(SHA-256(ASCII(verifier))), sem padding. */
     static String challenge(String verifier) {
         try {
@@ -534,7 +507,7 @@ public final class Api {
         return sb.toString();
     }
 
-    /** api.md §4: até 100 por lista por PUT /v1/keys. */
+    /** api.md §4: até 100 por lista em cada PUT /v1/keys. */
     public static final int MAX_KEYS_PER_PUT = 100;
 
     static JSONObject keysJson(KeyBundle k) throws JSONException {
@@ -561,7 +534,6 @@ public final class Api {
         return new int[]{o.getInt("ec"), o.getInt("kyber")};
     }
 
-    /** {access_token, refresh_token}; JSONException se faltar. */
     static String[] tokens(String body) throws JSONException {
         JSONObject o = new JSONObject(body);
         return new String[]{o.getString("access_token"), o.getString("refresh_token")};
@@ -609,7 +581,6 @@ public final class Api {
         return out;
     }
 
-    /** Campo "error" do corpo; "unknown" se o corpo não for o JSON esperado. */
     static String errorCode(String body) {
         try {
             return new JSONObject(body).getString("error");

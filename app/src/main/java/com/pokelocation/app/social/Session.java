@@ -22,8 +22,8 @@ import javax.crypto.AEADBadTagException;
 
 /**
  * Estado de login. Flag "in" e PKCE no prefs "social" (fora do "prefs" do app); access/refresh no social.db (tabela
- * session, selados pelo Vault): principal e :overlay leem o mesmo arquivo, e a renovação roda sob o token.lock
- * (decisão do maestro, Api.renew). Só loggedIn é API das telas; o resto é público só porque Api fica em social.net.
+ * session, selados pelo Vault), que principal e :overlay leem; a renovação roda sob o token.lock (Api.renew).
+ * Só loggedIn é API das telas; o resto é público só porque Api fica em social.net.
  */
 public final class Session {
     private static final String FILE = "social", IN = "in", VERIFIER = "pv", STATE = "ps", RETURN_TO = "pr";
@@ -45,7 +45,7 @@ public final class Session {
         for (int i = 0; ; i++) {
             try {
                 SocialDb.atomic(c, true, () -> {
-                    SocialDb.advance(); // decisão do maestro: login e logout abrem geração nova
+                    SocialDb.advance(); // login e logout abrem geração nova
                     writeTokens(c, access, refresh);
                     return null;
                 });
@@ -78,7 +78,6 @@ public final class Session {
         });
     }
 
-    /** Refresh token (logout). null como em access(). */
     public static String refresh(Context c) throws IOException {
         String[] t = locked(c, () -> readTokens(c));
         return t == null ? null : t[1];
@@ -143,7 +142,7 @@ public final class Session {
     public static void savePkce(Context c, String verifier, String state, String returnTo) throws IOException {
         try {
             // sem gravar, a volta do navegador daria invalid_state sem explicação
-            // returnTo (origem do Login, A4d) não é sensível: em claro, só para o destino depois do Google
+            // returnTo (origem do Login) não é sensível: vai em claro
             if (!sp(c).edit().putString(VERIFIER, seal(verifier)).putString(STATE, seal(state)).putString(RETURN_TO, returnTo)
                     .commit()) {
                 throw new IOException("prefs");

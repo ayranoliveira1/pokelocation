@@ -209,7 +209,7 @@ public class SignalLoaderTest {
         return SignalLoader.fetchAndLoad(dir, sha, so.length, FREE, new String[]{A}, new Fake(), null, () -> loggedIn, loader);
     }
 
-    /** Spec §3: baixa em paralelo à auth, mas System.load só com login. */
+    /** Baixa em paralelo à autenticação, mas System.load só com login. */
     @Test public void withoutLoginFetchesButDoesNotLoad() throws IOException {
         List<String> loads = new ArrayList<>();
         assertFalse(fetchAndLoad(false, loads::add));

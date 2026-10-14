@@ -9,9 +9,8 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * AES-256-GCM em software com a chave-envelope (contrato do subprojeto 2): registros do Signal no caminho quente sem IPC
- * ao Keystore. Blob = IV(12) || cifrado+tag(16). aad = endereço da linha ("s|nome|device"…): blob copiado para outra
- * linha não abre.
+ * AES-256-GCM em software com a chave-envelope: registros do Signal no caminho quente sem IPC ao Keystore.
+ * Blob = IV(12) || cifrado+tag(16). aad = endereço da linha ("s|nome|device"…): blob copiado para outra linha não abre.
  */
 final class Envelope {
     private static final int IV = 12, TAG_BITS = 128;

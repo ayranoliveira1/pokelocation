@@ -172,8 +172,7 @@
         <activity android:hardwareAccelerated="true" android:name=".ui.gpx.ExportActivity" android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
 
-        <!-- Social (processo principal; nada carregado sem login). Callback do Google por scheme próprio:
-             DeepLinkActivity (pokelocation://) roda no :overlay. -->
+        <!-- Scheme próprio para o callback do Google: o pokelocation:// (DeepLinkActivity) roda no :overlay. -->
         <activity android:hardwareAccelerated="true" android:name=".social.ui.LoginActivity" android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
         <activity android:hardwareAccelerated="true" android:name=".social.ui.FriendsActivity" android:exported="false"

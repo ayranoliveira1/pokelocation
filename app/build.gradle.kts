@@ -9,12 +9,11 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
-        // Build de teste lado a lado com o app instalado (ex.: -PPOKELOCATION_ID_SUFFIX=.dev): outro pacote, dados separados.
+        // Build de teste lado a lado com o app instalado: outro pacote, dados separados.
         providers.gradleProperty("POKELOCATION_ID_SUFFIX").orNull?.let { applicationIdSuffix = it }
-        // Servidor social; sobrescreva com -PPOKELOCATION_SOCIAL_API=... (ex.: servidor local).
         buildConfigField("String", "SOCIAL_API",
             "\"" + (providers.gradleProperty("POKELOCATION_SOCIAL_API").orNull ?: "https://api.pokelocation.app") + "\"")
-        // libsignal baixada (spec §3.1): abi:sha256:bytes do .so descomprimido, saída de tools/libsignal/prepare.sh.
+        // abi:sha256:bytes do .so descomprimido, gerado por tools/libsignal/prepare.sh.
         buildConfigField("String", "LIBSIGNAL_VERSION", "\"0.86.5\"")
         buildConfigField("String", "LIBSIGNAL_SO", "\"" +
             "arm64-v8a:2b9188dcbbfbb6716f31e09b54f97e2732e1d3085594fdcf90a8fa222b56e71e:6707408," +
@@ -23,8 +22,7 @@ android {
     }
     buildFeatures { buildConfig = true }
 
-    // Com o sufixo, o app aparece como "PokeLocationTeste" (launcher, recentes, notificação): src/teste/res sobrepõe o
-    // app_name do main em todos os build types. Sem a propriedade, nada muda.
+    // src/teste/res troca o app_name para "PokeLocationTeste" na build de teste.
     if (providers.gradleProperty("POKELOCATION_ID_SUFFIX").isPresent) {
         sourceSets.configureEach { if (name in setOf("debug", "release", "qa", "r8test")) res.srcDir("src/teste/res") }
     }
@@ -56,36 +54,33 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
         }
-        // Só teste local: idêntico ao qa (R8 com ofuscação; debuggable desligaria a renomeação, que é o que quebra os
-        // *Store da libsignal) + src/r8test, que confia na CA local do Caddy para falar com o servidor local.
-        // Nunca distribuído; fora do checkApkSize.
+        // Teste local, nunca distribuído. Não pode ser debuggable: isso desliga a renomeação do R8, que é o que quebra
+        // os *Store da libsignal. src/r8test confia na CA local do Caddy.
         create("r8test") {
             initWith(getByName("qa"))
-            applicationIdSuffix = ".r8test" // nunca o pacote do app do usuário (assinado com a chave debug)
+            applicationIdSuffix = ".r8test" // nunca o pacote do app do usuário
             matchingFallbacks += listOf("release")
         }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        isCoreLibraryDesugaringEnabled = true // a libsignal usa java.time (checkAarMetadata exige)
+        isCoreLibraryDesugaringEnabled = true // a libsignal usa java.time
     }
-    // libsignal (spec §3.1): o .so real é baixado no login; no APK fica só o stub de src/main/jniLibs, que vence o
-    // lib/<abi>/libsignal_jni.so do AAR (x86 tem stub só para o app instalar; sem .so baixado, o social fica indisponível).
-    // Fora: a lib de teste e os nativos de desktop do jar.
+    // O libsignal_jni.so real é baixado no login; o stub de src/main/jniLibs vence o do AAR (x86: stub só para instalar).
     packaging {
         jniLibs.excludes += "**/libsignal_jni_testing.so"
         resources.excludes += listOf("**/*.dylib", "**/*.dll", "**/libsignal_jni*.so")
     }
     androidResources {
         localeFilters += listOf("en", "pt-rBR")
-        // Padrão do aapt + a versão -testing; assets/acknowledgments/libsignal.md fica (atribuição de licenças, obrigação legal).
+        // Padrão do aapt + libsignal-testing.md; o libsignal.md fica (atribuição de licenças, obrigação legal).
         ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~:!libsignal-testing.md"
     }
     testOptions { unitTests.isReturnDefaultValues = true }
 }
 
-// Orçamento de tamanho (spec §8): assembleQa/assembleRelease falham se o APK da própria variante passar de 2,5 MB.
+// Orçamento de tamanho: APK de qa/release ≤ 2,5 MB.
 val apkDir = layout.buildDirectory.dir("outputs/apk")
 listOf("Qa", "Release").forEach { v ->
     val check = tasks.register("checkApkSize$v") {
@@ -106,9 +101,9 @@ dependencies {
     implementation("com.google.android.material:material:1.13.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("org.osmdroid:osmdroid-android:6.1.20")
-    implementation("org.signal:libsignal-android:0.86.5") // parte Java; o nativo é baixado (spec §3.1)
+    implementation("org.signal:libsignal-android:0.86.5")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     testImplementation("junit:junit:4.13.2") // só teste JVM: zero impacto em RAM/APK
     testImplementation("net.sf.kxml:kxml2:2.3.0") // XmlPullParser/XmlSerializer nos testes JVM do gpx (só teste)
-    testImplementation("org.json:json:20231013") // org.json real nos testes JVM (o android.jar mockado devolve null; só teste)
+    testImplementation("org.json:json:20231013") // o org.json do android.jar mockado devolve null
 }

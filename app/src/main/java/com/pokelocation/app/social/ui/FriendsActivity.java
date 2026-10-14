@@ -23,7 +23,6 @@ import com.pokelocation.app.util.Ui;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-/** Amigos: meu código (copiar/compartilhar), adicionar por código, pedidos recebidos/enviados e lista. */
 public final class FriendsActivity extends BaseActivity {
     private StateView state;
     private View busyBar;
@@ -82,8 +81,6 @@ public final class FriendsActivity extends BaseActivity {
     static String pretty(String code) {
         return code != null && code.length() == 8 ? code.substring(0, 4) + "-" + code.substring(4) : code;
     }
-
-    // ---------------------------------------------------------------- carga
 
     private void load() {
         Context app = getApplicationContext();
@@ -158,8 +155,6 @@ public final class FriendsActivity extends BaseActivity {
     private void visible(int id, boolean v) {
         findViewById(id).setVisibility(v ? View.VISIBLE : View.GONE);
     }
-
-    // ---------------------------------------------------------------- ações
 
     private void add() {
         String c = Api.normalizeCode(input.getText().toString());

@@ -34,9 +34,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Amigos no mapa do principal (A9): um único Overlay desenha todos (círculo + 4 primeiros chars do código, um Paint,
- * sem Marker nem bitmap por amigo). Polling de Locations.fetch a cada 5 s, na thread NET, só com o mapa visível.
- * Criada pelo RouteMapView só com login; sem a libsignal carregada não busca nada (start do loader e espera onReady).
+ * Amigos no mapa do principal: um único Overlay desenha todos (círculo + 4 primeiros chars do código, um Paint, sem
+ * Marker nem bitmap por amigo). Polling de Locations.fetch a cada 5 s, na thread NET, só com o mapa visível. Criada
+ * pelo RouteMapView só com login; sem a libsignal carregada não busca nada.
  */
 public final class FriendLayer extends Overlay implements SignalLoader.Listener {
     private static final long POLL_MS = 5_000, MAX_AGE_MS = 60_000, STALE_S = 15;
@@ -77,8 +77,6 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
         text.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
         mv.getOverlays().add(this);
     }
-
-    // ---------------------------------------------------------------- ciclo (RouteMapView)
 
     public void resume() {
         resumed = true;
@@ -152,8 +150,6 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
     @Override public void onError(java.io.IOException e) {}   // sem lib: sem camada (o Amigos mostra o erro)
     @Override public void onUnavailable() {}
 
-    // ---------------------------------------------------------------- desenho e toque
-
     @Override
     public void draw(Canvas c, Projection pj) {
         if (locs.isEmpty()) return;
@@ -194,8 +190,6 @@ public final class FriendLayer extends Overlay implements SignalLoader.Listener 
         gp.setCoords(f.lat, f.lng);
         pj.toPixels(gp, px);
     }
-
-    // ---------------------------------------------------------------- puro (FriendLayerTest)
 
     /** Some com mais de 60 s. at no futuro (relógio do amigo adiantado) conta como agora. */
     static boolean visible(long at, long now) {

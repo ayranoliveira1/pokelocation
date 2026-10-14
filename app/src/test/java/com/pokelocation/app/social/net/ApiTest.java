@@ -4,7 +4,6 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-
 import org.json.JSONException;
 import org.junit.Test;
 
@@ -45,7 +44,7 @@ public class ApiTest {
         }
     }
 
-    /** Decisão do maestro: dois processos com o mesmo access vencido → exatamente UM /refresh (reuso revoga a família). */
+    /** Dois processos com o mesmo access vencido → exatamente UM /refresh (reuso revoga a família). */
     @Test public void concurrentRenewCallsRefreshOnce() throws Exception {
         java.io.File lock = java.io.File.createTempFile("social", ".lock");
         lock.deleteOnExit();
@@ -101,7 +100,7 @@ public class ApiTest {
         assertNull(Api.renewLocked(none, "a0", rt -> { throw new AssertionError(); }));
     }
 
-    /** A-api2: o limite de leitura é parâmetro por chamada; só o GET /v1/locations lê até 256 KiB (500 amigos ≈ 128 KB). */
+    /** O limite de leitura é parâmetro por chamada; só o GET /v1/locations lê até 256 KiB (500 amigos ≈ 128 KB). */
     @Test public void bodyLimitPerCall() throws java.io.IOException {
         assertEquals(256 * 1024, Api.LOCATIONS_MAX_BODY);
         assertEquals(64 * 1024, Api.MAX_BODY);

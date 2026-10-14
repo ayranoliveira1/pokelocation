@@ -5,7 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-/** Spec §7: identity do amigo mudou (reinstalação) → aceita, avisa no chat e refaz a sessão. */
+/** Identity do amigo mudou (reinstalação) → aceita e avisa; a sessão é refeita. */
 public class SignalStoreTest {
     private static final byte[] A = {5, 1, 2}, B = {5, 1, 3};
 

@@ -107,7 +107,7 @@ public class WsClientTest {
         assertEquals((byte) 0x88, sent.get(1)[0]);                         // close
     }
 
-    /** v1 só tem texto e localização (spec §10): mensagem > 64 KB é erro, não 3 MB de pico no :overlay. */
+    /** Só texto e localização (sem mídia): mensagem > 64 KB é erro, não 3 MB de pico no :overlay. */
     @Test public void pumpRejectsMessageOver64k() {
         ByteArrayOutputStream in = new ByteArrayOutputStream();
         in.write(new byte[]{0x02, 126, (byte) 0x80, 0}, 0, 4); // binário FIN=0, 32768

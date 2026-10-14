@@ -41,7 +41,7 @@ public final class OverlayService extends Service
     private OverlayNotification notif;
     private MockEngineImpl engine;
     private OverlayView ui;
-    private LocationSharer sharer; // social (A8): só age com login + Compartilhar ligado
+    private LocationSharer sharer;
     private Intent mockIntent;
 
     private boolean fgFailed, running, hidden, mapOpen, sessionSent, destroyed;
@@ -142,7 +142,7 @@ public final class OverlayService extends Service
         engine.start(lat, lng, alt);
         ui.setVisible(!hidden);
         running = true;
-        // sem login nenhuma classe social carrega (só um stat); login no meio vale a partir da próxima sessão do joystick
+        // Sem login nenhuma classe social carrega; login no meio só vale na próxima sessão do joystick.
         if (getDatabasePath("social.db").exists()) {
             sharer = new LocationSharer(this, engine);
             sharer.start();
