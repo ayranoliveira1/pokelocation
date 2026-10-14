@@ -23,16 +23,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-/**
- * WS do chat no processo principal, só com a tela de chat aberta (Chat.listen). Frames tratados na thread "pl-chat-ws"
- * (banco sob o atomic, rede fora dele, nunca o Io); a tela recebe na main.
- */
+/** Frames na "pl-chat-ws", nunca no Io: banco sob o atomic, rede fora dele. */
 final class ChatSocket {
     private static final String TAG = "ChatSocket";
     private static final long ACK_TIMEOUT_MS = 30_000, RETRY_MS = 5_000;
     private static final Set<Chat.Listener> LISTENERS = new CopyOnWriteArraySet<>();
 
-    /** Enviado e esperando o Ack S→C (o servidor gravou): sem ele em 30 s, ou se o WS cair, falhou. */
+    /** Sem o Ack S→C (o servidor gravou) em 30 s, ou se o WS cair, falhou. */
     private static final class Pending {
         final Runnable onAck, onFail;
 
@@ -83,7 +80,6 @@ final class ChatSocket {
 
     static boolean listening() { return !LISTENERS.isEmpty(); }
 
-    /** Envia um frame; com cmid, espera o Ack S→C (onAck) ou falha (onFail, pode ser null). false se o WS está fechado. */
     static boolean send(byte[] frame, String cmid, Runnable onAck, Runnable onFail) {
         WsClient w = ws;
         Handler h = work;
@@ -97,12 +93,10 @@ final class ChatSocket {
         return true;
     }
 
-    /** Envia uma mensagem do chat: Ack → SENT; sem Ack → outbox (reenvia o mesmo client_msg_id ou FAILED). */
     static boolean sendMessage(Context app, byte[] frame, Chat.Msg m) {
         return send(frame, m.clientMsgId, () -> setState(app, m.id, Chat.SENT), () -> Chat.noAck(app, m.id));
     }
 
-    /** Na thread do WS (rede permitida). */
     static void later(Runnable r, long delayMs) {
         Handler h = work;
         if (h != null) h.postDelayed(r, delayMs);
@@ -129,7 +123,6 @@ final class ChatSocket {
         for (String id : ids) fail(id);
     }
 
-    /** Na main, para cada tela aberta. Qualquer mensagem gravada/alterada muda também a lista de conversas. */
     static void dispatch(Chat.Msg m) {
         if (LISTENERS.isEmpty()) return;
         Io.main().post(() -> {
@@ -141,19 +134,19 @@ final class ChatSocket {
     }
 
     private static void start(Context app) {
-        if (SignalLoader.unavailable()) return; // social indisponível neste aparelho: sem chat em tempo real
+        if (SignalLoader.unavailable()) return;
         String user = null;
         try {
             if (SignalLoader.loaded()) user = Session.username(app);
         } catch (IOException ignored) {
         }
-        if (user == null) { // lib ainda baixando, ou sem @nome (o Auth seria recusado): confere de novo com a tela aberta
+        if (user == null) {
             Handler h = work;
             if (h != null) h.postDelayed(() -> start(app), RETRY_MS);
             return;
         }
         synchronized (ChatSocket.class) {
-            if (thread == null) return; // unlisten antes de abrir
+            if (thread == null) return;
             WsClient[] self = new WsClient[1];
             self[0] = new WsClient(BuildConfig.SOCIAL_API.replaceFirst("^https", "wss") + "/v1/ws", () -> Session.access(app),
                     new WsClient.Listener() {
@@ -164,7 +157,7 @@ final class ChatSocket {
                         @Override public void onClosed(IOException why) {
                             post(() -> {
                                 if (ws == self[0]) open = false;
-                                failAll(); // sem a conexão, o Ack não chega mais
+                                failAll();
                             });
                         }
                     });
@@ -187,7 +180,7 @@ final class ChatSocket {
         } catch (IOException e) {
             Log.w(TAG, "prune: " + e.getClass().getSimpleName());
         }
-        Chat.resendOutbox(app); // o que ficou SENDING (WS caiu, tela fechou, processo novo) sai de novo
+        Chat.resendOutbox(app);
         Groups.distributeLives(app);
     }
 
@@ -211,25 +204,25 @@ final class ChatSocket {
                     } catch (IOException e) {
                         fail = e;
                     }
-                    if (Locations.ack(fail)) from.send(Frames.ack(f.peer, f.msgId)); // só depois de gravar
+                    if (Locations.ack(fail)) from.send(Frames.ack(f.peer, f.msgId));
                     else Log.w(TAG, "envelope sem ack: " + Locations.rootName(fail));
                     if (got != null) Inbox.deliver(app, got, from::send);
                     break;
                 }
                 case Frames.GROUP_CHANGED:
                     Groups.sync(app, f.groupId);
-                    Groups.distributeLives(app); // rotação ou membro novo: a live do grupo não fica parada
+                    Groups.distributeLives(app);
                     dispatch(null);
                     break;
                 case Frames.ERROR:
-                    if ("unauthorized".equals(f.code)) Api.renewNow(app); // refresh revogado → 401 → para abaixo
+                    if ("unauthorized".equals(f.code)) Api.renewNow(app); // refresh revogado → 401 → para sem laço
                     else if ("username_required".equals(f.code)) stopSocket(from);
                     break;
                 default:
-                    break; // posições: o mapa lê pelo REST
+                    break;
             }
         } catch (Api.Error e) {
-            if (e.http == 401) stopSocket(from); // sessão morta: sem laço de reconexão; quem limpa é o principal
+            if (e.http == 401) stopSocket(from); // sem laço de reconexão; quem limpa a sessão é o principal
             else Log.w(TAG, "frame " + f.type + ": " + e.code);
         } catch (Exception e) {
             Log.w(TAG, "frame " + f.type + ": " + e.getClass().getSimpleName());

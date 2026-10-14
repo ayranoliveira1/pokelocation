@@ -20,6 +20,7 @@ import org.signal.libsignal.protocol.NoSessionException;
 import org.signal.libsignal.protocol.SessionBuilder;
 import org.signal.libsignal.protocol.SessionCipher;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
+import org.signal.libsignal.protocol.state.SignalProtocolStore;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.groups.GroupCipher;
 import org.signal.libsignal.protocol.groups.GroupSessionBuilder;
@@ -115,7 +116,7 @@ public final class Locations {
 
     private static volatile boolean sMeChecked;
 
-    /** Sem @nome o servidor responde 403 a tudo: nada de rede a cada 5 s; um GET /v1/me por processo para conferir. */
+    /** Sem @nome o servidor responde 403 a tudo: nada de rede a cada 5 s. */
     private static void requireUsername(Context c) throws IOException {
         if (Session.username(c) != null) return;
         if (!sMeChecked) {
@@ -142,7 +143,7 @@ public final class Locations {
     }
 
     /**
-     * Uma página. false = fila vazia ou nada confirmado (transitório: buscar de novo já traria a mesma página). Cada envelope no seu atomic: transação aninhada no Android não volta parcial, então uma
+     * Uma página; false = vazia ou nada confirmado (repetir traria a mesma). Cada envelope no seu atomic: transação aninhada no Android não volta parcial, então uma
      * falha desfaria todos. Apaga do servidor só o que ack() aceita.
      */
     public static boolean drain(Context c) throws IOException {
@@ -208,16 +209,12 @@ public final class Locations {
         return encryptTo(c, friendId, frame(KIND_SKDM, skdm.serialize()), bundle);
     }
 
-    /**
-     * Dentro de SocialDb.atomic: envelope 1:1 ([tipo][ciphertext]) para o amigo. bundle != null abre a sessão (buscado
-     * fora do lock); bundle == null e sem sessão → null (busque o bundle).
-     */
+    /** bundle == null e sem sessão → null: busque o bundle fora do lock. */
     public static byte[] encryptTo(Context c, String friendId, byte[] plain, Api.Bundle bundle) throws Exception {
         return encryptTo(new SignalStore(c), friendId, plain, bundle);
     }
 
-    /** Com o store de quem chama: st.replaced(friendId) diz se o bundle trouxe identity nova. */
-    public static byte[] encryptTo(SignalStore st, String friendId, byte[] plain, Api.Bundle bundle) throws Exception {
+    public static byte[] encryptTo(SignalProtocolStore st, String friendId, byte[] plain, Api.Bundle bundle) throws Exception {
         SignalProtocolAddress to = address(friendId);
         if (bundle != null) new SessionBuilder(st, to).process(preKeyBundle(bundle));
         else if (!st.containsSession(to)) return null;

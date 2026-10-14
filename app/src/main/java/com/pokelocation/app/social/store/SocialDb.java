@@ -121,7 +121,7 @@ public final class SocialDb extends SQLiteOpenHelper {
         return f.readLong();
     }
 
-    /** A geração que este processo viu na última operação sob o lock: mudou = logout (e talvez login) no outro. */
+    /** Mudou desde a última leitura = logout (e talvez login) no outro processo. */
     public static synchronized long seenGeneration() { return sGen; }
 
     /** Logout: nova geração (o outro processo vê na próxima operação). Só sob o lock. */
@@ -225,14 +225,9 @@ public final class SocialDb extends SQLiteOpenHelper {
      *  do servidor expira em 30). */
     static final String SEEN_ENVELOPES = "CREATE TABLE seen_envelopes(sender TEXT NOT NULL, msg_id TEXT NOT NULL,"
             + " at INTEGER NOT NULL, PRIMARY KEY(sender, msg_id)) WITHOUT ROWID";
-    /** A poda por data roda a cada envelope recebido; sem o índice percorre a tabela inteira. */
     static final String SEEN_ENVELOPES_AT = "CREATE INDEX IF NOT EXISTS seen_envelopes_at ON seen_envelopes(at)";
 
-    /**
-     * Chat (v7). Selado pelo Envelope só o que o servidor não vê: nome do grupo (title), preview e body; ids e @nome
-     * (peer, user_id, sender, label) ele já conhece e ficam em claro. sender '' = minha (UNIQUE(sender, client_msg_id) também
-     * deduplica as minhas). *_live_until: fim da localização em tempo real; ativa = maior que o relógio, sem job.
-     */
+    /** Selado só o que o servidor não vê (title, preview, body); ids e @nome ele já conhece. sender '' = minha. */
     public static final String[] CHAT = {
             "CREATE TABLE conversations(id TEXT PRIMARY KEY, grp INTEGER NOT NULL, peer TEXT, title BLOB, preview BLOB,"
                     + " preview_type INTEGER NOT NULL DEFAULT 0, last_ts INTEGER NOT NULL DEFAULT 0,"
@@ -246,11 +241,7 @@ public final class SocialDb extends SQLiteOpenHelper {
             "CREATE INDEX messages_page ON messages(conv_id, ts DESC, id DESC)",
     };
 
-    /**
-     * v8: fila de mensagens de grupo que chegaram antes da sender key do remetente (o ciphertext como veio, já E2E; em
-     * claro só group_id/sender/at), achada pela PK (remetente) quando a SKDM dele chega e podada pela data (7 dias);
-     * messages.tries = envios sem Ack (outbox).
-     */
+    /** pending_group guarda o ciphertext como veio (já E2E). */
     public static final String[] CHAT_V8 = {
             "CREATE TABLE pending_group(sender TEXT NOT NULL, msg_id TEXT NOT NULL, group_id TEXT NOT NULL,"
                     + " payload BLOB NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(sender, msg_id)) WITHOUT ROWID",
@@ -258,23 +249,15 @@ public final class SocialDb extends SQLiteOpenHelper {
             "ALTER TABLE messages ADD COLUMN tries INTEGER NOT NULL DEFAULT 0",
     };
 
-    /**
-     * v9: key_ok = a minha sender key do grupo foi entregue a todos os membros atuais (Ack do servidor). Só o principal
-     * cria e distribui; o :overlay só manda a live com ela; mudou a membresia → 0 até a próxima distribuição.
-     */
+    /** key_ok: escrito só pelo principal, que cria e distribui a sender key; o :overlay só manda a live com ela. */
     public static final String CHAT_V9 = "ALTER TABLE conversations ADD COLUMN key_ok INTEGER NOT NULL DEFAULT 0";
 
-    /** @nome da conta (selado): o :overlay só abre o WS com ele (o servidor recusa sem). */
     static final String SESSION_USERNAME = "ALTER TABLE session ADD COLUMN username BLOB";
 
-    /**
-     * Página por cursor (ts, id), mais novas primeiro. Sem row values: o SQLite do API 24 (3.9) não tem; "ts <= ?"
-     * posiciona no índice e o OR só desempata o mesmo ts.
-     */
+    /** Sem row values (o SQLite 3.9 do API 24 não tem): "ts <= ?" posiciona no índice e o OR só desempata o mesmo ts. */
     public static final String PAGE = "SELECT id, client_msg_id, sender, type, state, ts, live_until, body FROM messages"
             + " WHERE conv_id = ? AND ts <= ? AND (ts < ? OR id < ?) ORDER BY ts DESC, id DESC LIMIT ?";
 
-    /** Último token do FCM aceito pelo servidor (selado): o PUT só sai quando ele muda. */
     static final String SESSION_FCM = "ALTER TABLE session ADD COLUMN fcm BLOB";
 
     private static void createV4(SQLiteDatabase db) { db.execSQL(SEEN_ENVELOPES); }

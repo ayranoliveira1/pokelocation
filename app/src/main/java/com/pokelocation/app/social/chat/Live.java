@@ -14,14 +14,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-/**
- * Posição das minhas lives, mandada pelo :overlay a cada tick. A live é escolha explícita no chat: segue com o
- * Compartilhar do mapa desligado; para quando vence, no stopLive (o banco) e no logout/geração nova (quem chama).
- */
+/** A live é escolha explícita no chat: segue com o Compartilhar do mapa desligado. */
 public final class Live {
-    /** Fim da live mais longa, no social_share: o :overlay sem Compartilhar e sem live não abre o social.db a cada tick. */
+    /** No social_share: o :overlay sem Compartilhar e sem live não abre o social.db a cada tick. */
     private static final String UNTIL = "my_live_until";
-    /** Atualizações por tick (5 s): 24/min no máximo, o resto do limite de 60/min do servidor fica para o chat. */
+    /** 24/min no máximo: o resto do limite de 60/min do servidor fica para o chat. */
     private static final int PER_TICK = 2;
 
     private Live() {}
@@ -31,23 +28,17 @@ public final class Live {
         return c.getSharedPreferences(Prefs.SHARE_FILE, Context.MODE_MULTI_PROCESS).getLong(UNTIL, 0) > now;
     }
 
-    /** Logout (principal): o :overlay deixa de abrir o social.db a cada tick. */
     @SuppressWarnings("deprecation")
     public static void forget(Context c) {
         c.getSharedPreferences(Prefs.SHARE_FILE, Context.MODE_MULTI_PROCESS).edit().remove(UNTIL).apply();
     }
 
-    /** Principal, depois de iniciar ou encerrar uma live. */
     @SuppressWarnings("deprecation")
     static void hint(Context c) throws IOException {
         long until = Locations.atomic(c, () -> ChatDb.maxMyLive(c));
         c.getSharedPreferences(Prefs.SHARE_FILE, Context.MODE_MULTI_PROCESS).edit().putLong(UNTIL, until).apply();
     }
 
-    /**
-     * Rede fora do lock. sent: convId → {lat, lng, quando} desta conexão (quem chama zera ao reconectar). A minha bolha
-     * também anda (só no banco: a tela, no outro processo, lê ao abrir).
-     */
     public static void send(Context c, String me, double lat, double lng, Map<String, double[]> sent, Predicate<byte[]> ws)
             throws IOException {
         long now = System.currentTimeMillis();
@@ -61,7 +52,7 @@ public final class Live {
             if (!due.contains(convId)) continue;
             Chat.Msg m = new Chat.Msg();
             m.type = Chat.LIVE_START;
-            m.text = start; // atualização: o outro lado move a mensagem original
+            m.text = start;
             m.lat = lat;
             m.lng = lng;
             m.ts = now;
@@ -71,22 +62,23 @@ public final class Live {
             try {
                 byte[] frame;
                 if ((boolean) l[1]) {
-                    // só com a minha chave já entregue a todos (key_ok, escrito pelo principal): rotacionada ou membro novo
-                    // → pula até o principal distribuir (ao abrir o chat / no GroupChanged)
+                    // ponytail: o :overlay ignora o GroupChanged; com o chat fechado, quem entrou não vê a live e a rotação
+                    // por saída espera a próxima abertura do chat (o fan-out do servidor já exclui quem saiu: degradação,
+                    // não vazamento). Melhorar = o :overlay avisar o principal para sincronizar.
                     byte[] ct = Locations.atomic(c, () -> ChatDb.keyOk(c, convId) ? Groups.encrypt(c, me, convId, plain, false) : null);
                     if (ct == null) continue;
                     frame = Frames.groupEnvelope(convId, id, ct);
                 } else {
                     frame = Frames.envelope((String) l[2], id, Groups.seal1to1(c, (String) l[2], plain, null));
                 }
-                if (!ws.test(frame)) return; // WS caiu: o resto no próximo tick
+                if (!ws.test(frame)) return;
                 sent.put(convId, new double[]{lat, lng, now});
                 Locations.atomic(c, () -> ChatDb.updateLive(c, convId, null, start, lat, lng, m.liveUntil));
             } catch (Api.Error e) {
                 if (e.http == 401) throw e;
                 Log.w("Live", "update: " + e.code);
             } catch (IOException e) {
-                Log.w("Live", "update: " + e.getClass().getSimpleName()); // uma conversa não segura as outras
+                Log.w("Live", "update: " + e.getClass().getSimpleName());
             }
         }
     }

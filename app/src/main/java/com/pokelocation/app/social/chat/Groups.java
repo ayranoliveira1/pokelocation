@@ -29,12 +29,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Grupos: fan-out no servidor (api.md §7). Minha sender key do grupo (distribuição = o id do grupo) vai a cada membro
- * por 1:1, junto do nome (GROUP_INFO). Alguém saiu → chave nova (quem saiu não lê o que vem depois).
- */
+/** Alguém saiu → sender key nova: quem saiu não lê o que vem depois. */
 final class Groups {
-    /** Por grupo, quem já recebeu minha sender key nesta vida do processo; quem recebe processa repetida sem problema. */
     private static final Map<String, Set<String>> SENT = new ConcurrentHashMap<>();
 
     private Groups() {}
@@ -45,14 +41,12 @@ final class Groups {
         return id;
     }
 
-    /** Membros sem mim, como o ChatDb guarda (rótulo = @nome). */
     static List<Api.Friend> others(List<Api.Friend> members, String me) {
         List<Api.Friend> out = new ArrayList<>(members.size());
         for (Api.Friend f : members) if (!f.userId.equals(me)) out.add(f);
         return out;
     }
 
-    /** Rede fora do lock: GET do grupo; depois banco sob o atomic. 404 = saí ou fui removido → a conversa some. */
     static void sync(Context c, String groupId) throws IOException {
         String me = myId(c);
         Api.Group g;
@@ -70,16 +64,15 @@ final class Groups {
             for (Api.Friend f : ChatDb.members(c, groupId)) before.add(f.userId);
             for (Api.Friend f : now) after.add(f.userId);
             ChatDb.setMembers(c, groupId, now);
-            if (!before.equals(after)) ChatDb.setKeyOk(c, groupId, false); // quem entrou ainda não tem a minha chave
+            if (!before.equals(after)) ChatDb.setKeyOk(c, groupId, false);
             before.removeAll(after);
             if (before.isEmpty()) return false;
             new SignalStore(c).deleteSenderKey(new SignalProtocolAddress(me, 1), UUID.fromString(groupId));
             return true;
         });
-        if (someoneLeft) SENT.remove(groupId); // a chave nova vai a todos no próximo envio
+        if (someoneLeft) SENT.remove(groupId);
     }
 
-    /** Saí ou fui removido: a conversa e as sender keys do grupo (minha e dos outros) somem. */
     static void forget(Context c, String groupId) throws IOException {
         Locations.atomic(c, () -> {
             ChatDb.deleteConversation(c, groupId);
@@ -89,10 +82,6 @@ final class Groups {
         SENT.remove(groupId);
     }
 
-    /**
-     * Envelope 1:1 para o amigo: com sessão, dentro do atomic; sem, o bundle vem fora do lock (bundle != null já
-     * buscado). Se a identity dele mudou, avisa no 1:1 também ao enviar.
-     */
     static byte[] seal1to1(Context c, String peer, byte[] plain, Api.Bundle bundle) throws IOException {
         Chat.Msg[] notice = {null};
         SocialDb.Op<byte[]> op = () -> {
@@ -115,7 +104,6 @@ final class Groups {
         return env;
     }
 
-    /** SKDM + nome a cada membro que ainda não tem minha sender key. Precisa do WS aberto (vai por Envelope 1:1). */
     static void distribute(Context c, String groupId) throws IOException {
         String me = myId(c);
         Set<String> done = SENT.computeIfAbsent(groupId, k -> ConcurrentHashMap.newKeySet());
@@ -131,7 +119,7 @@ final class Groups {
             });
             String id = UUID.randomUUID().toString();
             String member = m.userId;
-            // só no Ack S→C (o servidor gravou): enfileirado não basta, e sem a minha chave as cópias dele seriam ilegíveis
+            // entregue só no Ack S→C (o servidor gravou): enfileirado não basta
             ChatSocket.send(Frames.envelope(member, id, seal1to1(c, member, skdm, null)), id, () -> {
                 done.add(member);
                 markKeyOk(c, groupId, done);
@@ -139,20 +127,15 @@ final class Groups {
             sent = true;
         }
         if (!sent) markKeyOk(c, groupId, done);
-        // o nome só dentro do GroupEnvelope do próprio grupo (o servidor confere a membresia); quem ainda não tem a
-        // minha SKDM guarda na fila até ela chegar
+        // o nome só no GroupEnvelope do próprio grupo: o servidor confere a membresia
         if (sent && name != null) {
             byte[] ct = Locations.atomic(c, () -> encrypt(c, me, groupId, Content.groupInfo(groupId, name), true));
             ChatSocket.send(Frames.groupEnvelope(groupId, UUID.randomUUID().toString(), ct), null, null, null);
         }
     }
 
-    /**
-     * Todos os membros atuais (do banco: uma sync no meio conta) confirmaram a minha chave → o :overlay pode mandar a
-     * live. done de uma distribuição velha (a chave rotacionou depois) não marca.
-     */
     private static void markKeyOk(Context c, String groupId, Set<String> done) {
-        if (SENT.get(groupId) != done) return;
+        if (SENT.get(groupId) != done) return; // Ack de uma distribuição anterior à rotação
         try {
             Locations.atomic(c, () -> {
                 for (Api.Friend m : ChatDb.members(c, groupId)) if (!done.contains(m.userId)) return null;
@@ -164,7 +147,6 @@ final class Groups {
         }
     }
 
-    /** Principal com o WS do chat aberto: grupos com live minha cuja chave ainda não chegou a todos (rotação, membro novo). */
     static void distributeLives(Context c) {
         try {
             for (Object[] l : Locations.atomic(c, () -> ChatDb.myLives(c, System.currentTimeMillis()))) {
@@ -176,12 +158,12 @@ final class Groups {
         }
     }
 
-    /** Código de segurança (60 dígitos): os mesmos parâmetros do Signal (5200 iterações, versão 2, id estável = o id). */
+    /** Os mesmos parâmetros do Signal (5200 iterações, versão 2): o código bate com o de outro cliente Signal. */
     static String safetyNumber(Context c, String friendUserId) throws IOException {
         String me = myId(c);
         SignalProtocolAddress a = new SignalProtocolAddress(friendUserId, 1);
         IdentityKey theirs = Locations.atomic(c, () -> new SignalStore(c).getIdentity(a));
-        if (theirs == null) { // ainda sem sessão com ele: a do servidor (rede fora do lock)
+        if (theirs == null) {
             try {
                 theirs = new IdentityKey(Api.keyBundle(c, friendUserId).identity);
             } catch (InvalidKeyException e) {
@@ -193,10 +175,7 @@ final class Groups {
                 friendUserId.getBytes(StandardCharsets.UTF_8), theirs).getDisplayableFingerprint().getDisplayText();
     }
 
-    /**
-     * Dentro do atomic: ciphertext do GroupCipher com a minha sender key. create = false (o :overlay, que não distribui):
-     * sem chave, null; criar uma ali faria tudo sair com uma chave que ninguém recebeu.
-     */
+    /** create = false no :overlay, que não distribui: uma chave criada ali sairia sem ninguém a ter recebido. */
     static byte[] encrypt(Context c, String me, String groupId, byte[] plain, boolean create) throws Exception {
         SignalStore st = new SignalStore(c);
         SignalProtocolAddress a = new SignalProtocolAddress(me, 1);

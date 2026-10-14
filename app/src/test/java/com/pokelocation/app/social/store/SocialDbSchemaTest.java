@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
-/** O SQL real do upgrade v4 → v5 rodando no sqlite3 do sistema (pulado se não houver o binário). */
 public class SocialDbSchemaTest {
     private static final String SQLITE = "/usr/bin/sqlite3";
 
@@ -32,7 +31,6 @@ public class SocialDbSchemaTest {
         assertEquals("1", sqlite(db, "SELECT COUNT(*) FROM seen_envelopes;").trim());
     }
 
-    /** v7: tabelas do chat; a página por cursor usa o índice e não duplica nem pula com mensagem nova no meio. */
     @Test public void v7PagesByCursorWithTheIndex() throws Exception {
         Assume.assumeTrue(new File(SQLITE).canExecute());
         File db = new File(tmp.getRoot(), "chat.db");
@@ -66,10 +64,9 @@ public class SocialDbSchemaTest {
         }
         assertEquals(java.util.Arrays.asList("m7", "m6", "m5", "m4", "m3", "m2", "m1"), seen);
         assertTrue(sqlite(db, "INSERT OR IGNORE INTO messages(conv_id, client_msg_id, sender, type, state, ts, body)"
-                + " VALUES ('c', 'm1', 'u', 1, 2, 0, x'00'); SELECT changes();").trim().endsWith("0")); // dedup
+                + " VALUES ('c', 'm1', 'u', 1, 2, 0, x'00'); SELECT changes();").trim().endsWith("0"));
     }
 
-    /** v8: a fila de grupo é achada pela PK (remetente) e podada pelo índice de data; messages ganha tries (outbox). */
     @Test public void v8PendingByGroupAndSender() throws Exception {
         Assume.assumeTrue(new File(SQLITE).canExecute());
         File db = new File(tmp.getRoot(), "v8.db");
@@ -83,7 +80,6 @@ public class SocialDbSchemaTest {
         assertEquals("0", sqlite(db, ".mode list\nSELECT tries FROM messages;").trim());
     }
 
-    /** v9: a conversa que já existia começa sem a minha chave de grupo distribuída (o :overlay não manda a live). */
     @Test public void v9KeyNotDistributedByDefault() throws Exception {
         Assume.assumeTrue(new File(SQLITE).canExecute());
         File db = new File(tmp.getRoot(), "v9.db");

@@ -57,9 +57,8 @@ public final class Api {
     }
 
     public static final class Me { public String id, email, friendCode, username; }
-    /** label: rótulo pronto para exibir, só nos membros do Chat ("@nome" ou o que a tela passou no openDirect). */
     public static final class Friend { public String userId, friendCode, username, label; }
-    public static final class Request { public String id, userId, friendCode, username; public long createdAt; /* epoch ms */ }
+    public static final class Request { public String id, userId, friendCode, username; public long createdAt; }
     public static final class Friends { public List<Friend> accepted; public List<Request> incoming, outgoing; }
 
     /** sig = assinatura pela identity; null nas one-time EC. */
@@ -78,7 +77,7 @@ public final class Api {
         store(c, http(c, "POST", "/v1/auth/register", null, obj("email", email, "password", password, "username", username)));
         if (username == null) return;
         Session.username(c, normalizeUsername(username));
-        SignalLoader.kick(c); // chaves e FCM levaram 403 username_required até agora
+        SignalLoader.kick(c); // as chaves e o FCM levaram 403 até aqui
     }
 
     public static void register(Context c, String email, String password) throws IOException { register(c, email, password, null); }
@@ -86,7 +85,7 @@ public final class Api {
     public static void setUsername(Context c, String username) throws IOException {
         call(c, "PUT", "/v1/me/username", obj("username", username));
         Session.username(c, normalizeUsername(username));
-        SignalLoader.kick(c); // chaves e FCM levaram 403 username_required até agora
+        SignalLoader.kick(c); // as chaves e o FCM levaram 403 até aqui
     }
 
     public static void login(Context c, String email, String password) throws IOException {
@@ -132,7 +131,7 @@ public final class Api {
     public static Me me(Context c) throws IOException {
         try {
             Me m = parseMe(call(c, "GET", "/v1/me", null));
-            Session.username(c, m.username); // o :overlay só lê: sem @nome não abre o WS
+            Session.username(c, m.username);
             return m;
         } catch (JSONException e) {
             throw new IOException("bad response"); // sem causa: a mensagem do JSONTokener traz o corpo
@@ -147,7 +146,6 @@ public final class Api {
         }
     }
 
-    /** Aceita "@nome", "nome" ou código de amigo. */
     public static void requestFriend(Context c, String usernameOrCode) throws IOException {
         List<JSONObject> tries;
         try {
@@ -188,11 +186,9 @@ public final class Api {
 
     /** preKey = one-time EC; null quando acabaram no servidor. */
     public static final class Bundle { public int registrationId; public byte[] identity; public PreKey signed, kyber, preKey; }
-    /** groupId != null: cópia de uma mensagem de grupo (fan-out do servidor). */
     public static final class Envelope { public String id, from, clientMsgId, groupId; public byte[] payload; }
     public static final class Group { public String id, ownerId; public List<Friend> members; public long createdAt; }
 
-    /** members: [{user_id, username}] (inclui o dono e eu). */
     public static String createGroup(Context c, List<String> members) throws IOException {
         try {
             return new JSONObject(call(c, "POST", "/v1/groups", new JSONObject().put("members", new JSONArray(members))))
@@ -204,7 +200,7 @@ public final class Api {
 
     public static List<Group> groups(Context c) throws IOException {
         try {
-            return parseGroups(call(c, "GET", "/v1/groups", null, GROUPS_MAX_BODY)); // 25 grupos × 50 membros ≈ 108 KiB
+            return parseGroups(call(c, "GET", "/v1/groups", null, GROUPS_MAX_BODY));
         } catch (JSONException e) {
             throw new IOException("bad response");
         }
@@ -222,7 +218,6 @@ public final class Api {
         call(c, "POST", "/v1/groups/" + Uri.encode(groupId) + "/members", obj("user_id", userId));
     }
 
-    /** userId = eu → sair do grupo. */
     public static void removeGroupMember(Context c, String groupId, String userId) throws IOException {
         call(c, "DELETE", "/v1/groups/" + Uri.encode(groupId) + "/members/" + Uri.encode(userId), null);
     }
@@ -254,7 +249,6 @@ public final class Api {
     }
     public static final class Location { public String userId, friendCode, username; public byte[] payload; }
 
-    /** Token do FCM deste aparelho: o servidor manda o ping de "há fila" para ele. */
     public static void putFcmToken(Context c, String token) throws IOException {
         try {
             call(c, "PUT", "/v1/devices/fcm", fcmJson(token));
@@ -409,7 +403,6 @@ public final class Api {
         }
     }
 
-    /** api.md §8: minúsculas, sem o "@"; 3–20 [a-z0-9_.], começa com letra, sem ".." e sem "." no fim. null se inválido. */
     public static String normalizeUsername(String raw) {
         if (raw == null) return null;
         String s = raw.trim();
@@ -418,10 +411,6 @@ public final class Api {
         return USERNAME.matcher(s).matches() && !s.contains("..") && !s.endsWith(".") ? s : null;
     }
 
-    /**
-     * Corpos a tentar, em ordem: "@" → só o nome; código válido → o código e, se o texto também for um @nome válido
-     * (8 letras Crockford), o nome depois de um code_not_found.
-     */
     static List<JSONObject> friendRequests(String raw) throws JSONException {
         List<JSONObject> out = new ArrayList<>(2);
         if (raw == null) return out;

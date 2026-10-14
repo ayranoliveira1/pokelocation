@@ -32,7 +32,6 @@ public class ContentTest {
         assertNull(Content.msg(new byte[]{Content.GROUP_INFO}));
     }
 
-    /** De fora só os tipos de usuário: aviso de sistema falso ('o código de segurança mudou') é descartado. */
     @Test public void fromOthersOnlyUserTypes() {
         for (int t : new int[]{Chat.TEXT, Chat.LOC, Chat.LIVE_START, Chat.LIVE_STOP}) {
             Chat.Msg m = new Chat.Msg();
@@ -47,7 +46,6 @@ public class ContentTest {
         }
     }
 
-    /** Live de fora no máximo 8 h (+ folga de relógio): Long.MAX não vira 'Ao vivo' para sempre. */
     @Test public void liveUntilIsCapped() {
         Chat.Msg m = new Chat.Msg();
         m.type = Chat.LIVE_START;
@@ -60,7 +58,6 @@ public class ContentTest {
         assertEquals(1_000_000 + 60_000, m.liveUntil);
     }
 
-    /** O id de grupo é UUID; "d:<id>" (o 1:1) nunca é aceito como grupo. */
     @Test public void groupIdMustBeUuid() {
         assertEquals(true, Content.isGroupId("11111111-2222-3333-4444-555555555555"));
         assertEquals(false, Content.isGroupId("d:11111111-2222-3333-4444-555555555555"));

@@ -105,7 +105,7 @@ public class ApiTest {
     @Test public void bodyLimitPerCall() throws java.io.IOException {
         assertEquals(256 * 1024, Api.LOCATIONS_MAX_BODY);
         assertEquals(64 * 1024, Api.MAX_BODY);
-        assertEquals(192 * 1024, Api.GROUPS_MAX_BODY); // GET /v1/groups: 25 grupos × 50 membros ≈ 108 KiB
+        assertEquals(192 * 1024, Api.GROUPS_MAX_BODY);
         assertEquals(150 * 1024, Api.read(new java.io.ByteArrayInputStream(new byte[150 * 1024]), Api.GROUPS_MAX_BODY).length());
         byte[] big = new byte[200 * 1024];
         assertEquals(big.length, Api.read(new java.io.ByteArrayInputStream(big), Api.LOCATIONS_MAX_BODY).length());
@@ -212,7 +212,7 @@ public class ApiTest {
         Api.keysJson(b);
     }
 
-    /** Logout manda {"token": null}: o put(k, null) do org.json apagaria a chave e o servidor leria corpo sem token. */
+    /** O put(k, null) do org.json apagaria a chave: o servidor leria um corpo sem token. */
     @Test public void fcmJsonKeepsExplicitNull() throws JSONException {
         assertEquals("abc", new org.json.JSONObject(Api.fcmJson("abc").toString()).getString("token"));
         org.json.JSONObject off = new org.json.JSONObject(Api.fcmJson(null).toString());
@@ -220,7 +220,6 @@ public class ApiTest {
         assertTrue(off.isNull("token"));
     }
 
-    /** api.md §8: 3–20 [a-z0-9_.], começa com letra, sem "..", sem "." no fim; o app baixa maiúsculas e tira o "@". */
     @Test public void normalizeUsername() {
         assertEquals("ana.b_9", Api.normalizeUsername("  @Ana.B_9 "));
         assertEquals("abc", Api.normalizeUsername("abc"));
@@ -237,7 +236,6 @@ public class ApiTest {
         assertNull(Api.normalizeUsername(null));
     }
 
-    /** "@" → só nome; código válido → código e, se também for um @nome válido, o nome depois; senão → só nome. */
     @Test public void friendRequestCandidates() throws JSONException {
         assertEquals(java.util.Collections.singletonList("{\"username\":\"ana\"}"), bodies(Api.friendRequests("@Ana")));
         assertEquals(java.util.Arrays.asList("{\"code\":\"AB1C0DE1\"}"), bodies(Api.friendRequests("ab-iC o-de l")));
@@ -266,7 +264,6 @@ public class ApiTest {
                 + "\"payload\":\"AA==\"}]}").get(0).username);
     }
 
-    /** api.md §7: membros [{user_id, username}]; envelope de grupo traz group_id na fila. */
     @Test public void groups() throws JSONException {
         java.util.List<Api.Group> gs = Api.parseGroups("{\"groups\":[{\"id\":\"g1\",\"owner_id\":\"u1\","
                 + "\"members\":[{\"user_id\":\"u1\",\"username\":\"ana\"},{\"user_id\":\"u2\",\"username\":\"bia\"}],"
@@ -284,7 +281,6 @@ public class ApiTest {
                 + "\"payload\":\"AA==\"}]}").get(0).groupId);
     }
 
-    /** O meu id sai do sub do JWT (sem rede); o header/assinatura não importam aqui (o servidor é quem valida). */
     @Test public void jwtSubject() {
         String payload = Api.b64url("{\"sub\":\"u-123\",\"exp\":9}".getBytes());
         assertEquals("u-123", Api.jwtSubject("eyJhbGciOiJFZERTQSJ9." + payload + ".sig"));

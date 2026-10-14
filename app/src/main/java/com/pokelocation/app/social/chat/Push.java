@@ -14,14 +14,11 @@ import com.pokelocation.app.social.net.Api;
 
 import java.io.IOException;
 
-/**
- * FCM só no processo principal e só com login. O FirebaseInitProvider foi removido e o auto-init está desligado no
- * manifest: nada do Firebase sobe sozinho; as opções vêm do BuildConfig (sem o plugin google-services).
- */
+/** Sem FirebaseInitProvider e com auto-init desligado no manifest: nada do Firebase sobe sem login. */
 public final class Push {
     private Push() {}
 
-    /** Também no onCreate do PushService: um push pode acordar o processo frio antes de qualquer tela. */
+    /** Um push pode acordar o processo frio antes de qualquer tela. */
     static synchronized void app(Context c) {
         Context app = c.getApplicationContext();
         if (!FirebaseApp.getApps(app).isEmpty()) return;
@@ -33,10 +30,7 @@ public final class Push {
                 .build());
     }
 
-    /**
-     * Com login, a cada subida do processo (carga da lib), login, refresh e depois do PUT /v1/keys: com o auto-init
-     * desligado, só isto recupera um token que falhou ou que o servidor apagou. O PUT só sai quando o token muda.
-     */
+    /** Com o auto-init desligado, só isto recupera um token que falhou ou que o servidor apagou. */
     public static void start(Context c) {
         if (App.process() != App.PROC_MAIN) return;
         Context app = c.getApplicationContext();
@@ -46,7 +40,6 @@ public final class Push {
                 .addOnFailureListener(e -> Log.w("Push", "getToken: " + e.getClass().getSimpleName()));
     }
 
-    /** Logout ou sessão morta (só o principal, escritor único): mesmo sem o Firebase ter subido neste processo. */
     public static void stop(Context c) {
         if (App.process() != App.PROC_MAIN) return;
         app(c);

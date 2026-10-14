@@ -110,7 +110,7 @@ public final class LocationSharer {
                 return;
             }
             long g = SocialDb.seenGeneration();
-            if (g != gen) { // logout + login entre dois ticks: nada da conta anterior (id, WS, SKDMs) segue
+            if (g != gen) { // logout + login entre dois ticks: nada da conta anterior segue
                 halt();
                 gen = g;
             }
@@ -120,7 +120,7 @@ public final class LocationSharer {
             }
             if (myId == null) myId = Api.me(app).id;
             if (ws == null) {
-                if (Session.username(app) == null) return; // sem @nome o Auth é recusado; depois, o Error username_required cobre
+                if (Session.username(app) == null) return; // sem @nome o Auth é recusado
                 startWs();
             }
             sharing = share;
@@ -152,7 +152,7 @@ public final class LocationSharer {
     private void shareOff(boolean live) {
         if (sharing && ws != null && open) ws.send(Frames.locationOff());
         sharing = false;
-        lastLat = lastLng = Double.NaN; // religado: a posição sai já
+        lastLat = lastLng = Double.NaN;
         if (!live) stopWs();
     }
 
@@ -203,7 +203,7 @@ public final class LocationSharer {
         if (ws != from) return;
         try {
             if (f.type == Frames.ENVELOPE || f.type == Frames.GROUP_ENVELOPE) {
-                // com algum WS aberto o servidor não manda ping FCM: este processo grava o chat e notifica como o principal
+                // com algum WS aberto o servidor não manda ping FCM: quem recebe grava e notifica
                 Throwable fail = null;
                 Inbox.Result got = null;
                 try {
@@ -213,7 +213,6 @@ public final class LocationSharer {
                 } catch (IOException e) {
                     fail = e;
                 }
-                // Ack só depois de gravar, ou se ilegível para sempre; transitório → o servidor reentrega
                 if (Locations.ack(fail)) ws.send(Frames.ack(f.peer, f.msgId));
                 else Log.w(TAG, "envelope sem ack: " + Locations.rootName(fail));
                 WsClient w = ws;
@@ -222,7 +221,7 @@ public final class LocationSharer {
                 String to = skdmPending.remove(f.msgId);
                 if (to != null) skdmSent.add(to);
             } else if (f.type == Frames.ERROR && "username_required".equals(f.code)) {
-                halt(); // só volta quando o principal gravar o @nome (o tick confere antes de abrir o WS)
+                halt();
             } else if (f.type == Frames.ERROR && "unauthorized".equals(f.code)) {
                 // logout/reuso/vínculo Google derrubam o WS: renova já (não só se o JWT venceu); refresh revogado → 401 →
                 // halt sem laço; refresh bom → a reconexão usa o token novo

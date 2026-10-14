@@ -79,7 +79,6 @@ public final class SignalLoader {
     /** Só depois disto as classes org.signal podem ser usadas. */
     public static boolean loaded() { return sLoaded; }
 
-    /** ABI sem .so ou a lib não carrega: definitivo no processo. */
     public static boolean unavailable() { return sUnavailable; }
 
     /**
@@ -173,10 +172,7 @@ public final class SignalLoader {
         });
     }
 
-    /**
-     * Ping do FCM (janela de ~20 s): só o .so já baixado e conferido, sem rede nem esperas. Faltando (lib nova depois de
-     * uma atualização) ou com um download em andamento, IOException: a tela ou o próximo ping carregam.
-     */
+    /** Ping do FCM (~20 s): só o .so já baixado e conferido, sem rede nem esperas. */
     public static void loadDownloaded(Context c) throws IOException {
         if (sLoaded) return;
         synchronized (SignalLoader.class) {

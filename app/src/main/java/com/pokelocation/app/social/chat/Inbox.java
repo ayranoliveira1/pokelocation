@@ -16,6 +16,7 @@ import org.signal.libsignal.protocol.NoSessionException;
 import org.signal.libsignal.protocol.ReusedBaseKeyException;
 import org.signal.libsignal.protocol.SessionCipher;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
+import org.signal.libsignal.protocol.state.SignalProtocolStore;
 import org.signal.libsignal.protocol.groups.GroupCipher;
 import org.signal.libsignal.protocol.groups.GroupSessionBuilder;
 import org.signal.libsignal.protocol.message.CiphertextMessage;
@@ -31,15 +32,10 @@ import java.util.UUID;
 import java.util.function.Predicate;
 
 /**
- * Recebimento: o mesmo caminho no principal e no :overlay (com algum WS aberto o servidor não manda ping FCM, então
- * quem recebe grava). receive roda dentro do SocialDb.atomic; exceção = transitório (rollback, sem Ack); retorno = Ack
- * (só depois de gravar). O mesmo envelope pode vir pelos dois processos e pelo REST: dedup por (from, client_msg_id).
+ * receive roda no SocialDb.atomic: exceção = transitório (rollback, sem Ack); retorno = Ack, só depois de gravar. O mesmo
+ * envelope pode vir pelos dois processos e pelo REST: dedup por (from, client_msg_id).
  */
 public final class Inbox {
-    /**
-     * msgs: gravadas ou alteradas (as fresh são novas de outra pessoa: notificam). resetPeer: sessão 1:1 quebrada.
-     * groupInfo: {gid, nome, from} de remetente que este aparelho ainda não tem como membro (confere no servidor).
-     */
     public static final class Result {
         final List<Chat.Msg> msgs = new ArrayList<>(1);
         final List<Chat.Msg> fresh = new ArrayList<>(1);
@@ -64,12 +60,12 @@ public final class Inbox {
         seen.put("sender", from);
         seen.put("msg_id", msgId);
         seen.put("at", System.currentTimeMillis());
-        // efêmera (24/min numa live) fora do dedup, que guarda 31 dias: repetida dá DuplicateMessage e é descartada
+        // efêmera (24/min) fora do dedup, que guarda 31 dias: a repetida cai em DuplicateMessage
         if (!eph && SocialDb.get(c).insertWithOnConflict("seen_envelopes", null, seen, SQLiteDatabase.CONFLICT_IGNORE) == -1) {
-            r.add(ChatDb.byClientId(c, from, msgId), false); // o outro processo já gravou: só reentrega à tela
+            r.add(ChatDb.byClientId(c, from, msgId), false);
             return r;
         }
-        // malformado (o servidor não tem tamanho mínimo): marcado e confirmado; sem Ack, travaria a fila por 30 dias
+        // malformado: confirmado, senão trava a fila por 30 dias (o servidor não tem tamanho mínimo)
         if (payload.length < (groupId == null ? 2 : 1) || (groupId != null && !Content.isGroupId(groupId))) return r;
         SignalStore st = new SignalStore(c);
         SignalProtocolAddress a = new SignalProtocolAddress(from, 1);
@@ -78,10 +74,9 @@ public final class Inbox {
             plain = groupId != null ? new GroupCipher(st, a).decrypt(payload) : decrypt1to1(st, a, payload);
         } catch (NoSessionException e) {
             if (groupId == null) return unreadable(c, st, a, null, from, msgId, e, r);
-            if (eph) return r; // posição de live sem a chave dele: a próxima vem em segundos
-            // a SKDM dele vem num Envelope 1:1 separado e pode chegar depois: gravada na fila, o Ack é seguro.
-            // Teto por remetente (um membro que nunca manda a SKDM não enche o disco): a mais antiga sai. Pode ser só
-            // posição de live (24/min): um aviso por grupo e dia, sem notificar, não um por mensagem.
+            if (eph) return r;
+            // a SKDM vem num 1:1 separado e pode chegar depois: na fila o Ack é seguro; teto por remetente (quem nunca a
+            // manda não enche o disco)
             if (ChatDb.pendingCount(c, from) >= Rules.MAX_PENDING_PER_SENDER) {
                 String[] old = ChatDb.oldestPending(c, from);
                 ChatDb.dropPending(c, from, old[0]);
@@ -113,27 +108,25 @@ public final class Inbox {
                 int action = Rules.groupInfo(groupId, gid, groupId != null && ChatDb.isMember(c, groupId, from));
                 if (action == Rules.APPLY) ChatDb.ensureConversation(c, gid, true, null, g[1]);
                 else if (action == Rules.SYNC) r.groupInfo = new String[]{gid, g[1], from};
-                else Log.w("Inbox", "group info descartado"); // sem conteúdo no log
+                else Log.w("Inbox", "group info descartado");
                 return;
             }
             case Content.MSG: {
                 Chat.Msg m = Content.msg(plain);
                 if (m == null || !Content.acceptable(m)) return;
-                // id efêmero só move uma live existente: nunca vira mensagem nova
                 if (Rules.ephemeral(msgId) && (m.type != Chat.LIVE_START || m.text.isEmpty())) return;
                 store(c, m, groupId, from, msgId, r);
                 return;
             }
             default:
-                // RESET (só fez a sessão nova) ou kind de uma versão mais nova: confirma, senão trava a fila
+                // RESET ou kind de versão mais nova: confirma, senão trava a fila
         }
     }
 
-    /** A SKDM de quem mandou acabou de chegar: decifra o que estava esperando por ela. */
     private static void retryPending(Context c, SignalStore st, SignalProtocolAddress a, Result r) throws Exception {
         String from = a.getName();
         boolean progress = true;
-        while (progress) { // em lotes: mais de um lote do mesmo remetente sai todo agora, não só na próxima SKDM
+        while (progress) {
             progress = false;
             List<Object[]> batch = ChatDb.pendingFrom(c, from);
             for (Object[] p : batch) {
@@ -142,7 +135,7 @@ public final class Inbox {
                 try {
                     plain = new GroupCipher(st, a).decrypt((byte[]) p[2]);
                 } catch (NoSessionException e) {
-                    continue; // é de outro grupo: segue esperando a SKDM daquele
+                    continue;
                 } catch (Exception e) {
                     if (!Locations.ack(e)) throw e;
                     ChatDb.dropPending(c, from, mid);
@@ -158,7 +151,6 @@ public final class Inbox {
         }
     }
 
-    /** Dentro do atomic: fila de grupo com mais de 7 dias (a SKDM nunca veio) vira "não foi possível ler". */
     public static Result prune(Context c) throws Exception {
         Result r = new Result();
         List<String[]> batch;
@@ -173,20 +165,17 @@ public final class Inbox {
         return system(c, groupId, true, from, Rules.lostId(groupId, System.currentTimeMillis()), Chat.UNREADABLE);
     }
 
-    private static byte[] decrypt1to1(SignalStore st, SignalProtocolAddress a, byte[] payload) throws Exception {
+    static byte[] decrypt1to1(SignalProtocolStore st, SignalProtocolAddress a, byte[] payload) throws Exception {
         SessionCipher sc = new SessionCipher(st, a);
         byte[] ct = Arrays.copyOfRange(payload, 1, payload.length);
         return payload[0] == CiphertextMessage.PREKEY_TYPE ? sc.decrypt(new PreKeySignalMessage(ct)) : sc.decrypt(new SignalMessage(ct));
     }
 
-    /**
-     * Ilegível para sempre: avisa na conversa (a posição efêmera de uma live, não) e confirma. No 1:1, só sessão quebrada (NoSession, ou InvalidMessage que
-     * não é replay) é apagada e pede um reset; Duplicate/Legacy/versão não indicam estado quebrado.
-     */
     private static Result unreadable(Context c, SignalStore st, SignalProtocolAddress a, String groupId, String from,
                                      String msgId, Exception e, Result r) throws Exception {
         String convId = groupId != null ? groupId : ChatDb.directId(from);
         if (!Rules.ephemeral(msgId)) r.add(system(c, convId, groupId != null, from, msgId, Chat.UNREADABLE), true);
+        // só sessão quebrada pede reset; replay (ReusedBaseKey), Duplicate, Legacy e versão não
         boolean broken = groupId == null && (e instanceof NoSessionException
                 || (e instanceof InvalidMessageException && !(e instanceof ReusedBaseKeyException)));
         if (broken) {
@@ -204,7 +193,7 @@ public final class Inbox {
         m.state = Chat.SENT;
         ChatDb.ensureConversation(c, convId, groupId != null, groupId != null ? null : from, null);
         boolean update = m.type == Chat.LIVE_START && !m.text.isEmpty();
-        if (update || m.type == Chat.LIVE_STOP) { // posição nova ou fim de uma live: muda a mensagem original (text = id dela)
+        if (update || m.type == Chat.LIVE_STOP) {
             Chat.Msg start = ChatDb.updateLive(c, convId, from, m.text, m.lat, m.lng, update ? m.liveUntil : m.ts);
             ChatDb.recomputeLive(c, convId);
             if (update) {
@@ -220,7 +209,6 @@ public final class Inbox {
         r.add(m, true);
     }
 
-    /** Dentro do atomic: "o código de segurança mudou" no 1:1 com ele (descoberto ao receber ou ao enviar). */
     static Chat.Msg notice(Context c, String peer, String id) throws Exception {
         return system(c, ChatDb.directId(peer), false, peer, id, Chat.IDENTITY_CHANGED);
     }
@@ -238,15 +226,12 @@ public final class Inbox {
         return ChatDb.insert(c, m) == -1 ? null : m;
     }
 
-    /**
-     * Fora do atomic, depois do Ack (pode usar rede): entrega à tela aberta, confere no servidor o membro de um grupo que
-     * mandou o nome e reinicia uma sessão quebrada. send = o WS deste processo (null: o do chat, se aberto).
-     */
+    /** Fora do atomic, depois do Ack: pode usar rede. send = o WS deste processo (null: o do chat, se aberto). */
     public static void deliver(Context c, Result r, Predicate<byte[]> send) {
         for (Chat.Msg m : r.msgs) ChatSocket.dispatch(m);
         Notify.fresh(c, r.fresh);
         if (r.groupInfo != null) acceptGroupInfo(c, r.groupInfo);
-        // sem por onde mandar, não busca bundle (consumiria uma one-time dele à toa): o meu próximo envio já sai como PreKey
+        // sem por onde mandar, não busca bundle: consumiria uma one-time dele à toa
         if (r.resetPeer != null && (send != null || ChatSocket.isOpen()) && RESETS.allow(r.resetPeer, System.currentTimeMillis())) {
             sendReset(c, r.resetPeer, send);
         }
@@ -267,7 +252,6 @@ public final class Inbox {
         }
     }
 
-    /** Sessão nova pelo bundle + controle cifrado nela (PreKeySignalMessage): o outro lado arquiva a antiga. */
     private static void sendReset(Context c, String peer, Predicate<byte[]> send) {
         try {
             Api.Bundle b = Api.keyBundle(c, peer);

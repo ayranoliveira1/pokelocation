@@ -38,7 +38,6 @@ public final class Chat {
 
     public static List<Conv> conversations(Context c) { return db(c, () -> ChatDb.conversations(c), new ArrayList<>()); }
 
-    /** null se não existe. */
     public static Conv conversation(Context c, String convId) { return db(c, () -> ChatDb.conversation(c, convId), null); }
 
     /** Keyset: primeira página com beforeTs = Long.MAX_VALUE, beforeId = Long.MAX_VALUE; ordem ts DESC, id DESC. */
@@ -46,7 +45,6 @@ public final class Chat {
         return db(c, () -> ChatDb.page(c, convId, beforeTs, beforeId, limit), new ArrayList<>());
     }
 
-    /** Só banco: cria o 1:1 se não existe; label = o que a tela mostra do amigo (@nome ou código). */
     public static String openDirect(Context c, String friendUserId, String label) {
         String id = ChatDb.directId(friendUserId);
         return db(c, () -> {
@@ -63,7 +61,6 @@ public final class Chat {
         return send(c, convId, msg(LOC, "", lat, lng, 0));
     }
 
-    /** durationMs: 15 min, 1 h ou 8 h. */
     public static Msg startLive(Context c, String convId, long durationMs) throws IOException {
         Coord p = Prefs.lastPosition(c);
         long until = System.currentTimeMillis() + durationMs;
@@ -77,7 +74,6 @@ public final class Chat {
         return m;
     }
 
-    /** Sem live ativa minha: no-op. A mensagem do LIVE_START ganha liveUntil = agora (a bolha mostra "encerrada"). */
     public static void stopLive(Context c, String convId) throws IOException {
         long now = System.currentTimeMillis();
         Conv conv = conversation(c, convId);
@@ -95,7 +91,6 @@ public final class Chat {
         ChatSocket.dispatch(ended);
     }
 
-    /** FAILED → reenviar. */
     public static Msg retry(Context c, long msgId) throws IOException {
         Msg m = Locations.atomic(c, () -> {
             ChatDb.setState(c, msgId, SENDING);
@@ -105,7 +100,7 @@ public final class Chat {
         return m;
     }
 
-    /** Rede fora do lock (cria e lê os membros); o nome nunca vai ao servidor: viaja cifrado com a sender key. */
+    /** O nome nunca vai ao servidor: viaja cifrado com a sender key. */
     public static String createGroup(Context c, String name, List<String> memberUserIds) throws IOException {
         requireLib();
         String id = Api.createGroup(c, memberUserIds);
@@ -116,7 +111,7 @@ public final class Chat {
             ChatDb.setMembers(c, id, Groups.others(g.members, me));
             return null;
         });
-        if (ChatSocket.isOpen()) Groups.distribute(c, id); // senão, no 1º envio
+        if (ChatSocket.isOpen()) Groups.distribute(c, id);
         ChatSocket.dispatch(null);
         return id;
     }
@@ -127,7 +122,6 @@ public final class Chat {
         ChatSocket.dispatch(null);
     }
 
-    /** Só o dono remove (o servidor confere); a sync gera sender key nova. */
     public static void removeMember(Context c, String convId, String userId) throws IOException {
         Api.removeGroupMember(c, convId, userId);
         Groups.sync(c, convId);
@@ -142,7 +136,6 @@ public final class Chat {
 
     public static List<Api.Friend> members(Context c, String convId) { return db(c, () -> ChatDb.members(c, convId), new ArrayList<>()); }
 
-    /** Código de segurança (60 dígitos, como o Signal) do 1:1 com esse amigo. */
     public static String safetyNumber(Context c, String friendUserId) throws IOException {
         requireLib();
         return Groups.safetyNumber(c, friendUserId);
@@ -156,12 +149,10 @@ public final class Chat {
         Notify.cancel(c, convId);
     }
 
-    /** Tela de chat aberta: liga o WsClient do processo principal; remove ao fechar. */
     public static void listen(Context c, Listener l) { ChatSocket.listen(c, l); }
 
     public static void unlisten(Listener l) { ChatSocket.unlisten(l); }
 
-    /** Sem a libsignal carregada, cifrar quebraria no JNI (o stub do APK está vazio). */
     private static void requireLib() throws IOException {
         if (!SignalLoader.loaded()) throw new IOException("signal not loaded");
     }
@@ -176,7 +167,6 @@ public final class Chat {
         return m;
     }
 
-    /** Grava (SENDING) e tenta mandar; falha de rede/WS vira FAILED pelo onMessage. Só lança se nem gravou. */
     private static Msg send(Context c, String convId, Msg m) throws IOException {
         m.clientMsgId = UUID.randomUUID().toString();
         m.convId = convId;
@@ -187,7 +177,6 @@ public final class Chat {
         return m;
     }
 
-    /** Sem WS aberto fica SENDING: o outbox manda quando ele abrir. Cada envio de fato conta uma tentativa. */
     private static void transmit(Context c, Msg m) {
         try {
             requireLib();
@@ -207,8 +196,8 @@ public final class Chat {
                 String peer = Locations.atomic(c, () -> ChatDb.peer(c, m.convId));
                 frame = Frames.envelope(peer, m.clientMsgId, Groups.seal1to1(c, peer, plain, null));
             }
-            if (ChatSocket.sendMessage(c, frame, m)) { // false = o WS caiu agora: segue SENDING para o outbox
-                Locations.atomic(c, () -> ChatDb.incTries(c, m.id)); // só envio de fato conta tentativa
+            if (ChatSocket.sendMessage(c, frame, m)) {
+                Locations.atomic(c, () -> ChatDb.incTries(c, m.id));
             }
         } catch (IOException | RuntimeException e) {
             Log.w("Chat", "send: " + e.getClass().getSimpleName());
@@ -216,7 +205,6 @@ public final class Chat {
         }
     }
 
-    /** Sem Ack (30 s, WS caiu) ou envio que falhou: reenvia o mesmo client_msg_id (o servidor deduplica) ou FAILED. */
     static void noAck(Context c, long id) {
         try {
             Object[] st = Locations.atomic(c, () -> new Object[]{ChatDb.byId(c, id), ChatDb.tries(c, id)});
@@ -229,7 +217,6 @@ public final class Chat {
         }
     }
 
-    /** WS aberto: tudo que ficou SENDING sai de novo. */
     static void resendOutbox(Context c) {
         try {
             for (long id : Locations.atomic(c, () -> ChatDb.sendingIds(c))) noAck(c, id);
@@ -240,7 +227,6 @@ public final class Chat {
 
     private static void fail(Context c, long id) { ChatSocket.setState(c, id, FAILED); }
 
-    /** Banco sob o lock; logout no outro processo (sem arquivo) → none. */
     private static <T> T db(Context c, SocialDb.Op<T> op, T none) {
         try {
             return SocialDb.atomic(c, op);

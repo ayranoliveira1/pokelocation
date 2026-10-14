@@ -15,10 +15,7 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Conversas e mensagens no social.db. Tudo dentro do SocialDb.atomic, sem rede. Título, preview e corpo selados pelo
- * Envelope com aad = a linha (um blob copiado para outra conversa/mensagem não abre).
- */
+/** Dentro do SocialDb.atomic, sem rede. Selado com aad = a linha: um blob copiado para outra conversa/mensagem não abre. */
 final class ChatDb {
     static final int PREVIEW_CHARS = 80, CONVERSATIONS_LIMIT = 200, MEMBERS_LIMIT = 60;
     private static final String MINE = "";
@@ -31,7 +28,6 @@ final class ChatDb {
 
     static String directId(String userId) { return "d:" + userId; }
 
-    /** Cria se não existe; o título (label do amigo ou nome do grupo) é atualizado quando vem um novo. */
     static void ensureConversation(Context c, String id, boolean group, String peer, String title) throws GeneralSecurityException {
         ContentValues v = new ContentValues(4);
         v.put("id", id);
@@ -45,7 +41,6 @@ final class ChatDb {
         }
     }
 
-    /** A lista toda de uma vez (o servidor manda os membros completos); o rótulo já vai pronto para exibir: "@nome". */
     static void setMembers(Context c, String convId, List<Api.Friend> members) {
         SQLiteDatabase db = db(c);
         db.delete("group_members", "conv_id = ?", new String[]{convId});
@@ -58,7 +53,6 @@ final class ChatDb {
         }
     }
 
-    /** Os outros (sem mim); num 1:1, o amigo. */
     static List<Api.Friend> members(Context c, String convId) {
         List<Api.Friend> out = new ArrayList<>();
         try (Cursor q = db(c).rawQuery("SELECT user_id, label FROM group_members WHERE conv_id = ? LIMIT " + MEMBERS_LIMIT,
@@ -80,7 +74,6 @@ final class ChatDb {
         return f;
     }
 
-    /** -1 se já existia (dedup por remetente + client_msg_id). Atualiza a conversa: preview, last_ts e, se não é minha, unread. */
     static long insert(Context c, Chat.Msg m) throws GeneralSecurityException {
         String sender = m.from == null ? MINE : m.from;
         ContentValues v = new ContentValues(8);
@@ -95,7 +88,7 @@ final class ChatDb {
         long id = db(c).insertWithOnConflict("messages", null, v, SQLiteDatabase.CONFLICT_IGNORE);
         if (id == -1) return -1;
         m.id = id;
-        // fila offline entrega atrasada: uma mais antiga não pode virar a prévia (o UPDATE lê os valores antigos da linha)
+        // fila offline entrega atrasada: uma mais antiga não vira a prévia (o UPDATE lê os valores antigos da linha)
         db(c).execSQL("UPDATE conversations SET preview = CASE WHEN ? >= last_ts THEN ? ELSE preview END,"
                         + " preview_type = CASE WHEN ? >= last_ts THEN ? ELSE preview_type END,"
                         + " last_ts = MAX(last_ts, ?), unread = unread + ? WHERE id = ?",
@@ -110,7 +103,6 @@ final class ChatDb {
         db(c).update("messages", v, "id = ?", new String[]{String.valueOf(id)});
     }
 
-    /** Posição nova de uma live (a própria mensagem do LIVE_START) ou o fim dela (liveUntil = hora do stop). */
     static Chat.Msg updateLive(Context c, String convId, String from, String clientMsgId, double lat, double lng, long liveUntil)
             throws GeneralSecurityException {
         String sender = from == null ? MINE : from;
@@ -130,13 +122,11 @@ final class ChatDb {
         }
     }
 
-    /** live_until da conversa = a live ativa mais longa de outro membro (o LIVE_START dele guarda o fim). */
     static void recomputeLive(Context c, String convId) {
         db(c).execSQL("UPDATE conversations SET live_until = IFNULL((SELECT MAX(live_until) FROM messages WHERE conv_id = ?"
                 + " AND type = " + Chat.LIVE_START + " AND sender != ''), 0) WHERE id = ?", new Object[]{convId, convId});
     }
 
-    /** client_msg_id da minha live mais recente nessa conversa; null se nenhuma. */
     static String myLiveStart(Context c, String convId) {
         try (Cursor q = db(c).rawQuery("SELECT client_msg_id FROM messages WHERE conv_id = ? AND sender = '' AND type = "
                 + Chat.LIVE_START + " ORDER BY ts DESC, id DESC LIMIT 1", new String[]{convId})) {
@@ -144,7 +134,7 @@ final class ChatDb {
         }
     }
 
-    /** Minhas lives ativas: {convId, grp, peer, client_msg_id do LIVE_START, até}. */
+    /** {convId, grp, peer, client_msg_id do LIVE_START, até} */
     static List<Object[]> myLives(Context c, long now) {
         List<Object[]> out = new ArrayList<>();
         try (Cursor q = db(c).rawQuery("SELECT id, grp, peer, my_live_until FROM conversations WHERE my_live_until > ?",
@@ -198,7 +188,6 @@ final class ChatDb {
         db(c).delete("conversations", "id = ?", a);
     }
 
-    /** Outbox: minhas ainda SENDING (reenviadas ao abrir o WS). */
     static List<Long> sendingIds(Context c) {
         List<Long> out = new ArrayList<>();
         try (Cursor q = db(c).rawQuery("SELECT id FROM messages WHERE state = " + Chat.SENDING + " AND sender = '' LIMIT "
@@ -208,7 +197,6 @@ final class ChatDb {
         return out;
     }
 
-    /** +1 envio sem Ack; devolve o novo total. */
     static int incTries(Context c, long id) {
         db(c).execSQL("UPDATE messages SET tries = tries + 1 WHERE id = ?", new Object[]{id});
         return tries(c, id);
@@ -220,7 +208,6 @@ final class ChatDb {
         }
     }
 
-    /** Mensagem de grupo antes da sender key do remetente: o ciphertext como veio (já E2E). */
     static void addPending(Context c, String sender, String msgId, String groupId, byte[] payload) {
         ContentValues v = new ContentValues(5);
         v.put("sender", sender);
@@ -231,7 +218,7 @@ final class ChatDb {
         db(c).insertWithOnConflict("pending_group", null, v, SQLiteDatabase.CONFLICT_IGNORE);
     }
 
-    /** {msg_id, group_id} + payload de um remetente (a SKDM dele acabou de chegar). */
+    /** {msg_id, group_id, payload} */
     static List<Object[]> pendingFrom(Context c, String sender) {
         List<Object[]> out = new ArrayList<>();
         try (Cursor q = db(c).rawQuery("SELECT msg_id, group_id, payload FROM pending_group WHERE sender = ? LIMIT 50",
@@ -246,7 +233,6 @@ final class ChatDb {
                 new String[]{sender});
     }
 
-    /** {msg_id, group_id} da mais antiga desse remetente na fila; null se vazia. */
     static String[] oldestPending(Context c, String sender) {
         try (Cursor q = db(c).rawQuery("SELECT msg_id, group_id FROM pending_group WHERE sender = ? ORDER BY at LIMIT 1",
                 new String[]{sender})) {
@@ -258,7 +244,7 @@ final class ChatDb {
         db(c).delete("pending_group", "sender = ? AND msg_id = ?", new String[]{sender, msgId});
     }
 
-    /** Vencidas (a SKDM nunca chegou): {sender, msg_id, group_id}, já apagadas da fila. */
+    /** {sender, msg_id, group_id}, já apagadas da fila */
     static List<String[]> takeExpiredPending(Context c, long before) {
         List<String[]> out = new ArrayList<>();
         String[] a = {String.valueOf(before)};
@@ -269,7 +255,6 @@ final class ChatDb {
         return out;
     }
 
-    /** Ativa = until maior que o relógio (sem job); 0 = nenhuma. */
     static void setLive(Context c, String convId, boolean mine, long until) {
         ContentValues v = new ContentValues(1);
         v.put(mine ? "my_live_until" : "live_until", until);
@@ -306,7 +291,7 @@ final class ChatDb {
         try {
             readBody(Envelope.open(c, q.getBlob(7), aad(m.convId, sender, m.clientMsgId)), m);
         } catch (GeneralSecurityException e) {
-            m.type = Chat.UNREADABLE; // uma que não abre não derruba a página nem a conversa
+            m.type = Chat.UNREADABLE;
         }
         return m;
     }
@@ -351,7 +336,6 @@ final class ChatDb {
         return Envelope.seal(c, text.getBytes(StandardCharsets.UTF_8), aad);
     }
 
-    /** null se não houver ou não abrir: título e preview são só exibição, nunca derrubam a lista. */
     private static String open(Context c, byte[] blob, String aad) {
         if (blob == null) return null;
         try {
@@ -374,7 +358,6 @@ final class ChatDb {
         m.text = new String(body, 16, body.length - 16, StandardCharsets.UTF_8);
     }
 
-    /** Corta em code points: nunca parte um emoji no meio. */
     static String preview(String text) {
         if (text == null) return "";
         if (text.codePointCount(0, text.length()) <= PREVIEW_CHARS) return text;

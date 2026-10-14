@@ -50,7 +50,6 @@ public final class Frames {
 
     public static byte[] locationOff() { return new byte[]{LOCATION_OFF}; }
 
-    /** O servidor faz o fan-out para os membros atuais (api.md §7); payload = ciphertext do GroupCipher. */
     public static byte[] groupEnvelope(String groupId, String msgId, byte[] payload) {
         return new W(GROUP_ENVELOPE).str(groupId).str(msgId).bin(payload).out();
     }

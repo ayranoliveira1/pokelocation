@@ -12,10 +12,7 @@ import com.pokelocation.app.social.net.Api;
 
 import java.io.IOException;
 
-/**
- * Ping sem conteúdo do servidor ({"t":"m"}): só avisa que há fila. Roda na thread do Firebase (rede permitida); a fila
- * passa pelo mesmo Inbox do WS (Ack só depois de gravar) e cada mensagem nova notifica.
- */
+/** Ping sem conteúdo ({"t":"m"}): só avisa que há fila. */
 public final class PushService extends FirebaseMessagingService {
     @Override
     public void onCreate() {
@@ -34,7 +31,7 @@ public final class PushService extends FirebaseMessagingService {
             if (in) SignalLoader.loadDownloaded(c);
             Rules.drain(in, () -> Locations.drain(c));
         } catch (Api.Error e) {
-            Log.w("PushService", "fila: " + e.code); // 401: o principal limpa no próximo uso; 403: sem @nome
+            Log.w("PushService", "fila: " + e.code);
         } catch (IOException e) {
             Log.w("PushService", "fila: " + e.getClass().getSimpleName());
         }

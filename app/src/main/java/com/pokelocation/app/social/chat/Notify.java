@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-/** Canal "Mensagens": uma notificação por conversa (tag = id da conversa), com a última mensagem. */
 public final class Notify {
     private static final String CHANNEL = "soc_messages";
     private static final String CHAT_PID = "chat_pid";
@@ -32,14 +31,13 @@ public final class Notify {
 
     private Notify() {}
 
-    /** Fora do atomic. Com a tela de chat aberta neste processo, a própria tela mostra. */
     static void fresh(Context c, List<Chat.Msg> msgs) {
         if (msgs.isEmpty() || ChatSocket.listening() || openInMain(c)) return;
         for (Chat.Msg m : msgs) {
             if (m.from == null || !Rules.notifies(m.type)) continue;
             if (m.type == Chat.UNREADABLE && !UNREADABLE.allow(m.convId, System.currentTimeMillis())) continue;
             Chat.Conv conv = Chat.conversation(c, m.convId);
-            if (conv == null) continue; // logout no meio
+            if (conv == null) continue;
             if (!conv.group && conv.title == null) conv.title = nameDirect(c, conv.id, m.from);
             post(c, conv, m);
         }
@@ -63,24 +61,20 @@ public final class Notify {
                 .setNumber(conv.unread)
                 .setAutoCancel(true)
                 .setCategory(Notification.CATEGORY_MESSAGE)
-                // o mapa por baixo: voltar do chat não cai no launcher
                 .setContentIntent(TaskStackBuilder.create(c).addNextIntent(Intents.main(c)).addNextIntent(open)
                         .getPendingIntent(conv.id.hashCode(), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
-                // tela bloqueada: o texto foi decifrado aqui e não aparece sem desbloquear
+                // o texto decifrado não aparece na tela bloqueada
                 .setVisibility(Notification.VISIBILITY_PRIVATE)
                 .setPublicVersion(builder(c, nm).setSmallIcon(R.drawable.ic_notification)
                         .setContentTitle(c.getString(R.string.soc_notif_new)).build());
         try {
             nm.notify(conv.id, ID, b.build());
         } catch (RuntimeException ignored) {
-            // sem POST_NOTIFICATIONS: a mensagem já está gravada e aparece no chat
+            // sem POST_NOTIFICATIONS: a mensagem já está gravada
         }
     }
 
-    /**
-     * Tela de chat visível no principal, para o :overlay não notificar por cima dela. Guarda o pid: se o principal morrer
-     * com a tela aberta, a flag velha não cala as notificações do :overlay.
-     */
+    /** Guarda o pid: o principal morto com a tela aberta não cala as notificações do :overlay. */
     @SuppressWarnings("deprecation")
     static void chatVisible(Context c, boolean visible) {
         c.getSharedPreferences(Prefs.SHARE_FILE, Context.MODE_MULTI_PROCESS).edit()
@@ -124,10 +118,6 @@ public final class Notify {
         return null;
     }
 
-    /**
-     * 1:1 que começou pelo outro lado não tem título (o envelope só traz o id): o @nome vem da lista de amigos e fica
-     * gravado para a lista de conversas também.
-     */
     private static String nameDirect(Context c, String convId, String userId) {
         try {
             for (Api.Friend f : Api.friends(c).accepted) {
@@ -149,7 +139,7 @@ public final class Notify {
         ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(convId, ID);
     }
 
-    /** Logout: nenhum texto decifrado fica na barra (as notificações do overlay/mapa têm outros ids). */
+    /** As notificações do overlay e do mapa têm outros ids. */
     public static void cancelAll(Context c) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         for (StatusBarNotification n : nm.getActiveNotifications()) if (n.getId() == ID) nm.cancel(n.getTag(), ID);

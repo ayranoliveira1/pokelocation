@@ -143,7 +143,6 @@ public final class SignalStore implements SignalProtocolStore {
         return IdentityChange.REPLACED_EXISTING;
     }
 
-    /** O amigo trocou de identity durante as operações desta instância: o chat avisa "o código de segurança mudou". */
     public boolean replaced(String name) { return replaced.contains(name); }
 
     /** Confiança no primeiro uso: a troca (reinstalação) é aceita e avisada, nunca bloqueia a conversa. */
@@ -370,7 +369,6 @@ public final class SignalStore implements SignalProtocolStore {
                 new String[]{a.getName(), String.valueOf(a.getDeviceId()), dist.toString()});
     }
 
-    /** Saí do grupo: as sender keys dele (minha e dos outros) não servem mais. */
     public void deleteSenderKeys(UUID dist) { db().delete("sender_keys", "dist = ?", new String[]{dist.toString()}); }
 
     @Override

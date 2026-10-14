@@ -32,7 +32,7 @@ public final class Session {
     private static final String FILE = "social", IN = "in", VERIFIER = "pv", STATE = "ps", RETURN_TO = "pr";
     /** Último access lido/gravado no banco por este processo; num 401 a Api relê do banco sob o lock. */
     private static volatile String sAccess;
-    /** O @nome troca mas nunca volta a null: em memória até a geração mudar (forget), sem Keystore a cada leitura. */
+    /** O @nome troca mas nunca volta a null: em memória até a geração mudar, sem Keystore a cada leitura. */
     private static volatile String sUsername;
 
     private Session() {}
@@ -106,7 +106,6 @@ public final class Session {
         }
     }
 
-    /** @nome desta conta (selado na sessão); null = falta escolher. O :overlay só lê. */
     public static String username(Context c) throws IOException {
         String u = sUsername;
         if (u != null) return u;
@@ -118,7 +117,6 @@ public final class Session {
         });
     }
 
-    /** Só o principal escreve (escritor único). */
     public static void username(Context c, String username) throws IOException {
         if (App.process() != App.PROC_MAIN || username == null) return;
         locked(c, () -> {
@@ -135,7 +133,6 @@ public final class Session {
         });
     }
 
-    /** Último token do FCM aceito pelo servidor; null se nenhum ou ilegível. */
     public static String fcmSent(Context c) throws IOException {
         return locked(c, () -> {
             if (!SocialDb.exists(c)) return null;
