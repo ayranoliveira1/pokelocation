@@ -172,6 +172,20 @@
         <activity android:hardwareAccelerated="true" android:name=".ui.gpx.ExportActivity" android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
 
+        <!-- Firebase só com init manual depois do login, no processo principal. -->
+        <provider android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider" tools:node="remove" />
+        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false" />
+        <!-- sem o runtime das métricas de entrega (excluído no build): o registrador delas nunca é descoberto -->
+        <service android:name="com.google.firebase.components.ComponentDiscoveryService" tools:node="merge">
+            <meta-data android:name="com.google.firebase.components:com.google.firebase.datatransport.TransportRegistrar"
+                tools:node="remove" />
+        </service>
+        <service android:name=".social.chat.PushService" android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
         <!-- Scheme próprio para o callback do Google: o pokelocation:// (DeepLinkActivity) roda no :overlay. -->
         <activity android:hardwareAccelerated="true" android:name=".social.ui.LoginActivity" android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />

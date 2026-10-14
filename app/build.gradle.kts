@@ -19,6 +19,11 @@ android {
             "arm64-v8a:2b9188dcbbfbb6716f31e09b54f97e2732e1d3085594fdcf90a8fa222b56e71e:6707408," +
             "armeabi-v7a:008381906eadde5ef97e6d7dcb45842e65fde78ebd0d461aaacb64134f02d276:4942304," +
             "x86_64:7cf4b3990f6bae29259bfa5f72d39796411e2511f3812363c497344d16beae72:7825800\"")
+        // Placeholders até o deploy (projeto Firebase real); sem o plugin google-services.
+        buildConfigField("String", "FIREBASE_APP_ID", "\"1:000000000000:android:0000000000000000\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"AIzaPlaceholderPlaceholderPlaceholder000\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"pokelocation-placeholder\"")
+        buildConfigField("String", "FIREBASE_SENDER_ID", "\"000000000000\"")
     }
     buildFeatures { buildConfig = true }
 
@@ -70,7 +75,11 @@ android {
     // O libsignal_jni.so real é baixado no login; o stub de src/main/jniLibs vence o do AAR (x86: stub só para instalar).
     packaging {
         jniLibs.excludes += "**/libsignal_jni_testing.so"
+        // DataStore multiprocesso: o Firebase só usa a de um processo, que não carrega este .so
+        jniLibs.excludes += "**/libdatastore_shared_counter.so"
         resources.excludes += listOf("**/*.dylib", "**/*.dll", "**/libsignal_jni*.so")
+        // só o kotlin-reflect lê os builtins (não usamos); os .proto são das métricas de entrega do FCM, que saíram
+        resources.excludes += listOf("**/*.kotlin_builtins", "messaging_event*.proto")
     }
     androidResources {
         localeFilters += listOf("en", "pt-rBR")
@@ -102,6 +111,11 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation("org.signal:libsignal-android:0.86.5")
+    implementation("com.google.firebase:firebase-messaging:26.0.0") {
+        // métricas de entrega (Firelog); o messaging trata o TransportFactory como opcional
+        exclude(group = "com.google.android.datatransport", module = "transport-runtime")
+        exclude(group = "com.google.android.datatransport", module = "transport-backend-cct")
+    }
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     testImplementation("junit:junit:4.13.2") // só teste JVM: zero impacto em RAM/APK
     testImplementation("net.sf.kxml:kxml2:2.3.0") // XmlPullParser/XmlSerializer nos testes JVM do gpx (só teste)

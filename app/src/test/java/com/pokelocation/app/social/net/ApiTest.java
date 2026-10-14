@@ -3,6 +3,7 @@ package com.pokelocation.app.social.net;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.json.JSONException;
 import org.junit.Test;
@@ -207,6 +208,14 @@ public class ApiTest {
         for (int i = 0; i < 101; i++) b.ec.add(pk(i, "e", null));
         b.kyber = java.util.Collections.emptyList();
         Api.keysJson(b);
+    }
+
+    /** Logout manda {"token": null}: o put(k, null) do org.json apagaria a chave e o servidor leria corpo sem token. */
+    @Test public void fcmJsonKeepsExplicitNull() throws JSONException {
+        assertEquals("abc", new org.json.JSONObject(Api.fcmJson("abc").toString()).getString("token"));
+        org.json.JSONObject off = new org.json.JSONObject(Api.fcmJson(null).toString());
+        assertTrue(off.has("token"));
+        assertTrue(off.isNull("token"));
     }
 
     @Test public void keyCount() throws JSONException {

@@ -9,6 +9,7 @@ import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.util.Base64;
 
 import com.pokelocation.app.App;
+import com.pokelocation.app.social.chat.Push;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.store.SocialDb;
 import com.pokelocation.app.social.store.Vault;
@@ -98,6 +99,30 @@ public final class Session {
         }
     }
 
+    /** Último token do FCM aceito pelo servidor; null se nenhum ou ilegível. */
+    public static String fcmSent(Context c) throws IOException {
+        return locked(c, () -> {
+            if (!SocialDb.exists(c)) return null;
+            try (Cursor q = SocialDb.get(c).rawQuery("SELECT fcm FROM session", null)) {
+                return q.moveToFirst() ? open(q.getBlob(0)) : null;
+            }
+        });
+    }
+
+    public static void fcmSent(Context c, String token) throws IOException {
+        locked(c, () -> {
+            if (!SocialDb.exists(c)) return null;
+            ContentValues v = new ContentValues(1);
+            try {
+                v.put("fcm", Vault.seal(token.getBytes(StandardCharsets.UTF_8)));
+            } catch (GeneralSecurityException e) {
+                throw new IOException("keystore", e);
+            }
+            SocialDb.get(c).update("session", v, null, null);
+            return null;
+        });
+    }
+
     /** Grava a linha única, sob o social.lock (login) ou o token.lock (renovação). */
     public static void writeTokens(Context c, String access, String refresh) throws IOException {
         ContentValues v = new ContentValues(3);
@@ -132,6 +157,7 @@ public final class Session {
      */
     public static void clear(Context c) {
         if (App.process() != App.PROC_MAIN) return;
+        if (loggedIn(c)) Push.stop(c); // sem login, o Firebase nem deve subir
         sAccess = null;
         sp(c).edit().clear().commit();
         SocialDb.delete(c);

@@ -9,6 +9,7 @@ import com.pokelocation.app.App;
 import com.pokelocation.app.BuildConfig;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.chat.Push;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -139,7 +140,9 @@ public final class SignalLoader {
      */
     public static void kick(Context c) {
         // só o principal gera chaves: no :overlay o loggedIn() do prefs pode estar velho
-        if (App.process() != App.PROC_MAIN || !sLoaded || sKicked || !Session.loggedIn(c)) return;
+        if (App.process() != App.PROC_MAIN || !Session.loggedIn(c)) return;
+        Push.start(c);
+        if (!sLoaded || sKicked) return;
         sKicked = true;
         Context app = c.getApplicationContext();
         Io.run(() -> {

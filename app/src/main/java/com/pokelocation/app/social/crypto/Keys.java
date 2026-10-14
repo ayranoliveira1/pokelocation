@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.chat.Push;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.store.SocialDb;
 import com.pokelocation.app.social.store.Vault;
@@ -72,6 +73,7 @@ final class Keys {
                     return pending(db);
                 });
             }
+            Push.start(c); // o servidor só aceita o token do FCM depois que o aparelho tem chaves
         } catch (IOException e) {
             throw e;
         } catch (GeneralSecurityException e) {

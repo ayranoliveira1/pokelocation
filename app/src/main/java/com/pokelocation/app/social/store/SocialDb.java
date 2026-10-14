@@ -37,7 +37,7 @@ public final class SocialDb extends SQLiteOpenHelper {
     public interface Op<T> { T run() throws Exception; }
 
     private SocialDb(Context c) {
-        super(c.getApplicationContext(), NAME, null, 5);
+        super(c.getApplicationContext(), NAME, null, 6);
         setWriteAheadLoggingEnabled(true);
     }
 
@@ -195,6 +195,7 @@ public final class SocialDb extends SQLiteOpenHelper {
         createV3(db);
         createV4(db);
         db.execSQL(SEEN_ENVELOPES_AT);
+        db.execSQL(SESSION_FCM);
     }
 
     @Override
@@ -203,6 +204,7 @@ public final class SocialDb extends SQLiteOpenHelper {
         if (oldVersion < 3) createV3(db);
         if (oldVersion < 4) createV4(db);
         if (oldVersion < 5) db.execSQL(SEEN_ENVELOPES_AT);
+        if (oldVersion < 6) db.execSQL(SESSION_FCM);
     }
 
     /** O WS do :overlay e o REST do principal podem trazer o mesmo envelope antes do ack. Podado após 31 dias (a fila
@@ -211,6 +213,9 @@ public final class SocialDb extends SQLiteOpenHelper {
             + " at INTEGER NOT NULL, PRIMARY KEY(sender, msg_id)) WITHOUT ROWID";
     /** A poda por data roda a cada envelope recebido; sem o índice percorre a tabela inteira. */
     static final String SEEN_ENVELOPES_AT = "CREATE INDEX IF NOT EXISTS seen_envelopes_at ON seen_envelopes(at)";
+
+    /** Último token do FCM aceito pelo servidor (selado): o PUT só sai quando ele muda. */
+    static final String SESSION_FCM = "ALTER TABLE session ADD COLUMN fcm BLOB";
 
     private static void createV4(SQLiteDatabase db) { db.execSQL(SEEN_ENVELOPES); }
 

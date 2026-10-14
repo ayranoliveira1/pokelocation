@@ -102,6 +102,10 @@ public final class Api {
     /** Revoga no servidor (melhor esforço) e SEMPRE limpa a sessão local. */
     public static void logout(Context c) {
         try {
+            putFcmToken(c, null); // enquanto o access vale: este aparelho para de receber pings desta conta
+        } catch (Exception ignored) {
+        }
+        try {
             String r = Session.refresh(c);
             if (r != null) http(c, "POST", "/v1/auth/logout", null, obj("refresh_token", r));
         } catch (Exception ignored) {
@@ -155,6 +159,20 @@ public final class Api {
     public static final class Bundle { public int registrationId; public byte[] identity; public PreKey signed, kyber, preKey; }
     public static final class Envelope { public String id, from, clientMsgId; public byte[] payload; }
     public static final class Location { public String userId, friendCode; public byte[] payload; }
+
+    /** Token do FCM deste aparelho: o servidor manda o ping de "há fila" para ele. */
+    public static void putFcmToken(Context c, String token) throws IOException {
+        try {
+            call(c, "PUT", "/v1/devices/fcm", fcmJson(token));
+        } catch (JSONException e) {
+            throw new IOException("bad request");
+        }
+    }
+
+    /** null = parar de receber pings; vai como null explícito (o put(k, null) do org.json apagaria a chave). */
+    static JSONObject fcmJson(String token) throws JSONException {
+        return new JSONObject().put("token", token == null ? JSONObject.NULL : token);
+    }
 
     public static Bundle keyBundle(Context c, String userId) throws IOException {
         try {

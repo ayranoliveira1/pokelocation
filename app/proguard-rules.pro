@@ -14,3 +14,8 @@
 -keepclassmembers,includedescriptorclasses class * implements org.signal.libsignal.**.*Store {
     public <methods>;
 }
+
+# FCM sem as métricas de entrega (runtime e backend excluídos no build; o registrador não é descoberto: manifest)
+-dontwarn com.google.android.datatransport.runtime.**
+-dontwarn com.google.android.datatransport.cct.**
+
