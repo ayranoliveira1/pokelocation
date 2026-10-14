@@ -112,4 +112,12 @@ public class RulesTest {
         Rules.sendOrFail(() -> { }, () -> failed[0] = true);
         assertFalse(failed[0]);
     }
+
+    @Test public void onlyBrokenSessionAsksReset() {
+        assertTrue(Rules.brokenSession(new org.signal.libsignal.protocol.NoSessionException("x")));
+        assertTrue(Rules.brokenSession(new org.signal.libsignal.protocol.InvalidMessageException("x")));
+        assertFalse(Rules.brokenSession(new org.signal.libsignal.protocol.ReusedBaseKeyException("x")));
+        assertFalse(Rules.brokenSession(new org.signal.libsignal.protocol.DuplicateMessageException("x")));
+        assertFalse(Rules.brokenSession(new org.signal.libsignal.protocol.LegacyMessageException("x")));
+    }
 }

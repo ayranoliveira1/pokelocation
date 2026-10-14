@@ -187,4 +187,25 @@ public class TwoClientsTest {
         assertArrayEquals(new double[]{-23.5, -46.6}, new double[]{got.lat, got.lng}, 1e-9);
         assertTrue(Content.acceptable(got));
     }
+
+    @Test public void reinstalledPeerResetRecoversTheConversation() throws Exception {
+        Client a = new Client("a"), b = new Client("b");
+        b.read(a, a.send(b, "antes"));
+        a.read(b, b.send(a, "ok"));
+        Client b2 = new Client("b");
+        byte[] stale = a.send(b, "na sessão velha");
+        try {
+            b2.read(a, stale);
+            fail("aparelho novo leu a sessão velha");
+        } catch (Exception e) {
+            assertTrue(Rules.brokenSession(e));
+        }
+        IdentityKey old = a.st.getIdentity(b.addr());
+        byte[] reset = Locations.encryptTo(b2.st, a.id, new byte[]{Content.RESET}, a.bundle);
+        assertEquals(CiphertextMessage.PREKEY_TYPE, reset[0]);
+        assertArrayEquals(new byte[]{Content.RESET}, Inbox.decrypt1to1(a.st, b.addr(), reset));
+        assertFalse(Arrays.equals(old.serialize(), a.st.getIdentity(b.addr()).serialize()));
+        assertEquals("depois do reset", b2.read(a, a.send(b2, "depois do reset")));
+        assertEquals("de volta", a.read(b2, b2.send(a, "de volta")));
+    }
 }

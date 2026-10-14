@@ -11,9 +11,7 @@ import com.pokelocation.app.social.store.SignalStore;
 import com.pokelocation.app.social.store.SocialDb;
 import com.pokelocation.app.social.ws.Frames;
 
-import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.NoSessionException;
-import org.signal.libsignal.protocol.ReusedBaseKeyException;
 import org.signal.libsignal.protocol.SessionCipher;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
 import org.signal.libsignal.protocol.state.SignalProtocolStore;
@@ -28,6 +26,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -50,6 +50,8 @@ public final class Inbox {
     }
 
     private static final Rules.Limiter RESETS = new Rules.Limiter();
+    /** ponytail: em memória; um processo novo só reseta na próxima mensagem ilegível dele. */
+    private static final Set<String> RESET_LATER = ConcurrentHashMap.newKeySet();
 
     private Inbox() {}
 
@@ -175,10 +177,7 @@ public final class Inbox {
                                      String msgId, Exception e, Result r) throws Exception {
         String convId = groupId != null ? groupId : ChatDb.directId(from);
         if (!Rules.ephemeral(msgId)) r.add(system(c, convId, groupId != null, from, msgId, Chat.UNREADABLE), true);
-        // só sessão quebrada pede reset; replay (ReusedBaseKey), Duplicate, Legacy e versão não
-        boolean broken = groupId == null && (e instanceof NoSessionException
-                || (e instanceof InvalidMessageException && !(e instanceof ReusedBaseKeyException)));
-        if (broken) {
+        if (groupId == null && Rules.brokenSession(e)) {
             st.deleteSession(a);
             r.resetPeer = from;
         }
@@ -231,9 +230,17 @@ public final class Inbox {
         for (Chat.Msg m : r.msgs) ChatSocket.dispatch(m);
         Notify.fresh(c, r.fresh);
         if (r.groupInfo != null) acceptGroupInfo(c, r.groupInfo);
-        // sem por onde mandar, não busca bundle: consumiria uma one-time dele à toa
-        if (r.resetPeer != null && (send != null || ChatSocket.isOpen()) && RESETS.allow(r.resetPeer, System.currentTimeMillis())) {
-            sendReset(c, r.resetPeer, send);
+        if (r.resetPeer == null) return;
+        // sem por onde mandar, não busca bundle (consumiria uma one-time dele à toa): sai quando o WS do chat abrir
+        if (send == null && !ChatSocket.isOpen()) RESET_LATER.add(r.resetPeer);
+        else if (RESETS.allow(r.resetPeer, System.currentTimeMillis())) sendReset(c, r.resetPeer, send);
+    }
+
+    /** WS do chat acabou de abrir: os resets que chegaram pela fila REST. */
+    static void sendPendingResets(Context c, Predicate<byte[]> send) {
+        for (String peer : RESET_LATER) {
+            RESET_LATER.remove(peer);
+            if (RESETS.allow(peer, System.currentTimeMillis())) sendReset(c, peer, send);
         }
     }
 

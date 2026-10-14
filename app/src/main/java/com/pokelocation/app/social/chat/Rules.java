@@ -4,6 +4,10 @@ import android.util.Log;
 
 import com.pokelocation.app.geo.Geo;
 
+import org.signal.libsignal.protocol.InvalidMessageException;
+import org.signal.libsignal.protocol.NoSessionException;
+import org.signal.libsignal.protocol.ReusedBaseKeyException;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +88,11 @@ final class Rules {
 
     /** O dedup por (remetente, id) deixa um aviso por grupo e dia. */
     static String lostId(String groupId, long now) { return "lost:" + groupId + ":" + now / (24 * 3600_000L); }
+
+    /** Só sessão quebrada pede reset; replay (ReusedBaseKey), Duplicate, Legacy e versão não. */
+    static boolean brokenSession(Exception e) {
+        return e instanceof NoSessionException || (e instanceof InvalidMessageException && !(e instanceof ReusedBaseKeyException));
+    }
 
     /** Dois aparelhos quebrados não entram em laço de resets; "não foi possível ler" não vira enxurrada. */
     static final class Limiter {

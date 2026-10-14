@@ -185,6 +185,7 @@ final class ChatSocket {
         }
         Chat.resendOutbox(app);
         Groups.distributeLives(app);
+        Inbox.sendPendingResets(app, from::send);
     }
 
     private static void frame(Context app, WsClient from, Frames.Frame f) {
