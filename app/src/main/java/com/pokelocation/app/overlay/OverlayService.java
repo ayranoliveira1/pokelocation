@@ -67,6 +67,10 @@ public final class OverlayService extends Service
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
+        if (intent != null && !Intents.trusted(this, intent)) {
+            if (!running) stopSelfResult(startId);
+            return running ? START_STICKY : START_NOT_STICKY;
+        }
         if (fgFailed) {
             if (action == null) {
                 if (intent != null) openMain(Intents.INT_REQUEST_PERMISSIONS);
@@ -249,8 +253,8 @@ public final class OverlayService extends Service
 
     private void openMain(String action) {
         try {
-            startActivity(Intents.main(this).setAction(action)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            startActivity(Intents.auth(this, Intents.main(this).setAction(action)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP)));
         } catch (RuntimeException ignored) {
         }
     }

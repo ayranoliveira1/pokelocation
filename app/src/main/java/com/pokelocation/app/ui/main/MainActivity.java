@@ -590,7 +590,7 @@ public final class MainActivity extends BaseActivity {
     // ================================================================ intents de entrada (F23, F24, F97)
 
     private void handleIntent(Intent i) {
-        if (i == null) return;
+        if (i == null || !Intents.trusted(this, i)) return;
         String action = i.getAction();
         if (Intents.INT_START_AND_REPLAY.equals(action)) {
             // notificação de ação pendente (2ª via do replay em segundo plano, overlay/svc/Actions)
@@ -603,13 +603,22 @@ public final class MainActivity extends BaseActivity {
         } else if (Intent.ACTION_VIEW.equals(action) && i.getData() != null) {
             onViewLink(i);
         } else if (Intents.INT_FILL_LOCATION.equals(action)) {
-            double lat = Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN), lng = Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN);
-            // com o overlay rodando o openCoordinate teleportaria: aqui só se preenche o formulário
-            if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && !Intents.isOverlayRunning(this)) {
-                if (mode == 1) setMode(0);
-                openCoordinate(lat, lng);
-            }
+            fillCoordinate(Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN), Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN));
         }
+    }
+
+    /** Só preenche: diferente do openCoordinate, nunca teleporta, nem com o overlay rodando. */
+    private void fillCoordinate(double lat, double lng) {
+        if (!Intents.validLatLng(lat, lng)) return;
+        if (mode == 1) setMode(0);
+        form.fillLocation(new Coord(lat, lng, 0), true);
+        cancel(elevTask);
+        Context app = getApplicationContext();
+        elevTask = Io.run(() -> Elevation.fetch(app, lat, lng), new Io.Callback<Double>() {
+            @Override public void onResult(Double alt) {
+                if (alt != null && !Double.isNaN(alt)) form.setAltitudeFor(lat, lng, alt);
+            }
+        });
     }
 
     private void onViewLink(Intent i) {
@@ -654,6 +663,7 @@ public final class MainActivity extends BaseActivity {
     /** F97: ação pública que chegou com o serviço parado. */
     private void onReplay(Intent i) {
         Intent svc = Intents.unwrapReplay(this, i);
+        if (svc == null) return;
         if (Intents.isOverlayRunning(this)) {
             Intents.sendToOverlay(this, svc);
             return;

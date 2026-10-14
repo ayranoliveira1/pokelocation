@@ -306,8 +306,8 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
             Intents.sendToOverlay(this, Intents.overlay(this, action).putExtra(Intents.EXTRA_LAT, lat)
                     .putExtra(Intents.EXTRA_LNG, lng).putExtra(Intents.EXTRA_FROM_CHAT, true));
         } else {
-            startActivity(new Intent(action).setClass(this, MainActivity.class).putExtra(Intents.EXTRA_LAT, lat)
-                    .putExtra(Intents.EXTRA_LNG, lng));
+            startActivity(Intents.auth(this, new Intent(action).setClass(this, MainActivity.class).putExtra(Intents.EXTRA_LAT, lat)
+                    .putExtra(Intents.EXTRA_LNG, lng)));
         }
     }
 
