@@ -142,12 +142,12 @@ public final class Locations {
     }
 
     /**
-     * Uma página por fetch. Cada envelope no seu atomic: transação aninhada no Android não volta parcial, então uma
+     * Uma página. false = fila vazia ou nada confirmado (transitório: buscar de novo já traria a mesma página). Cada envelope no seu atomic: transação aninhada no Android não volta parcial, então uma
      * falha desfaria todos. Apaga do servidor só o que ack() aceita.
      */
-    static void drain(Context c) throws IOException {
+    public static boolean drain(Context c) throws IOException {
         List<Api.Envelope> es = Api.envelopes(c);
-        if (es.isEmpty()) return;
+        if (es.isEmpty()) return false;
         atomic(c, () -> SocialDb.get(c).delete("seen_envelopes", "at < ?",
                 new String[]{String.valueOf(System.currentTimeMillis() - SEEN_TTL_MS)}));
         List<String> ids = new ArrayList<>(es.size());
@@ -167,6 +167,7 @@ public final class Locations {
         Api.ack(c, ids);
         for (Inbox.Result r : got) Inbox.deliver(c, r, null);
         Inbox.deliver(c, atomic(c, () -> Inbox.prune(c)), null);
+        return !ids.isEmpty();
     }
 
     /**

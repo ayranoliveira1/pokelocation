@@ -9,6 +9,7 @@ import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.util.Base64;
 
 import com.pokelocation.app.App;
+import com.pokelocation.app.social.chat.Notify;
 import com.pokelocation.app.social.chat.Push;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.store.SocialDb;
@@ -192,6 +193,7 @@ public final class Session {
     public static void clear(Context c) {
         if (App.process() != App.PROC_MAIN) return;
         if (loggedIn(c)) Push.stop(c); // sem login, o Firebase nem deve subir
+        Notify.cancelAll(c);
         sAccess = null;
         sp(c).edit().clear().commit();
         SocialDb.delete(c);

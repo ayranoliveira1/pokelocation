@@ -43,6 +43,7 @@ final class ChatSocket {
     }
 
     private static final Map<String, Pending> PENDING = new ConcurrentHashMap<>();
+    private static Context sApp;
     private static WsClient ws;
     private static HandlerThread thread;
     private static Handler work;
@@ -54,6 +55,8 @@ final class ChatSocket {
         LISTENERS.add(l);
         if (thread != null) return;
         Context app = c.getApplicationContext();
+        sApp = app;
+        Notify.chatVisible(app, true);
         thread = new HandlerThread("pl-chat-ws", Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
         work = new Handler(thread.getLooper());
@@ -63,6 +66,7 @@ final class ChatSocket {
     static synchronized void unlisten(Chat.Listener l) {
         LISTENERS.remove(l);
         if (!LISTENERS.isEmpty() || thread == null) return;
+        Notify.chatVisible(sApp, false);
         WsClient w = ws;
         ws = null;
         open = false;
@@ -76,6 +80,8 @@ final class ChatSocket {
     }
 
     static boolean isOpen() { return open; }
+
+    static boolean listening() { return !LISTENERS.isEmpty(); }
 
     /** Envia um frame; com cmid, espera o Ack S→C (onAck) ou falha (onFail, pode ser null). false se o WS está fechado. */
     static boolean send(byte[] frame, String cmid, Runnable onAck, Runnable onFail) {

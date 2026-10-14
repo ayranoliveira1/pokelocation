@@ -233,6 +233,7 @@ public final class Inbox {
      */
     public static void deliver(Context c, Result r, Predicate<byte[]> send) {
         for (Chat.Msg m : r.msgs) ChatSocket.dispatch(m);
+        Notify.fresh(c, r.fresh);
         if (r.groupInfo != null) acceptGroupInfo(c, r.groupInfo);
         // sem por onde mandar, não busca bundle (consumiria uma one-time dele à toa): o meu próximo envio já sai como PreKey
         if (r.resetPeer != null && (send != null || ChatSocket.isOpen()) && RESETS.allow(r.resetPeer, System.currentTimeMillis())) {

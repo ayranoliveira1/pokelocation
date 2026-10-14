@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="soc_notif_channel">Messages</string>
+    <string name="soc_notif_new">New message</string>
+</resources>

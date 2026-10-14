@@ -40,4 +40,35 @@ public class RulesTest {
         assertTrue(Rules.resend(2));
         assertFalse(Rules.resend(3));
     }
+
+    /** Ping do FCM deslogado: não busca a fila. */
+    @Test public void pingLoggedOutFetchesNothing() throws Exception {
+        int[] calls = {0};
+        assertEquals(0, Rules.drain(false, () -> { calls[0]++; return true; }));
+        assertEquals(0, calls[0]);
+    }
+
+    /** Fila vazia: uma busca e para. */
+    @Test public void pingEmptyQueueIsOneFetch() throws Exception {
+        int[] calls = {0};
+        assertEquals(1, Rules.drain(true, () -> { calls[0]++; return false; }));
+        assertEquals(1, calls[0]);
+    }
+
+    /** Fila cheia: no máximo PING_PAGES páginas por ping (o tempo do FCM é curto); o resto sai no próximo. */
+    @Test public void pingStopsAtPageCeiling() throws Exception {
+        int[] calls = {0};
+        assertEquals(Rules.PING_PAGES, Rules.drain(true, () -> { calls[0]++; return true; }));
+        assertEquals(Rules.PING_PAGES, calls[0]);
+    }
+
+    /** Notificação só para o que a pessoa mandou (e o ilegível dela); fim de live e aviso de código ficam no chat. */
+    @Test public void notifiesOnlyMessagesFromPeople() {
+        assertTrue(Rules.notifies(Chat.TEXT));
+        assertTrue(Rules.notifies(Chat.LOC));
+        assertTrue(Rules.notifies(Chat.LIVE_START));
+        assertTrue(Rules.notifies(Chat.UNREADABLE));
+        assertFalse(Rules.notifies(Chat.LIVE_STOP));
+        assertFalse(Rules.notifies(Chat.IDENTITY_CHANGED));
+    }
 }

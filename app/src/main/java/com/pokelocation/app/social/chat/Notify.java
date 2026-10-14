@@ -1,0 +1,154 @@
+package com.pokelocation.app.social.chat;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Build;
+import android.service.notification.StatusBarNotification;
+import android.util.Log;
+
+import com.pokelocation.app.R;
+import com.pokelocation.app.data.Prefs;
+import com.pokelocation.app.ipc.Intents;
+import com.pokelocation.app.social.loc.Locations;
+import com.pokelocation.app.social.net.Api;
+import com.pokelocation.app.social.ui.chat.ChatActivity;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+
+/** Canal "Mensagens": uma notificação por conversa (tag = id da conversa), com a última mensagem. */
+public final class Notify {
+    private static final String CHANNEL = "soc_messages";
+    private static final String CHAT_PID = "chat_pid";
+    private static final int ID = 0x50c;
+
+    private Notify() {}
+
+    /** Fora do atomic. Com a tela de chat aberta neste processo, a própria tela mostra. */
+    static void fresh(Context c, List<Chat.Msg> msgs) {
+        if (msgs.isEmpty() || ChatSocket.listening() || openInMain(c)) return;
+        for (Chat.Msg m : msgs) {
+            if (m.from == null || !Rules.notifies(m.type)) continue;
+            Chat.Conv conv = Chat.conversation(c, m.convId);
+            if (conv == null) continue; // logout no meio
+            if (!conv.group && conv.title == null) conv.title = nameDirect(c, conv.id, m.from);
+            post(c, conv, m);
+        }
+    }
+
+    private static void post(Context c, Chat.Conv conv, Chat.Msg m) {
+        NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+        String body = body(c, m);
+        if (conv.group) {
+            String who = label(c, m.convId, m.from);
+            body = (who != null ? who : "?") + ": " + body;
+        }
+        String title = conv.title != null ? conv.title : c.getString(R.string.soc_notif_new);
+        Notification.Builder b = builder(c, nm);
+        Intent open = ChatActivity.conv(c, conv.id, title, conv.group);
+        b.setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setWhen(m.ts)
+                .setShowWhen(true)
+                .setNumber(conv.unread)
+                .setAutoCancel(true)
+                .setCategory(Notification.CATEGORY_MESSAGE)
+                // o mapa por baixo: voltar do chat não cai no launcher
+                .setContentIntent(TaskStackBuilder.create(c).addNextIntent(Intents.main(c)).addNextIntent(open)
+                        .getPendingIntent(conv.id.hashCode(), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
+                // tela bloqueada: o texto foi decifrado aqui e não aparece sem desbloquear
+                .setVisibility(Notification.VISIBILITY_PRIVATE)
+                .setPublicVersion(builder(c, nm).setSmallIcon(R.drawable.ic_notification)
+                        .setContentTitle(c.getString(R.string.soc_notif_new)).build());
+        try {
+            nm.notify(conv.id, ID, b.build());
+        } catch (RuntimeException ignored) {
+            // sem POST_NOTIFICATIONS: a mensagem já está gravada e aparece no chat
+        }
+    }
+
+    /**
+     * Tela de chat visível no principal, para o :overlay não notificar por cima dela. Guarda o pid: se o principal morrer
+     * com a tela aberta, a flag velha não cala as notificações do :overlay.
+     */
+    @SuppressWarnings("deprecation")
+    static void chatVisible(Context c, boolean visible) {
+        c.getSharedPreferences(Prefs.SHARE_FILE, Context.MODE_MULTI_PROCESS).edit()
+                .putInt(CHAT_PID, visible ? android.os.Process.myPid() : 0).apply();
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean openInMain(Context c) {
+        int pid = c.getSharedPreferences(Prefs.SHARE_FILE, Context.MODE_MULTI_PROCESS).getInt(CHAT_PID, 0);
+        return pid != 0 && new File("/proc/" + pid).exists();
+    }
+
+    private static Notification.Builder builder(Context c, NotificationManager nm) {
+        return Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, channel(c, nm)) : legacy(c);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Notification.Builder legacy(Context c) {
+        return new Notification.Builder(c).setPriority(Notification.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_ALL);
+    }
+
+    private static String channel(Context c, NotificationManager nm) {
+        if (Build.VERSION.SDK_INT >= 26) {
+            nm.createNotificationChannel(new NotificationChannel(CHANNEL, c.getString(R.string.soc_notif_channel),
+                    NotificationManager.IMPORTANCE_HIGH));
+        }
+        return CHANNEL;
+    }
+
+    private static String body(Context c, Chat.Msg m) {
+        switch (m.type) {
+            case Chat.TEXT: return m.text;
+            case Chat.LOC: return c.getString(R.string.soc_chat_location);
+            case Chat.LIVE_START: return c.getString(R.string.soc_chat_live_location);
+            default: return c.getString(R.string.soc_chat_unreadable);
+        }
+    }
+
+    private static String label(Context c, String convId, String userId) {
+        for (Api.Friend f : Chat.members(c, convId)) if (f.userId.equals(userId)) return f.label;
+        return null;
+    }
+
+    /**
+     * 1:1 que começou pelo outro lado não tem título (o envelope só traz o id): o @nome vem da lista de amigos e fica
+     * gravado para a lista de conversas também.
+     */
+    private static String nameDirect(Context c, String convId, String userId) {
+        try {
+            for (Api.Friend f : Api.friends(c).accepted) {
+                if (!f.userId.equals(userId)) continue;
+                String label = f.username != null ? "@" + f.username : f.friendCode;
+                Locations.atomic(c, () -> {
+                    ChatDb.ensureConversation(c, convId, false, userId, label);
+                    return null;
+                });
+                return label;
+            }
+        } catch (IOException e) {
+            Log.w("Notify", "name: " + e.getClass().getSimpleName());
+        }
+        return null;
+    }
+
+    static void cancel(Context c, String convId) {
+        ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(convId, ID);
+    }
+
+    /** Logout: nenhum texto decifrado fica na barra (as notificações do overlay/mapa têm outros ids). */
+    public static void cancelAll(Context c) {
+        NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+        for (StatusBarNotification n : nm.getActiveNotifications()) if (n.getId() == ID) nm.cancel(n.getTag(), ID);
+    }
+}

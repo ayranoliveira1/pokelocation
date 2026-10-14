@@ -151,6 +151,7 @@ public final class Chat {
             ChatDb.markRead(c, convId);
             return null;
         }, null);
+        Notify.cancel(c, convId);
     }
 
     /** Tela de chat aberta: liga o WsClient do processo principal; remove ao fechar. */

@@ -1,11 +1,21 @@
 package com.pokelocation.app.social.chat;
 
+import android.content.Context;
 import android.util.Log;
 
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
+import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.crypto.SignalLoader;
+import com.pokelocation.app.social.loc.Locations;
+import com.pokelocation.app.social.net.Api;
 
-/** Ping sem conteúdo do servidor ({"t":"m"}): só avisa que há fila. */
+import java.io.IOException;
+
+/**
+ * Ping sem conteúdo do servidor ({"t":"m"}): só avisa que há fila. Roda na thread do Firebase (rede permitida); a fila
+ * passa pelo mesmo Inbox do WS (Ack só depois de gravar) e cada mensagem nova notifica.
+ */
 public final class PushService extends FirebaseMessagingService {
     @Override
     public void onCreate() {
@@ -18,6 +28,15 @@ public final class PushService extends FirebaseMessagingService {
 
     @Override
     public void onMessageReceived(RemoteMessage message) {
-        Log.i("PushService", "ping");
+        Context c = getApplicationContext();
+        boolean in = Session.loggedIn(c); // ping de uma conta que saiu (token ainda não apagado no servidor): ignora
+        try {
+            if (in) SignalLoader.loadDownloaded(c);
+            Rules.drain(in, () -> Locations.drain(c));
+        } catch (Api.Error e) {
+            Log.w("PushService", "fila: " + e.code); // 401: o principal limpa no próximo uso; 403: sem @nome
+        } catch (IOException e) {
+            Log.w("PushService", "fila: " + e.getClass().getSimpleName());
+        }
     }
 }

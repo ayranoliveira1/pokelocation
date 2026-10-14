@@ -173,14 +173,33 @@ public final class SignalLoader {
         });
     }
 
-    /** Bloqueante. Retentativas com espera de 2/4/8 s. */
-    static void load(Context c) throws IOException {
-        synchronized (LOAD) { // não o lock da classe: start() roda na main e não pode esperar um download
-            loadLocked(c);
+    /**
+     * Ping do FCM (janela de ~20 s): só o .so já baixado e conferido, sem rede nem esperas. Faltando (lib nova depois de
+     * uma atualização) ou com um download em andamento, IOException: a tela ou o próximo ping carregam.
+     */
+    public static void loadDownloaded(Context c) throws IOException {
+        if (sLoaded) return;
+        synchronized (SignalLoader.class) {
+            if (sThread != null) throw new IOException("downloading");
+        }
+        try {
+            synchronized (LOAD) {
+                loadLocked(c.getApplicationContext(), true);
+            }
+        } catch (Unavailable e) {
+            sUnavailable = true;
+            throw e;
         }
     }
 
-    private static void loadLocked(Context c) throws IOException {
+    /** Bloqueante. Retentativas com espera de 2/4/8 s. */
+    static void load(Context c) throws IOException {
+        synchronized (LOAD) { // não o lock da classe: start() roda na main e não pode esperar um download
+            loadLocked(c, false);
+        }
+    }
+
+    private static void loadLocked(Context c, boolean offline) throws IOException {
         if (sLoaded) return;
         // ABI do PROCESSO (a do stub carregado), não a 1ª do aparelho: x86 com houdini lista armeabi-v7a, e carregar
         // ARM num processo x86 quebra. Sem .so publicado para ela (x86) → indisponível, sem baixar.
@@ -200,11 +219,12 @@ public final class SignalLoader {
             });
         };
         IOException err = null;
-        for (int round = 0; round < ROUNDS; round++) {
+        Fetch fetch = offline ? (url, from) -> { throw new IOException("offline"); } : SignalLoader::http;
+        for (int round = 0; round < (offline ? 1 : ROUNDS); round++) {
             try {
                 if (round > 0) Thread.sleep(1000L << round);
                 sLoaded = fetchAndLoad(dir, pin[1], Long.parseLong(pin[2]), c.getFilesDir().getUsableSpace(), urls,
-                        SignalLoader::http, p, () -> loggedInNow(c), System::load);
+                        fetch, p, () -> loggedInNow(c), System::load);
                 return;
             } catch (InterruptedException e) {
                 throw new IOException(e);

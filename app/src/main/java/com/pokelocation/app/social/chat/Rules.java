@@ -1,11 +1,12 @@
 package com.pokelocation.app.social.chat;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Regras puras do motor do chat (testadas na JVM). */
 final class Rules {
-    static final int APPLY = 1, SYNC = 2, DROP = 3, MAX_TRIES = 3, MAX_PENDING_PER_SENDER = 200;
+    static final int APPLY = 1, SYNC = 2, DROP = 3, MAX_TRIES = 3, MAX_PENDING_PER_SENDER = 200, PING_PAGES = 10;
     static final long PENDING_MS = 7 * 24 * 3600_000L, RESET_EVERY_MS = 10 * 60_000L;
 
     private Rules() {}
@@ -25,6 +26,25 @@ final class Rules {
 
     /** tries = envios já feitos sem Ack; o mesmo client_msg_id é reenviado (o servidor deduplica) até MAX_TRIES. */
     static boolean resend(int tries) { return tries < MAX_TRIES; }
+
+    interface Page {
+        /** false = a fila veio vazia. */
+        boolean next() throws IOException;
+    }
+
+    /** Páginas de 50 que um ping do FCM busca: o processo acordado tem poucos segundos; o resto sai no próximo ping ou WS. */
+    static int drain(boolean loggedIn, Page page) throws IOException {
+        int n = 0;
+        while (loggedIn && n < PING_PAGES) {
+            n++;
+            if (!page.next()) break;
+        }
+        return n;
+    }
+
+    static boolean notifies(int type) {
+        return type == Chat.TEXT || type == Chat.LOC || type == Chat.LIVE_START || type == Chat.UNREADABLE;
+    }
 
     /** Um reset por par a cada 10 min: dois aparelhos quebrados não entram em laço de bundles. */
     static final class ResetLimiter {
