@@ -98,7 +98,7 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         group = in.getBooleanExtra(EXTRA_GROUP, false);
         String title = in.getStringExtra(EXTRA_TITLE);
         setContentView(R.layout.soc_chat);
-        setupToolbar(title, true);
+        setupToolbar(title != null ? title : "…", true);
         applyInsets(findViewById(R.id.soc_chat_root));
         state = findViewById(R.id.soc_chat_state);
         rv = findViewById(R.id.soc_chat_rv);
@@ -348,6 +348,7 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         String id = convId;
         read(() -> Chat.conversation(app, id), c -> {
             conv = c;
+            if (c != null && c.title != null && getSupportActionBar() != null) getSupportActionBar().setTitle(c.title);
             showLive();
         }, null);
     }

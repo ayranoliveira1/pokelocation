@@ -56,7 +56,7 @@
     <string name="soc_err_weak_password">Password too weak. Use a longer one.</string>
     <string name="soc_err_invalid_email">Invalid email.</string>
     <string name="soc_err_rate_limited">Too many attempts. Wait a minute and try again.</string>
-    <string name="soc_err_code_not_found">No one has this code.</string>
+    <string name="soc_err_code_not_found">No one with this \@username or code.</string>
     <string name="soc_err_self_request">That\'s your own code.</string>
     <string name="soc_err_blocked">You can\'t add this user.</string>
     <string name="soc_err_already_friends">You\'re already friends.</string>

@@ -24,5 +24,6 @@
     <string name="soc_err_username_taken">This \@username is already taken.</string>
     <string name="soc_err_invalid_username">Invalid \@username. Use 3 to 20 lowercase letters, numbers, _ or . starting with a letter.</string>
     <string name="soc_err_username_reserved">This \@username is reserved. Choose another one.</string>
+    <string name="soc_err_username_limit">You already changed your \@username too many times today. Try again tomorrow.</string>
     <string name="soc_err_username_required">Choose your \@username to continue.</string>
 </resources>

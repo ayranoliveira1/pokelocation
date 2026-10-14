@@ -48,6 +48,11 @@ public final class Errors {
         return t instanceof Api.Error && "username_required".equals(((Api.Error) t).code);
     }
 
+    /** No PUT do @nome o 429 é o limite de trocas por dia, não o de tentativas por minuto. */
+    static int usernameMessage(Throwable t) {
+        return t instanceof Api.Error && "rate_limited".equals(((Api.Error) t).code) ? R.string.soc_err_username_limit : message(t);
+    }
+
     static boolean aboutUsername(Throwable t) {
         if (!(t instanceof Api.Error)) return false;
         String c = ((Api.Error) t).code;

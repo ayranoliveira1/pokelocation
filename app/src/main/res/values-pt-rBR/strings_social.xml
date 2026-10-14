@@ -49,7 +49,7 @@
     <string name="soc_err_weak_password">Senha fraca. Use uma senha mais longa.</string>
     <string name="soc_err_invalid_email">Email inválido.</string>
     <string name="soc_err_rate_limited">Muitas tentativas. Aguarde um minuto e tente de novo.</string>
-    <string name="soc_err_code_not_found">Ninguém tem este código.</string>
+    <string name="soc_err_code_not_found">Ninguém com esse \@nome ou código.</string>
     <string name="soc_err_self_request">Esse é o seu próprio código.</string>
     <string name="soc_err_blocked">Não é possível adicionar este usuário.</string>
     <string name="soc_err_already_friends">Vocês já são amigos.</string>

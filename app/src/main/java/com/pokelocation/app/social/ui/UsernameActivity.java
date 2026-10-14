@@ -97,8 +97,8 @@ public final class UsernameActivity extends BaseActivity {
                     startActivity(new Intent(UsernameActivity.this, LoginActivity.class)
                             .putExtra(LoginActivity.EXTRA_RETURN_TO, returnTo));
                     finish();
-                } else if (Errors.aboutUsername(t)) {
-                    box.setError(getString(Errors.message(t)));
+                } else if (Errors.aboutUsername(t) || Errors.usernameMessage(t) == R.string.soc_err_username_limit) {
+                    box.setError(getString(Errors.usernameMessage(t)));
                 } else {
                     Ui.toast(UsernameActivity.this, Errors.message(t));
                 }

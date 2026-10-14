@@ -229,7 +229,7 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
         @Override
         public void onBindViewHolder(@NonNull VH h, int position) {
             Chat.Conv c = items.get(position);
-            h.title.setText(c.title);
+            h.title.setText(c.title != null ? c.title : "…");
             h.title.setTypeface(null, c.unread > 0 ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
             String preview = preview(c);
             if (c.unread > 0) preview = getString(R.string.soc_chat_unread, c.unread, preview);

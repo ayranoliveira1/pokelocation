@@ -24,5 +24,6 @@
     <string name="soc_err_username_taken">Esse \@nome já está em uso.</string>
     <string name="soc_err_invalid_username">\@nome inválido. Use 3 a 20 letras minúsculas, números, _ ou . começando com letra.</string>
     <string name="soc_err_username_reserved">Esse \@nome é reservado. Escolha outro.</string>
+    <string name="soc_err_username_limit">Você já trocou o \@nome muitas vezes hoje. Tente amanhã.</string>
     <string name="soc_err_username_required">Escolha seu \@nome para continuar.</string>
 </resources>
