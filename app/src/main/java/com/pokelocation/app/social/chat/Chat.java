@@ -178,14 +178,9 @@ public final class Chat {
     }
 
     private static void transmit(Context c, Msg m) {
-        try {
+        Rules.sendOrFail(() -> {
             requireLib();
-        } catch (IOException e) {
-            fail(c, m.id);
-            return;
-        }
-        if (!ChatSocket.isOpen()) return;
-        try {
+            if (!ChatSocket.isOpen()) return;
             byte[] plain = Content.msg(m);
             byte[] frame;
             if (Locations.atomic(c, () -> ChatDb.isGroup(c, m.convId))) {
@@ -199,30 +194,28 @@ public final class Chat {
             if (ChatSocket.sendMessage(c, frame, m)) {
                 Locations.atomic(c, () -> ChatDb.incTries(c, m.id));
             }
-        } catch (IOException | RuntimeException e) {
-            Log.w("Chat", "send: " + e.getClass().getSimpleName());
-            ChatSocket.later(() -> noAck(c, m.id), 30_000);
-        }
+        }, () -> fail(c, m.id));
     }
 
     static void noAck(Context c, long id) {
-        try {
+        Rules.sendOrFail(() -> {
             Object[] st = Locations.atomic(c, () -> new Object[]{ChatDb.byId(c, id), ChatDb.tries(c, id)});
             Msg m = (Msg) st[0];
             if (m == null || m.state != SENDING) return;
             if (Rules.resend((Integer) st[1])) transmit(c, m);
             else fail(c, id);
-        } catch (IOException e) {
-            Log.w("Chat", "outbox: " + e.getClass().getSimpleName());
-        }
+        }, () -> fail(c, id));
     }
 
     static void resendOutbox(Context c) {
+        List<Long> ids;
         try {
-            for (long id : Locations.atomic(c, () -> ChatDb.sendingIds(c))) noAck(c, id);
-        } catch (IOException e) {
+            ids = Locations.atomic(c, () -> ChatDb.sendingIds(c));
+        } catch (IOException | RuntimeException e) {
             Log.w("Chat", "outbox: " + e.getClass().getSimpleName());
+            return;
         }
+        for (long id : ids) noAck(c, id);
     }
 
     private static void fail(Context c, long id) { ChatSocket.setState(c, id, FAILED); }

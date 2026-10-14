@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteStatement;
 import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.util.Base64;
 
@@ -156,18 +157,37 @@ public final class Session {
         });
     }
 
+    // REPLACE apagaria a linha inteira, com o @nome e o token do FCM
+    static final String TOKENS_UPDATE = "UPDATE session SET access = ?, refresh = ?";
+    static final String TOKENS_INSERT = "INSERT INTO session(id, access, refresh) VALUES (0, ?, ?)";
+
     /** Grava a linha única, sob o social.lock (login) ou o token.lock (renovação). */
     public static void writeTokens(Context c, String access, String refresh) throws IOException {
-        ContentValues v = new ContentValues(3);
-        v.put("id", 0);
+        byte[] a, r;
         try {
-            v.put("access", Vault.seal(access.getBytes(StandardCharsets.UTF_8)));
-            v.put("refresh", Vault.seal(refresh.getBytes(StandardCharsets.UTF_8)));
+            a = Vault.seal(access.getBytes(StandardCharsets.UTF_8));
+            r = Vault.seal(refresh.getBytes(StandardCharsets.UTF_8));
         } catch (GeneralSecurityException e) {
             throw new IOException("keystore", e);
         }
-        SocialDb.get(c).insertWithOnConflict("session", null, v, SQLiteDatabase.CONFLICT_REPLACE);
+        SQLiteDatabase db = SocialDb.get(c);
+        int n;
+        try (SQLiteStatement u = tokens(db, TOKENS_UPDATE, a, r)) {
+            n = u.executeUpdateDelete();
+        }
+        if (n == 0) {
+            try (SQLiteStatement i = tokens(db, TOKENS_INSERT, a, r)) {
+                i.executeInsert();
+            }
+        }
         sAccess = access;
+    }
+
+    private static SQLiteStatement tokens(SQLiteDatabase db, String sql, byte[] access, byte[] refresh) {
+        SQLiteStatement s = db.compileStatement(sql);
+        s.bindBlob(1, access);
+        s.bindBlob(2, refresh);
+        return s;
     }
 
     /** SocialDb.locked com os erros no padrão do Session: IOException passa; logout no outro processo = null. */

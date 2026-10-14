@@ -97,4 +97,19 @@ public class RulesTest {
         assertFalse(Rules.ephemeral(java.util.UUID.randomUUID().toString()));
         assertFalse(Rules.ephemeral(Rules.lostId(G, 0)));
     }
+
+    @Test public void sendErrorNeverLeavesMessageSending() {
+        Throwable[] errors = {new RuntimeException(), new java.io.IOException(), new NoSuchMethodError(), new NoClassDefFoundError()};
+        for (Throwable t : errors) {
+            boolean[] failed = {false};
+            Rules.sendOrFail(() -> {
+                if (t instanceof Error) throw (Error) t;
+                throw (Exception) t;
+            }, () -> failed[0] = true);
+            assertTrue(t.getClass().getSimpleName(), failed[0]);
+        }
+        boolean[] failed = {false};
+        Rules.sendOrFail(() -> { }, () -> failed[0] = true);
+        assertFalse(failed[0]);
+    }
 }

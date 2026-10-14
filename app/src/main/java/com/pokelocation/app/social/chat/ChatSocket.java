@@ -45,6 +45,7 @@ final class ChatSocket {
     private static HandlerThread thread;
     private static Handler work;
     private static volatile boolean open;
+    private static volatile boolean meChecked;
 
     private ChatSocket() {}
 
@@ -54,6 +55,7 @@ final class ChatSocket {
         Context app = c.getApplicationContext();
         sApp = app;
         Notify.chatVisible(app, true);
+        meChecked = false;
         thread = new HandlerThread("pl-chat-ws", Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
         work = new Handler(thread.getLooper());
@@ -97,11 +99,6 @@ final class ChatSocket {
         return send(frame, m.clientMsgId, () -> setState(app, m.id, Chat.SENT), () -> Chat.noAck(app, m.id));
     }
 
-    static void later(Runnable r, long delayMs) {
-        Handler h = work;
-        if (h != null) h.postDelayed(r, delayMs);
-    }
-
     static void setState(Context app, long id, int state) {
         try {
             dispatch(Locations.atomic(app, () -> {
@@ -137,7 +134,13 @@ final class ChatSocket {
         if (SignalLoader.unavailable()) return;
         String user = null;
         try {
-            if (SignalLoader.loaded()) user = Session.username(app);
+            if (SignalLoader.loaded()) {
+                user = Session.username(app);
+                if (user == null && !meChecked) { // @nome que não ficou gravado: o /v1/me grava de novo
+                    meChecked = true;
+                    user = Api.me(app).username;
+                }
+            }
         } catch (IOException ignored) {
         }
         if (user == null) {

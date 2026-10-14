@@ -1,5 +1,7 @@
 package com.pokelocation.app.social.chat;
 
+import android.util.Log;
+
 import com.pokelocation.app.geo.Geo;
 
 import java.io.IOException;
@@ -25,6 +27,20 @@ final class Rules {
 
     /** Reenvia o mesmo client_msg_id: o servidor deduplica. */
     static boolean resend(int tries) { return tries < MAX_TRIES; }
+
+    interface Send {
+        void run() throws Exception;
+    }
+
+    /** Nenhuma exceção deixa a mensagem em SENDING para sempre: vira FAILED (o usuário reenvia); no log só a classe. */
+    static void sendOrFail(Send send, Runnable fail) {
+        try {
+            send.run();
+        } catch (Exception | LinkageError e) {
+            Log.w("Chat", "send: " + e.getClass().getSimpleName());
+            fail.run();
+        }
+    }
 
     interface Page {
         boolean next() throws IOException;
