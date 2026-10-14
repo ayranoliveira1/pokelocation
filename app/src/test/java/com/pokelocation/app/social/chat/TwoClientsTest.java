@@ -208,4 +208,26 @@ public class TwoClientsTest {
         assertEquals("depois do reset", b2.read(a, a.send(b2, "depois do reset")));
         assertEquals("de volta", a.read(b2, b2.send(a, "de volta")));
     }
+
+    @Test public void staleMessageAfterReloginResetKeepsTheNewSession() throws Exception {
+        Client a = new Client("a"), b = new Client("b");
+        b.read(a, a.send(b, "antes"));
+        a.read(b, b.send(a, "ok"));
+        Client b2 = new Client("b");
+        byte[] old1 = a.send(b, "velha 1"), old2 = a.send(b, "velha 2");
+        try {
+            b2.read(a, old1);
+            fail("leu a sessão velha");
+        } catch (Exception e) {
+            assertTrue(Rules.brokenSession(e));
+        }
+        Inbox.decrypt1to1(a.st, b.addr(), Locations.encryptTo(b2.st, a.id, new byte[]{Content.RESET}, a.bundle));
+        try {
+            b2.read(a, old2);
+            fail("leu a sessão velha");
+        } catch (Exception e) {
+            assertTrue(Rules.brokenSession(e)); // o app só pede reset: a sessão nova fica
+        }
+        assertEquals("nova", b2.read(a, a.send(b2, "nova")));
+    }
 }

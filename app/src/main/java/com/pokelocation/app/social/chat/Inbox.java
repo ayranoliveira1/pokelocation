@@ -25,6 +25,7 @@ import org.signal.libsignal.protocol.message.SignalMessage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -75,7 +76,7 @@ public final class Inbox {
         try {
             plain = groupId != null ? new GroupCipher(st, a).decrypt(payload) : decrypt1to1(st, a, payload);
         } catch (NoSessionException e) {
-            if (groupId == null) return unreadable(c, st, a, null, from, msgId, e, r);
+            if (groupId == null) return unreadable(c, null, from, msgId, e, r);
             if (eph || ChatDb.gone(c, groupId)) return r; // cópia gravada antes de eu sair: a chave já foi apagada
             // a SKDM vem num 1:1 separado e pode chegar depois: na fila o Ack é seguro; teto por remetente (quem nunca a
             // manda não enche o disco)
@@ -88,7 +89,7 @@ public final class Inbox {
             return r;
         } catch (Exception e) {
             if (!Locations.ack(e)) throw e;
-            return unreadable(c, st, a, groupId, from, msgId, e, r);
+            return unreadable(c, groupId, from, msgId, e, r);
         }
         handle(c, st, a, groupId, msgId, plain, r);
         return r;
@@ -141,7 +142,7 @@ public final class Inbox {
                 } catch (Exception e) {
                     if (!Locations.ack(e)) throw e;
                     ChatDb.dropPending(c, from, mid);
-                    unreadable(c, st, a, gid, from, mid, e, r);
+                    unreadable(c, gid, from, mid, e, r);
                     progress = true;
                     continue;
                 }
@@ -173,14 +174,15 @@ public final class Inbox {
         return payload[0] == CiphertextMessage.PREKEY_TYPE ? sc.decrypt(new PreKeySignalMessage(ct)) : sc.decrypt(new SignalMessage(ct));
     }
 
-    private static Result unreadable(Context c, SignalStore st, SignalProtocolAddress a, String groupId, String from,
-                                     String msgId, Exception e, Result r) throws Exception {
+    /**
+     * Sem acesso ao store: só pede o reset (ele abre sessão nova pelo bundle e arquiva a atual); apagar a sessão deixaria
+     * uma mensagem velha atrasada derrubar a nova que o reset acabou de abrir.
+     */
+    private static Result unreadable(Context c, String groupId, String from, String msgId, Exception e, Result r)
+            throws Exception {
         String convId = groupId != null ? groupId : ChatDb.directId(from);
         if (!Rules.ephemeral(msgId)) r.add(system(c, convId, groupId != null, from, msgId, Chat.UNREADABLE), true);
-        if (groupId == null && Rules.brokenSession(e)) {
-            st.deleteSession(a);
-            r.resetPeer = from;
-        }
+        if (groupId == null && Rules.brokenSession(e)) r.resetPeer = from;
         return r;
     }
 
@@ -250,12 +252,30 @@ public final class Inbox {
         }
     }
 
-    /** O envelope só traz o id: o 1:1 que começou pelo outro lado ganha o @nome pela lista de amigos. */
+    /** O envelope só traz o id: o 1:1 ganha o @nome pela lista de amigos; o membro de grupo, pelo GET do grupo. */
     private static void nameNew(Context c, List<Chat.Msg> fresh) {
+        Set<String> synced = new HashSet<>();
         for (Chat.Msg m : fresh) {
-            if (m.from == null || Content.isGroupId(m.convId)) continue;
+            if (m.from == null) continue;
+            if (Content.isGroupId(m.convId)) {
+                if (!synced.add(m.convId) || known(c, m.convId, m.from)) continue;
+                try {
+                    Groups.sync(c, m.convId);
+                } catch (IOException e) {
+                    Log.w("Inbox", "members: " + e.getClass().getSimpleName());
+                }
+                continue;
+            }
             Chat.Conv conv = Chat.conversation(c, m.convId);
             if (conv != null && conv.title == null) nameDirect(c, m.convId, m.from);
+        }
+    }
+
+    private static boolean known(Context c, String groupId, String userId) {
+        try {
+            return Locations.atomic(c, () -> ChatDb.isMember(c, groupId, userId));
+        } catch (IOException e) {
+            return true;
         }
     }
 
