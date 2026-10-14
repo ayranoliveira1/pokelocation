@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Broadcasts internos entre processos do app (só quem tem a nossa assinatura envia). -->
+    <permission android:name="${applicationId}.permission.INTERNAL" android:protectionLevel="signature" />
+    <uses-permission android:name="${applicationId}.permission.INTERNAL" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION"

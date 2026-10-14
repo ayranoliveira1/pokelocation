@@ -17,6 +17,7 @@ import com.pokelocation.app.model.MarkerType;
 import com.pokelocation.app.model.Route;
 import com.pokelocation.app.ui.panel.ItemListPanel;
 import com.pokelocation.app.ui.panel.NameFolderPanel;
+import com.pokelocation.app.social.ui.chat.ChatPanel;
 import com.pokelocation.app.ui.panel.PanelHost;
 import com.pokelocation.app.ui.panel.SelectPanel;
 import com.pokelocation.app.ui.panel.TeleportPanel;
@@ -52,6 +53,12 @@ final class OverlayFlows {
     /** Antes de abrir guarda lastMockedTime = agora (10 §3.2): o cooldown conta a partir daqui. */
     void openTeleport(String text) {
         openTeleport(text, null);
+    }
+
+    void openChat() {
+        close();
+        String title = ctx.getString(R.string.soc_teleport_title);
+        ChatPanel.show(ctx, text -> openTeleport(text, title));
     }
 
     void openTeleport(String text, String title) {

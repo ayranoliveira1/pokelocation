@@ -4,6 +4,7 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import com.pokelocation.app.App;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.crypto.SignalLoader;
 
@@ -48,6 +49,24 @@ public final class SocialDb extends SQLiteOpenHelper {
     }
 
     public static boolean exists(Context c) { return c.getDatabasePath(NAME).exists(); }
+
+    private static int sUsers; // guardado pela classe
+
+    /** :overlay: quem usa o banco por um tempo segura; o último a soltar fecha a conexão (o principal nunca fecha). */
+    public static synchronized void use() { sUsers++; }
+
+    public static void release() {
+        synchronized (LOCK) { // nenhuma transação deste processo no meio
+            synchronized (SocialDb.class) {
+                if (sUsers > 0) sUsers--;
+                if (sUsers > 0 || sDepth > 0 || sHelper == null || App.process() == App.PROC_MAIN) return;
+                sHelper.close();
+                sHelper = null;
+            }
+        }
+    }
+
+    static synchronized int users() { return sUsers; }
 
     /**
      * Lock entre processos + transação IMMEDIATE, reentrante no mesmo thread. IllegalStateException("logged out") se o

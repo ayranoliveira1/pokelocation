@@ -81,6 +81,10 @@ public final class OverlayView implements View.OnClickListener {
     // Views (as do tipo que não existem ficam null)
     private JoystickView stick;
     private View column, routePill, recPill, speedPill, routeTop, routeRow, asBox, suspend, recMap, recSave;
+    private View chatBox;
+    private TextView chatBadge;
+    private boolean chat;
+    private int unread;
     private ImageView map, pause, rStop, eye, lock, speed, spWalk, spJog, spRun;
     private TextView progress, asNum;
 
@@ -157,6 +161,8 @@ public final class OverlayView implements View.OnClickListener {
         stickLp = drawerLp = null;
         stick = null;
         column = routePill = recPill = speedPill = routeTop = routeRow = asBox = suspend = recMap = recSave = null;
+        chatBox = null;
+        chatBadge = null;
         map = pause = rStop = eye = lock = speed = spWalk = spJog = spRun = null;
         progress = asNum = null;
     }
@@ -248,6 +254,19 @@ public final class OverlayView implements View.OnClickListener {
 
     // ------------------------------------------------------------------ abrir fluxos
 
+    /** Só com login: sem ele nenhuma classe social carrega no :overlay. */
+    public void setChatEnabled(boolean on) {
+        chat = on;
+        setShown(chatBox, on);
+    }
+
+    public void setUnread(int n) {
+        unread = n;
+        if (chatBadge == null) return;
+        chatBadge.setText(n > 9 ? "9+" : String.valueOf(n));
+        setShown(chatBadge, n > 0);
+    }
+
     /** INT_TELEPORT_UI: NaN,NaN = campo vazio. */
     public void openTeleport(double lat, double lng, String title) {
         if (destroyed) return;
@@ -318,6 +337,8 @@ public final class OverlayView implements View.OnClickListener {
             pickSpeed(cfg.runKmh);
         } else if (id == R.id.ov_suspend) {
             engine.injectNow();
+        } else if (id == R.id.ov_chat) {
+            flows.openChat();
         } else if (id == R.id.ov_as_close) {
             autoSuspendActive = false;
             engine.setAutoSuspendActive(false);
@@ -366,6 +387,8 @@ public final class OverlayView implements View.OnClickListener {
         setRouteState(hasRoute, playing);
         if (hasRoute && !classic) expand(routePill);
         showRecording(true);
+        setShown(chatBox, chat);
+        setUnread(unread);
     }
 
     /** Liga cliques e guarda as Views que existirem nesta janela. */
@@ -373,7 +396,7 @@ public final class OverlayView implements View.OnClickListener {
         int[] ids = {R.id.ov_handle, R.id.ov_map, R.id.ov_r_stop, R.id.ov_r_pause, R.id.ov_r_prev, R.id.ov_r_next,
                 R.id.ov_record, R.id.ov_rec_stop, R.id.ov_rec_add, R.id.ov_rec_map, R.id.ov_rec_save,
                 R.id.ov_teleport, R.id.ov_save, R.id.ov_share, R.id.ov_eye, R.id.ov_lock, R.id.ov_speed,
-                R.id.ov_sp_walk, R.id.ov_sp_jog, R.id.ov_sp_run, R.id.ov_suspend, R.id.ov_as_close};
+                R.id.ov_sp_walk, R.id.ov_sp_jog, R.id.ov_sp_run, R.id.ov_suspend, R.id.ov_as_close, R.id.ov_chat};
         for (int id : ids) {
             View v = w.findViewById(id);
             if (v != null) v.setOnClickListener(this);
@@ -383,6 +406,8 @@ public final class OverlayView implements View.OnClickListener {
         recPill = pick(w, R.id.ov_rec_pill, recPill);
         speedPill = pick(w, R.id.ov_speed_pill, speedPill);
         routeTop = pick(w, R.id.ov_route_top, routeTop);
+        chatBox = pick(w, R.id.ov_chat_box, chatBox);
+        chatBadge = pick(w, R.id.ov_chat_badge, chatBadge);
         routeRow = pick(w, R.id.ov_route_row, routeRow);
         asBox = pick(w, R.id.ov_as_box, asBox);
         suspend = pick(w, R.id.ov_suspend, suspend);

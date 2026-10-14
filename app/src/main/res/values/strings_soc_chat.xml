@@ -33,6 +33,7 @@
     <string name="soc_chat_group_name">Group name</string>
     <string name="soc_chat_next">Next</string>
     <string name="soc_chat_create">Create</string>
+    <string name="soc_chat_left">You\'re no longer in this group.</string>
     <string name="soc_chat_members">Members</string>
     <string name="soc_chat_add_member">Add</string>
     <string name="soc_chat_remove_member_confirm">Remove %s from the group?</string>

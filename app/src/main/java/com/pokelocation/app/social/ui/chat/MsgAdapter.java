@@ -73,7 +73,10 @@ final class MsgAdapter extends ListAdapter<Chat.Msg, MsgAdapter.VH> {
 
     @Override
     public void onBindViewHolder(@NonNull VH h, int position) {
-        Chat.Msg m = getItem(position);
+        bind(h, getItem(position));
+    }
+
+    void bind(VH h, Chat.Msg m) {
         Context c = h.itemView.getContext();
         boolean mine = m.from == null, notice = m.type == Chat.LIVE_STOP || m.type == Chat.IDENTITY_CHANGED;
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) h.bubble.getLayoutParams();

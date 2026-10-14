@@ -1,10 +1,9 @@
 package com.pokelocation.app.social.chat;
 
 import android.content.Context;
-
-import com.pokelocation.app.App;
 import android.util.Log;
 
+import com.pokelocation.app.App;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.loc.Locations;
 import com.pokelocation.app.social.net.Api;

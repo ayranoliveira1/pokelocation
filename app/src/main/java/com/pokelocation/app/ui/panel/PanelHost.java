@@ -36,6 +36,7 @@ public final class PanelHost {
     private Dialog dialog;
     private WindowManager wm;
     private View window;
+    private WindowManager.LayoutParams lp;
     private Runnable onDismiss;
     private boolean showing;
 
@@ -79,6 +80,7 @@ public final class PanelHost {
                 return h;   // sem permissão de overlay: painel não aparece
             }
             h.window = root;
+            h.lp = lp;
             root.setFocusableInTouchMode(true);
             root.requestFocus();
         }
@@ -164,12 +166,43 @@ public final class PanelHost {
         }
         wm = null;
         window = null;
+        lp = null;
         Runnable r = onDismiss;
         onDismiss = null;
         if (r != null) r.run();
     }
 
     public boolean isShowing() { return showing; }
+
+    /**
+     * Painel sobre o jogo (só :overlay): janela do tamanho do card, embaixo, sem scrim; o toque fora vai para o jogo,
+     * que mantém o foco até setFocusable(true). FLAG_SECURE: a conversa não sai em print nem gravação.
+     */
+    public void overGame() {
+        if (wm == null || window == null) return;
+        window.setBackground(null);
+        window.setOnClickListener(null);
+        window.setClickable(false);
+        lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        lp.gravity = Gravity.BOTTOM;
+        lp.flags |= WindowManager.LayoutParams.FLAG_SECURE | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        lp.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
+        update();
+    }
+
+    public void setFocusable(boolean focusable) {
+        if (wm == null || window == null) return;
+        if (focusable) lp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        else lp.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        update();
+    }
+
+    private void update() {
+        try {
+            wm.updateViewLayout(window, lp);
+        } catch (Exception ignored) {
+        }
+    }
 
     /** Chamado uma vez, em qualquer forma de fechar. */
     public void setOnDismiss(Runnable r) { onDismiss = r; }

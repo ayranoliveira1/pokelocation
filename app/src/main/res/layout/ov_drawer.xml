@@ -53,6 +53,15 @@
             android:contentDescription="@string/ov_cd_save" android:src="@drawable/ic_favorite" />
         <ImageView android:id="@+id/ov_share" style="@style/ov_style_btn"
             android:contentDescription="@string/share" android:src="@drawable/ic_share" />
+        <FrameLayout android:id="@+id/ov_chat_box" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:visibility="gone">
+            <ImageView android:id="@+id/ov_chat" style="@style/ov_style_btn"
+                android:contentDescription="@string/soc_chat_title" android:src="@drawable/soc_ic_chat" />
+            <TextView android:id="@+id/ov_chat_badge" android:layout_width="wrap_content" android:layout_height="16dp"
+                android:layout_gravity="top|end" android:background="@drawable/bg_pill" android:gravity="center"
+                android:minWidth="16dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:textColor="@color/on_primary"
+                android:textSize="9sp" android:textStyle="bold" android:visibility="gone" />
+        </FrameLayout>
         <ImageView android:id="@+id/ov_eye" style="@style/ov_style_btn"
             android:contentDescription="@string/ov_cd_hide" android:src="@drawable/ic_visibility" />
         <ImageView android:id="@+id/ov_lock" style="@style/ov_style_btn"

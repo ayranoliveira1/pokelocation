@@ -41,6 +41,15 @@
             android:contentDescription="@string/ov_cd_map" android:src="@drawable/ic_map" />
         <ImageView android:id="@+id/ov_teleport" style="@style/ov_style_btn_small"
             android:contentDescription="@string/teleport" android:src="@drawable/ic_target" />
+        <FrameLayout android:id="@+id/ov_chat_box" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:visibility="gone">
+            <ImageView android:id="@+id/ov_chat" style="@style/ov_style_btn_small"
+                android:contentDescription="@string/soc_chat_title" android:src="@drawable/soc_ic_chat" />
+            <TextView android:id="@+id/ov_chat_badge" android:layout_width="wrap_content" android:layout_height="16dp"
+                android:layout_gravity="top|end" android:background="@drawable/bg_pill" android:gravity="center"
+                android:minWidth="16dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:textColor="@color/on_primary"
+                android:textSize="9sp" android:textStyle="bold" android:visibility="gone" />
+        </FrameLayout>
     </LinearLayout>
     <com.pokelocation.app.overlay.ui.JoystickView android:id="@+id/ov_stick"
         android:layout_width="wrap_content" android:layout_height="wrap_content"

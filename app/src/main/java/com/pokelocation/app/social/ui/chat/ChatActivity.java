@@ -349,6 +349,10 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         read(() -> Chat.conversation(app, id), c -> {
             conv = c;
             if (c != null && c.title != null && getSupportActionBar() != null) getSupportActionBar().setTitle(c.title);
+            boolean left = c != null && c.left;
+            findViewById(R.id.soc_chat_bar).setVisibility(left ? View.GONE : View.VISIBLE);
+            findViewById(R.id.soc_chat_left).setVisibility(left ? View.VISIBLE : View.GONE);
+            invalidateOptionsMenu();
             showLive();
         }, null);
     }
@@ -363,7 +367,7 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
 
     @Override
     public boolean onCreateOptionsMenu(Menu m) {
-        if (group) m.add(0, MENU_MEMBERS, 0, R.string.soc_chat_members);
+        if (group && (conv == null || !conv.left)) m.add(0, MENU_MEMBERS, 0, R.string.soc_chat_members);
         else m.add(0, MENU_SAFETY, 0, R.string.soc_chat_safety);
         return true;
     }

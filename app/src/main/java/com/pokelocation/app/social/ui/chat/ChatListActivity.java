@@ -46,7 +46,6 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
     private final Rows rows = new Rows();
     private Io.Task task, groupTask;
     private boolean listening;
-    private int accent, muted, avatarBg, avatarFg;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,10 +63,6 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
             state.setState(StateView.LOADING);
             load();
         });
-        accent = MaterialColors.getColor(state, androidx.appcompat.R.attr.colorPrimary);
-        muted = MaterialColors.getColor(state, com.google.android.material.R.attr.colorOnSurfaceVariant);
-        avatarBg = MaterialColors.getColor(state, com.google.android.material.R.attr.colorPrimaryContainer);
-        avatarFg = MaterialColors.getColor(state, com.google.android.material.R.attr.colorOnPrimaryContainer);
         RecyclerView rv = findViewById(R.id.soc_chat_list_rv);
         rv.setLayoutManager(new LinearLayoutManager(this));
         rv.setAdapter(rows);
@@ -199,16 +194,39 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
                 .show();
     }
 
-    private String preview(Chat.Conv c) {
+    private static String preview(Context ctx, Chat.Conv c) {
         switch (c.previewType) {
             case Chat.TEXT: return c.preview == null ? "" : c.preview;
-            case Chat.LOC: return getString(R.string.soc_chat_location);
-            case Chat.LIVE_START: return getString(R.string.soc_chat_live_location);
-            case Chat.LIVE_STOP: return getString(R.string.soc_chat_msg_live_stop);
-            case Chat.UNREADABLE: return getString(R.string.soc_chat_unreadable);
-            case Chat.IDENTITY_CHANGED: return getString(R.string.soc_chat_identity_changed);
+            case Chat.LOC: return ctx.getString(R.string.soc_chat_location);
+            case Chat.LIVE_START: return ctx.getString(R.string.soc_chat_live_location);
+            case Chat.LIVE_STOP: return ctx.getString(R.string.soc_chat_msg_live_stop);
+            case Chat.UNREADABLE: return ctx.getString(R.string.soc_chat_unreadable);
+            case Chat.IDENTITY_CHANGED: return ctx.getString(R.string.soc_chat_identity_changed);
             default: return "";
         }
+    }
+
+    static void bindRow(View v, Chat.Conv c) {
+        Context ctx = v.getContext();
+        TextView avatar = v.findViewById(R.id.soc_chat_row_avatar), title = v.findViewById(R.id.soc_chat_row_title),
+                time = v.findViewById(R.id.soc_chat_row_time), preview = v.findViewById(R.id.soc_chat_row_preview),
+                unread = v.findViewById(R.id.soc_chat_row_unread);
+        long now = System.currentTimeMillis();
+        boolean has = c.unread > 0;
+        avatar.setText(initial(c.title));
+        avatar.setBackgroundTintList(ColorStateList.valueOf(
+                MaterialColors.getColor(v, com.google.android.material.R.attr.colorPrimaryContainer)));
+        avatar.setTextColor(MaterialColors.getColor(v, com.google.android.material.R.attr.colorOnPrimaryContainer));
+        title.setText(c.title != null ? c.title : "…");
+        title.setTypeface(null, has ? Typeface.BOLD : Typeface.NORMAL);
+        time.setText(c.lastTs > 0 ? DateUtils.formatSameDayTime(c.lastTs, now, DateFormat.SHORT, DateFormat.SHORT) : "");
+        time.setTextColor(MaterialColors.getColor(v, has ? androidx.appcompat.R.attr.colorPrimary
+                : com.google.android.material.R.attr.colorOnSurfaceVariant));
+        String p = preview(ctx, c);
+        if (ChatActivity.liveUntil(c, now) > 0) p = ctx.getString(R.string.soc_chat_live) + " · " + p;
+        preview.setText(p);
+        unread.setText(c.unread > 99 ? "99+" : String.valueOf(c.unread));
+        unread.setVisibility(has ? View.VISIBLE : View.GONE);
     }
 
     private void fail(Throwable t) {
@@ -245,34 +263,12 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
         @Override
         public void onBindViewHolder(@NonNull VH h, int position) {
             Chat.Conv c = items.get(position);
-            long now = System.currentTimeMillis();
-            boolean unread = c.unread > 0;
-            h.avatar.setText(initial(c.title));
-            h.title.setText(c.title != null ? c.title : "…");
-            h.title.setTypeface(null, unread ? Typeface.BOLD : Typeface.NORMAL);
-            h.time.setText(c.lastTs > 0 ? DateUtils.formatSameDayTime(c.lastTs, now, DateFormat.SHORT, DateFormat.SHORT) : "");
-            h.time.setTextColor(unread ? accent : muted);
-            String preview = preview(c);
-            if (ChatActivity.liveUntil(c, now) > 0) preview = getString(R.string.soc_chat_live) + " · " + preview;
-            h.preview.setText(preview);
-            h.unread.setText(c.unread > 99 ? "99+" : String.valueOf(c.unread));
-            h.unread.setVisibility(unread ? View.VISIBLE : View.GONE);
+            bindRow(h.itemView, c);
             h.itemView.setOnClickListener(v -> startActivity(ChatActivity.conv(ChatListActivity.this, c.id, c.title, c.group)));
         }
 
         final class VH extends RecyclerView.ViewHolder {
-            final TextView avatar, title, time, preview, unread;
-
-            VH(View v) {
-                super(v);
-                avatar = v.findViewById(R.id.soc_chat_row_avatar);
-                title = v.findViewById(R.id.soc_chat_row_title);
-                time = v.findViewById(R.id.soc_chat_row_time);
-                preview = v.findViewById(R.id.soc_chat_row_preview);
-                unread = v.findViewById(R.id.soc_chat_row_unread);
-                avatar.setBackgroundTintList(ColorStateList.valueOf(avatarBg));
-                avatar.setTextColor(avatarFg);
-            }
+            VH(View v) { super(v); }
         }
     }
 }

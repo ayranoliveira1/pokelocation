@@ -1,9 +1,11 @@
 package com.pokelocation.app.social.chat;
 
 import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
 
 import com.pokelocation.app.data.Prefs;
+import com.pokelocation.app.ipc.Intents;
 import com.pokelocation.app.model.Coord;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.loc.Locations;
@@ -93,12 +95,17 @@ public final class Chat {
     }
 
     public static Msg retry(Context c, long msgId) throws IOException {
-        Msg m = Locations.atomic(c, () -> {
-            ChatDb.setState(c, msgId, SENDING);
-            return ChatDb.byId(c, msgId);
-        });
-        if (m != null) transmit(c, m);
-        return m;
+        SocialDb.use();
+        try {
+            Msg m = Locations.atomic(c, () -> {
+                ChatDb.setState(c, msgId, SENDING);
+                return ChatDb.byId(c, msgId);
+            });
+            if (m != null) transmit(c, m);
+            return m;
+        } finally {
+            SocialDb.release();
+        }
     }
 
     /** O nome nunca vai ao servidor: viaja cifrado com a sender key. */
@@ -148,11 +155,38 @@ public final class Chat {
             return null;
         }, null);
         Notify.cancel(c, convId);
+        broadcastUnread(c);
     }
 
     public static void listen(Context c, Listener l) { ChatSocket.listen(c, l); }
 
     public static void unlisten(Listener l) { ChatSocket.unlisten(l); }
+
+    /** :overlay, painel aberto: segura o social.db e pede o WS do :overlay (abre no próximo tick do LocationSharer). */
+    public static void overlayOpened(Context c, Listener l) {
+        SocialDb.use();
+        ChatSocket.panel(l, true);
+    }
+
+    public static void overlayClosed(Listener l) {
+        ChatSocket.panel(l, false);
+        SocialDb.release();
+    }
+
+    /** Conversa na tela (null = nenhuma): o que chega nela entra lido e não notifica. */
+    public static void viewing(Context c, String convId) {
+        ChatSocket.viewing = convId;
+        if (convId != null) markRead(c, convId);
+    }
+
+    public static int unreadTotal(Context c) { return db(c, () -> ChatDb.unreadTotal(c), 0); }
+
+    /** O contador do :overlay escuta só enquanto ele vive: nada sobe por causa disto. */
+    public static void broadcastUnread(Context c) {
+        int n = db(c, () -> ChatDb.unreadTotal(c), 0);
+        c.sendBroadcast(new Intent(Intents.INT_CHAT_UNREAD).setPackage(c.getPackageName()).putExtra(Intents.EXTRA_UNREAD, n),
+                c.getPackageName() + ".permission.INTERNAL");
+    }
 
     private static void requireLib() throws IOException {
         if (!SignalLoader.loaded()) throw new IOException("signal not loaded");
@@ -173,15 +207,20 @@ public final class Chat {
         m.convId = convId;
         m.state = SENDING;
         m.ts = System.currentTimeMillis();
-        Locations.atomic(c, () -> ChatDb.insert(c, m));
-        transmit(c, m);
+        SocialDb.use();
+        try {
+            Locations.atomic(c, () -> ChatDb.insert(c, m));
+            transmit(c, m);
+        } finally {
+            SocialDb.release();
+        }
         return m;
     }
 
     private static void transmit(Context c, Msg m) {
         Rules.sendOrFail(() -> {
-            requireLib();
-            if (!ChatSocket.isOpen()) return;
+            if (SignalLoader.unavailable()) throw new IOException("signal unavailable");
+            if (!SignalLoader.loaded() || !ChatSocket.isOpen()) return;
             byte[] plain = Content.msg(m);
             byte[] frame;
             if (Locations.atomic(c, () -> ChatDb.isGroup(c, m.convId))) {
@@ -222,7 +261,9 @@ public final class Chat {
 
     private static void fail(Context c, long id) { ChatSocket.setState(c, id, FAILED); }
 
+    /** Segura o banco em volta: no :overlay, uma tarefa do painel que termina depois do overlayClosed não o deixa aberto. */
     private static <T> T db(Context c, SocialDb.Op<T> op, T none) {
+        SocialDb.use();
         try {
             return SocialDb.atomic(c, op);
         } catch (IllegalStateException e) {
@@ -232,6 +273,8 @@ public final class Chat {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException("chat db", e);
+        } finally {
+            SocialDb.release();
         }
     }
 }

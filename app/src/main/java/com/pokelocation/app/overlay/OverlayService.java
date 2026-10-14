@@ -2,7 +2,10 @@ package com.pokelocation.app.overlay;
 
 import android.app.ActivityManager;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -15,6 +18,7 @@ import com.pokelocation.app.data.RouteDao;
 import com.pokelocation.app.engine.EngineConfig;
 import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.engine.MockEngineImpl;
+import com.pokelocation.app.social.chat.Chat;
 import com.pokelocation.app.social.loc.LocationSharer;
 import com.pokelocation.app.geo.CoordParser;
 import com.pokelocation.app.ipc.Intents;
@@ -42,6 +46,7 @@ public final class OverlayService extends Service
     private MockEngineImpl engine;
     private OverlayView ui;
     private LocationSharer sharer;
+    private BroadcastReceiver unreadRx;
     private Intent mockIntent;
 
     private boolean fgFailed, running, hidden, mapOpen, sessionSent, destroyed;
@@ -150,6 +155,10 @@ public final class OverlayService extends Service
         if (getDatabasePath("social.db").exists()) {
             sharer = new LocationSharer(this, engine);
             sharer.start();
+            ui.setChatEnabled(true);
+            listenUnread();
+            Context app = getApplicationContext();
+            Io.run(() -> Chat.unreadTotal(app), n -> { if (ui != null) ui.setUnread(n); });
         }
         notif.setHidden(hidden);
         Intents.broadcastSpoofState(this, true, null);
@@ -183,6 +192,19 @@ public final class OverlayService extends Service
         Intents.broadcastSpoofState(this, false, b);
     }
 
+    /** Só enquanto vivo, e só o próprio app (permissão signature): mensagem do chat nunca sobe o serviço. */
+    private void listenUnread() {
+        unreadRx = new BroadcastReceiver() {
+            @Override public void onReceive(Context c, Intent i) {
+                if (ui != null) ui.setUnread(i.getIntExtra(Intents.EXTRA_UNREAD, 0));
+            }
+        };
+        IntentFilter f = new IntentFilter(Intents.INT_CHAT_UNREAD);
+        String perm = getPackageName() + ".permission.INTERNAL";
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(unreadRx, f, perm, null, Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(unreadRx, f, perm, null);
+    }
+
     @Override
     public void onDestroy() {
         if (destroyed) return;
@@ -191,6 +213,10 @@ public final class OverlayService extends Service
         running = false;
         notif.release();
         if (sharer != null) sharer.stop();
+        if (unreadRx != null) {
+            unregisterReceiver(unreadRx);
+            unreadRx = null;
+        }
         if (engine != null) engine.shutdown();
         if (ui != null) ui.destroy();
         try {

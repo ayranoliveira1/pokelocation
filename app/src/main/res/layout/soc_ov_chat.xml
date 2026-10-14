@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:paddingBottom="@dimen/gap">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="4dp" android:paddingEnd="4dp">
+        <ImageButton android:id="@+id/soc_ov_back" android:layout_width="48dp" android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/abc_action_bar_up_description"
+            android:src="@drawable/ic_arrow_back" android:tint="@color/primary" android:visibility="gone" />
+        <TextView android:id="@+id/soc_ov_title" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:ellipsize="end" android:maxLines="1" android:paddingStart="12dp"
+            android:paddingEnd="12dp" android:textAppearance="@style/TextAppearance.PokeLocation.PanelTitle" />
+        <ImageButton android:id="@+id/soc_ov_close" android:layout_width="48dp" android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless" android:contentDescription="@string/close"
+            android:src="@drawable/ic_close" android:tint="@color/primary" />
+    </LinearLayout>
+    <TextView android:id="@+id/soc_ov_empty" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:padding="@dimen/gap_large" android:text="@string/soc_chat_empty" android:visibility="gone"
+        android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" />
+    <ScrollView android:id="@+id/soc_ov_scroll" android:layout_width="match_parent" android:layout_height="280dp">
+        <LinearLayout android:id="@+id/soc_ov_list" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+    <LinearLayout android:id="@+id/soc_ov_compose" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="@dimen/gap_large"
+        android:paddingEnd="4dp" android:visibility="gone">
+        <EditText android:id="@+id/soc_ov_input" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:hint="@string/soc_chat_hint" android:importantForAutofill="no"
+            android:inputType="textCapSentences" android:maxLength="4000" android:maxLines="3" android:minHeight="48dp" />
+        <ImageButton android:id="@+id/soc_ov_send" android:layout_width="48dp" android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless" android:contentDescription="@string/soc_chat_send"
+            android:src="@drawable/soc_ic_send" android:tint="@color/primary" />
+    </LinearLayout>
+</LinearLayout>

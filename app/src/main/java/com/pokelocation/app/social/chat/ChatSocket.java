@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /** Frames na "pl-chat-ws", nunca no Io: banco sob o atomic, rede fora dele. */
-final class ChatSocket {
+public final class ChatSocket {
     private static final String TAG = "ChatSocket";
     private static final long ACK_TIMEOUT_MS = 30_000, RETRY_MS = 5_000;
     private static final Set<Chat.Listener> LISTENERS = new CopyOnWriteArraySet<>();
@@ -81,6 +81,43 @@ final class ChatSocket {
     static boolean isOpen() { return open; }
 
     static boolean listening() { return !LISTENERS.isEmpty(); }
+
+    static volatile String viewing;
+    private static volatile boolean panel;
+
+    static void panel(Chat.Listener l, boolean opened) {
+        if (opened) LISTENERS.add(l);
+        else LISTENERS.remove(l);
+        panel = !LISTENERS.isEmpty();
+    }
+
+    public static boolean panelOpen() { return panel; }
+
+    /** :overlay: o chat usa o WS do LocationSharer enquanto ele estiver aberto; h = a thread dele. */
+    public static synchronized void bind(Context app, WsClient w, Handler h) {
+        ws = w;
+        work = h;
+        open = true;
+        h.post(() -> {
+            Chat.resendOutbox(app);
+            Inbox.sendPendingResets(app, w::send);
+        });
+    }
+
+    public static void unbind(WsClient w) {
+        synchronized (ChatSocket.class) {
+            if (ws != w) return;
+            ws = null;
+            work = null;
+            open = false;
+        }
+        failAll();
+    }
+
+    public static void acked(String clientMsgId) {
+        Pending p = PENDING.remove(clientMsgId);
+        if (p != null && p.onAck != null) p.onAck.run();
+    }
 
     static boolean send(byte[] frame, String cmid, Runnable onAck, Runnable onFail) {
         WsClient w = ws;
@@ -198,11 +235,9 @@ final class ChatSocket {
         if (ws != from) return;
         try {
             switch (f.type) {
-                case Frames.ACK: {
-                    Pending p = PENDING.remove(f.msgId);
-                    if (p != null && p.onAck != null) p.onAck.run();
+                case Frames.ACK:
+                    acked(f.msgId);
                     break;
-                }
                 case Frames.ENVELOPE:
                 case Frames.GROUP_ENVELOPE: {
                     Throwable fail = null;

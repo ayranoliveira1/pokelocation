@@ -12,6 +12,7 @@ import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.geo.Geo;
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.chat.ChatSocket;
 import com.pokelocation.app.social.chat.Inbox;
 import com.pokelocation.app.social.chat.Live;
 import com.pokelocation.app.social.crypto.SignalLoader;
@@ -52,6 +53,7 @@ public final class LocationSharer {
     private boolean sharing, open;
     private double lastLat = Double.NaN, lastLng = Double.NaN;
     private int ticks;
+    private boolean dbHeld;
     private long gen = -1;
     private final Map<String, double[]> liveSent = new HashMap<>();
     // ponytail: SKDM 1 vez por amigo por sessão do joystick (em memória), confirmada pelo Ack S→C do servidor (gravou:
@@ -102,12 +104,19 @@ public final class LocationSharer {
                 return;
             }
             boolean share = Prefs.shareLocation(app); // MULTI_PROCESS: lido aqui, fora da main
-            boolean live = Live.maybeActive(app, System.currentTimeMillis());
-            if (!share) shareOff(live);
-            if (!share && !live) return;
+            boolean live = Live.maybeActive(app, System.currentTimeMillis()), panel = ChatSocket.panelOpen();
+            if (!share) shareOff(live || panel);
+            if (!share && !live && !panel) {
+                releaseDb();
+                return;
+            }
             if (Session.access(app) == null) { // logout/geração nova sem sessão: para em 1 tick
                 halt();
                 return;
+            }
+            if (!dbHeld) {
+                SocialDb.use();
+                dbHeld = true;
             }
             long g = SocialDb.seenGeneration();
             if (g != gen) { // logout + login entre dois ticks: nada da conta anterior segue
@@ -160,13 +169,24 @@ public final class LocationSharer {
     private void halt() {
         sharing = false;
         stopWs();
+        releaseDb();
         myId = null;
         skdmSent.clear();
         skdmPending.clear();
     }
 
+    /** Só entre ticks: o painel do chat e este dividem a conexão do :overlay. */
+    private void releaseDb() {
+        if (!dbHeld) return;
+        dbHeld = false;
+        SocialDb.release();
+    }
+
     private void stopWs() {
-        if (ws != null) ws.stop();
+        if (ws != null) {
+            ChatSocket.unbind(ws);
+            ws.stop();
+        }
         ws = null;
         open = false;
         lastLat = lastLng = Double.NaN;
@@ -184,6 +204,7 @@ public final class LocationSharer {
                             open = true;
                             ticks = 0; // distribui a SKDM já no próximo tick
                             skdmPending.clear(); // sem Ack na conexão velha: manda de novo
+                            ChatSocket.bind(app, self[0], work);
                         });
                     }
 
@@ -192,6 +213,7 @@ public final class LocationSharer {
                     @Override public void onClosed(IOException why) {
                         work.post(() -> {
                             if (ws == self[0]) open = false;
+                            ChatSocket.unbind(self[0]);
                         });
                     }
                 });
@@ -220,6 +242,7 @@ public final class LocationSharer {
             } else if (f.type == Frames.ACK) { // S→C (api.md §6): o servidor gravou meu envelope
                 String to = skdmPending.remove(f.msgId);
                 if (to != null) skdmSent.add(to);
+                else ChatSocket.acked(f.msgId);
             } else if (f.type == Frames.ERROR && "username_required".equals(f.code)) {
                 halt();
             } else if (f.type == Frames.ERROR && "unauthorized".equals(f.code)) {

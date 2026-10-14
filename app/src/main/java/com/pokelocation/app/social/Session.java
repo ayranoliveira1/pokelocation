@@ -10,6 +10,7 @@ import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.util.Base64;
 
 import com.pokelocation.app.App;
+import com.pokelocation.app.social.chat.Chat;
 import com.pokelocation.app.social.chat.Live;
 import com.pokelocation.app.social.chat.Notify;
 import com.pokelocation.app.social.chat.Push;
@@ -219,6 +220,7 @@ public final class Session {
         sp(c).edit().clear().commit();
         SocialDb.delete(c);
         Vault.wipe();
+        Chat.broadcastUnread(c); // sem banco: 0, o contador do :overlay zera
     }
 
     /** Verifier e state do PKCE cifrados pelo Vault (Io: o Keystore pode bloquear). IOException = Keystore falhou. */

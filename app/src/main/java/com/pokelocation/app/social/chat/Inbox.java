@@ -27,8 +27,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 /**
@@ -229,7 +229,12 @@ public final class Inbox {
     public static void deliver(Context c, Result r, Predicate<byte[]> send) {
         nameNew(c, r.fresh);
         for (Chat.Msg m : r.msgs) ChatSocket.dispatch(m);
-        Notify.fresh(c, r.fresh);
+        String seen = ChatSocket.viewing;
+        List<Chat.Msg> notify = new ArrayList<>(r.fresh.size());
+        for (Chat.Msg m : r.fresh) if (!m.convId.equals(seen)) notify.add(m);
+        Notify.fresh(c, notify);
+        if (notify.size() < r.fresh.size()) Chat.markRead(c, seen);
+        else if (!r.fresh.isEmpty()) Chat.broadcastUnread(c);
         if (r.groupInfo != null) acceptGroupInfo(c, r.groupInfo);
         if (r.resetPeer == null) return;
         // sem por onde mandar, não busca bundle (consumiria uma one-time dele à toa): sai quando o WS do chat abrir

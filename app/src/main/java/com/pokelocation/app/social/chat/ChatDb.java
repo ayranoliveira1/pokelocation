@@ -346,6 +346,12 @@ final class ChatDb {
         return v;
     }
 
+    static int unreadTotal(Context c) {
+        try (Cursor q = db(c).rawQuery("SELECT IFNULL(SUM(unread), 0) FROM conversations", null)) {
+            return q.moveToFirst() ? q.getInt(0) : 0;
+        }
+    }
+
     static void markRead(Context c, String convId) {
         db(c).execSQL("UPDATE conversations SET unread = 0 WHERE id = ?", new Object[]{convId});
     }

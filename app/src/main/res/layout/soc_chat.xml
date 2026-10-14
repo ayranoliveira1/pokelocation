@@ -33,7 +33,12 @@
         </FrameLayout>
     </com.pokelocation.app.ui.base.StateView>
 
-    <LinearLayout
+    <TextView android:id="@+id/soc_chat_left"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:background="?attr/colorSurfaceContainer" android:gravity="center" android:padding="@dimen/gap_large"
+        android:text="@string/soc_chat_left" android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant" android:visibility="gone" />
+    <LinearLayout android:id="@+id/soc_chat_bar"
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:background="?attr/colorSurfaceContainer" android:gravity="center_vertical"
         android:orientation="horizontal" android:paddingStart="@dimen/gap" android:paddingEnd="4dp">
