@@ -38,8 +38,8 @@ public final class ChatPanel implements Chat.Listener {
     private LinearLayout list;
     private ScrollView scroll;
     private EditText input;
-    private MsgAdapter bubbles;
-    private final Map<String, MsgAdapter.VH> shown = new HashMap<>();
+    private Bubble bubbles;
+    private final Map<String, View> shown = new HashMap<>();
     private Chat.Conv conv;
     private Io.Task task;
     private final List<Io.Task> acts = new ArrayList<>();
@@ -111,7 +111,7 @@ public final class ChatPanel implements Chat.Listener {
             for (int i = 0; i < Math.min(CONVS, convs.size()); i++) {
                 Chat.Conv c = convs.get(i);
                 View row = inf.inflate(R.layout.soc_chat_row, list, false);
-                ChatListActivity.bindRow(row, c);
+                ConvRow.bind(row, c);
                 row.setOnClickListener(v -> showConv(c));
                 list.addView(row);
             }
@@ -126,7 +126,7 @@ public final class ChatPanel implements Chat.Listener {
         back.setVisibility(View.VISIBLE);
         compose.setVisibility(c.left ? View.GONE : View.VISIBLE);
         empty.setVisibility(View.GONE);
-        bubbles = new MsgAdapter(ctx, c.group, this::onTap);
+        bubbles = new Bubble(ctx, c.group, this::onTap);
         loadConv();
     }
 
@@ -148,12 +148,17 @@ public final class ChatPanel implements Chat.Listener {
             list.removeAllViews();
             shown.clear();
             for (int i = msgs.size() - 1; i >= 0; i--) {
-                MsgAdapter.VH h = bubbles.onCreateViewHolder(list, 0);
-                bubbles.bind(h, msgs.get(i));
-                list.addView(h.itemView);
-                shown.put(msgs.get(i).clientMsgId, h);
+                View row = bubbles.create(list);
+                bubbles.bind(row, msgs.get(i));
+                list.addView(row);
+                shown.put(msgs.get(i).clientMsgId, row);
             }
-            scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
+            list.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                @Override public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                    v.removeOnLayoutChangeListener(this);
+                    scroll.scrollTo(0, v.getHeight());
+                }
+            });
         });
     }
 
@@ -190,8 +195,8 @@ public final class ChatPanel implements Chat.Listener {
     @Override
     public void onMessage(Chat.Msg m) {
         if (conv == null || !conv.id.equals(m.convId)) return;
-        MsgAdapter.VH h = shown.get(m.clientMsgId);
-        if (h != null) bubbles.bind(h, m);   // live (até 24/min) e estado: só a bolha, sem reler a página
+        View row = shown.get(m.clientMsgId);
+        if (row != null) bubbles.bind(row, m);   // live (até 24/min) e estado: só a bolha, sem reler a página
         else loadConv();
     }
 

@@ -2,11 +2,8 @@ package com.pokelocation.app.social.ui.chat;
 
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.ColorStateList;
-import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.InputFilter;
-import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -20,7 +17,6 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
@@ -34,7 +30,6 @@ import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.base.StateView;
 import com.pokelocation.app.util.Ui;
 
-import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -198,41 +193,6 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
                 .show();
     }
 
-    private static String preview(Context ctx, Chat.Conv c) {
-        switch (c.previewType) {
-            case Chat.TEXT: return c.preview == null ? "" : c.preview;
-            case Chat.LOC: return ctx.getString(R.string.soc_chat_location);
-            case Chat.LIVE_START: return ctx.getString(R.string.soc_chat_live_location);
-            case Chat.LIVE_STOP: return ctx.getString(R.string.soc_chat_msg_live_stop);
-            case Chat.UNREADABLE: return ctx.getString(R.string.soc_chat_unreadable);
-            case Chat.IDENTITY_CHANGED: return ctx.getString(R.string.soc_chat_identity_changed);
-            default: return "";
-        }
-    }
-
-    static void bindRow(View v, Chat.Conv c) {
-        Context ctx = v.getContext();
-        TextView avatar = v.findViewById(R.id.soc_chat_row_avatar), title = v.findViewById(R.id.soc_chat_row_title),
-                time = v.findViewById(R.id.soc_chat_row_time), preview = v.findViewById(R.id.soc_chat_row_preview),
-                unread = v.findViewById(R.id.soc_chat_row_unread);
-        long now = System.currentTimeMillis();
-        boolean has = c.unread > 0;
-        avatar.setText(initial(c.title));
-        avatar.setBackgroundTintList(ColorStateList.valueOf(
-                MaterialColors.getColor(v, com.google.android.material.R.attr.colorPrimaryContainer)));
-        avatar.setTextColor(MaterialColors.getColor(v, com.google.android.material.R.attr.colorOnPrimaryContainer));
-        title.setText(c.title != null ? c.title : "…");
-        title.setTypeface(null, has ? Typeface.BOLD : Typeface.NORMAL);
-        time.setText(c.lastTs > 0 ? DateUtils.formatSameDayTime(c.lastTs, now, DateFormat.SHORT, DateFormat.SHORT) : "");
-        time.setTextColor(MaterialColors.getColor(v, has ? androidx.appcompat.R.attr.colorPrimary
-                : com.google.android.material.R.attr.colorOnSurfaceVariant));
-        String p = preview(ctx, c);
-        if (ChatActivity.liveUntil(c, now) > 0) p = ctx.getString(R.string.soc_chat_live) + " · " + p;
-        preview.setText(p);
-        unread.setText(c.unread > 99 ? "99+" : String.valueOf(c.unread));
-        unread.setVisibility(has ? View.VISIBLE : View.GONE);
-    }
-
     private void fail(Throwable t) {
         if (Errors.unauthorized(t)) toLogin();
         else Ui.toast(this, Errors.message(t));
@@ -241,12 +201,6 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
     private void toLogin() {
         startActivity(new Intent(this, LoginActivity.class).putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_CHATS));
         finish();
-    }
-
-    static String initial(String title) {
-        if (title == null) return "?";
-        String t = title.startsWith("@") ? title.substring(1) : title;
-        return t.isEmpty() ? "?" : new String(Character.toChars(Character.toUpperCase(t.codePointAt(0))));
     }
 
     private final class Rows extends RecyclerView.Adapter<Rows.VH> {
@@ -267,7 +221,7 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
         @Override
         public void onBindViewHolder(@NonNull VH h, int position) {
             Chat.Conv c = items.get(position);
-            bindRow(h.itemView, c);
+            ConvRow.bind(h.itemView, c);
             h.itemView.setOnClickListener(v -> startActivity(ChatActivity.conv(ChatListActivity.this, c.id, c.title, c.group)));
         }
 

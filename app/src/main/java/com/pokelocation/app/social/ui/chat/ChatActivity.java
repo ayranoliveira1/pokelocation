@@ -341,11 +341,6 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
                 .show();
     }
 
-    static long liveUntil(Chat.Conv c, long now) {
-        if (c == null) return 0;
-        long until = Math.max(c.myLiveUntil, c.liveUntil);
-        return until > now ? until : 0;
-    }
 
     private void loadConv() {
         Context app = getApplicationContext();
@@ -363,7 +358,7 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
 
     private void showLive() {
         Io.main().removeCallbacks(liveTick);
-        long now = System.currentTimeMillis(), until = liveUntil(conv, now);
+        long now = System.currentTimeMillis(), until = ConvRow.liveUntil(conv, now);
         if (getSupportActionBar() != null) getSupportActionBar().setSubtitle(until == 0 ? null
                 : getString(R.string.soc_chat_live_until, android.text.format.DateFormat.getTimeFormat(this).format(until)));
         if (until > 0) Io.main().postDelayed(liveTick, until - now + 500);
