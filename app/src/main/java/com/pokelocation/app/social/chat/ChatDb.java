@@ -144,6 +144,35 @@ final class ChatDb {
         }
     }
 
+    /** Minhas lives ativas: {convId, grp, peer, client_msg_id do LIVE_START, até}. */
+    static List<Object[]> myLives(Context c, long now) {
+        List<Object[]> out = new ArrayList<>();
+        try (Cursor q = db(c).rawQuery("SELECT id, grp, peer, my_live_until FROM conversations WHERE my_live_until > ?",
+                new String[]{String.valueOf(now)})) {
+            while (q.moveToNext()) {
+                String start = myLiveStart(c, q.getString(0));
+                if (start != null) out.add(new Object[]{q.getString(0), q.getInt(1) == 1, q.getString(2), start, q.getLong(3)});
+            }
+        }
+        return out;
+    }
+
+    static boolean keyOk(Context c, String convId) {
+        try (Cursor q = db(c).rawQuery("SELECT key_ok FROM conversations WHERE id = ?", new String[]{convId})) {
+            return q.moveToFirst() && q.getInt(0) == 1;
+        }
+    }
+
+    static void setKeyOk(Context c, String convId, boolean ok) {
+        db(c).execSQL("UPDATE conversations SET key_ok = ? WHERE id = ?", new Object[]{ok ? 1 : 0, convId});
+    }
+
+    static long maxMyLive(Context c) {
+        try (Cursor q = db(c).rawQuery("SELECT IFNULL(MAX(my_live_until), 0) FROM conversations", null)) {
+            return q.moveToFirst() ? q.getLong(0) : 0;
+        }
+    }
+
     static String peer(Context c, String convId) {
         try (Cursor q = db(c).rawQuery("SELECT peer FROM conversations WHERE id = ?", new String[]{convId})) {
             return q.moveToFirst() ? q.getString(0) : null;

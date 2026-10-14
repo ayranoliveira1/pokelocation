@@ -188,6 +188,7 @@ final class ChatSocket {
             Log.w(TAG, "prune: " + e.getClass().getSimpleName());
         }
         Chat.resendOutbox(app); // o que ficou SENDING (WS caiu, tela fechou, processo novo) sai de novo
+        Groups.distributeLives(app);
     }
 
     private static void frame(Context app, WsClient from, Frames.Frame f) {
@@ -217,6 +218,7 @@ final class ChatSocket {
                 }
                 case Frames.GROUP_CHANGED:
                     Groups.sync(app, f.groupId);
+                    Groups.distributeLives(app); // rotação ou membro novo: a live do grupo não fica parada
                     dispatch(null);
                     break;
                 case Frames.ERROR:

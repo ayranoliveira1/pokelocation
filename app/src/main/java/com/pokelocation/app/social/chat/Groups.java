@@ -1,6 +1,7 @@
 package com.pokelocation.app.social.chat;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.loc.Locations;
@@ -65,10 +66,12 @@ final class Groups {
         List<Api.Friend> now = others(g.members, me);
         boolean someoneLeft = Locations.atomic(c, () -> {
             ChatDb.ensureConversation(c, groupId, true, null, null);
-            Set<String> before = new HashSet<>();
+            Set<String> before = new HashSet<>(), after = new HashSet<>();
             for (Api.Friend f : ChatDb.members(c, groupId)) before.add(f.userId);
+            for (Api.Friend f : now) after.add(f.userId);
             ChatDb.setMembers(c, groupId, now);
-            for (Api.Friend f : now) before.remove(f.userId);
+            if (!before.equals(after)) ChatDb.setKeyOk(c, groupId, false); // quem entrou ainda não tem a minha chave
+            before.removeAll(after);
             if (before.isEmpty()) return false;
             new SignalStore(c).deleteSenderKey(new SignalProtocolAddress(me, 1), UUID.fromString(groupId));
             return true;
@@ -129,14 +132,47 @@ final class Groups {
             String id = UUID.randomUUID().toString();
             String member = m.userId;
             // só no Ack S→C (o servidor gravou): enfileirado não basta, e sem a minha chave as cópias dele seriam ilegíveis
-            ChatSocket.send(Frames.envelope(member, id, seal1to1(c, member, skdm, null)), id, () -> done.add(member), null);
+            ChatSocket.send(Frames.envelope(member, id, seal1to1(c, member, skdm, null)), id, () -> {
+                done.add(member);
+                markKeyOk(c, groupId, done);
+            }, null);
             sent = true;
         }
+        if (!sent) markKeyOk(c, groupId, done);
         // o nome só dentro do GroupEnvelope do próprio grupo (o servidor confere a membresia); quem ainda não tem a
         // minha SKDM guarda na fila até ela chegar
         if (sent && name != null) {
-            byte[] ct = Locations.atomic(c, () -> encrypt(c, me, groupId, Content.groupInfo(groupId, name)));
+            byte[] ct = Locations.atomic(c, () -> encrypt(c, me, groupId, Content.groupInfo(groupId, name), true));
             ChatSocket.send(Frames.groupEnvelope(groupId, UUID.randomUUID().toString(), ct), null, null, null);
+        }
+    }
+
+    /**
+     * Todos os membros atuais (do banco: uma sync no meio conta) confirmaram a minha chave → o :overlay pode mandar a
+     * live. done de uma distribuição velha (a chave rotacionou depois) não marca.
+     */
+    private static void markKeyOk(Context c, String groupId, Set<String> done) {
+        if (SENT.get(groupId) != done) return;
+        try {
+            Locations.atomic(c, () -> {
+                for (Api.Friend m : ChatDb.members(c, groupId)) if (!done.contains(m.userId)) return null;
+                ChatDb.setKeyOk(c, groupId, true);
+                return null;
+            });
+        } catch (IOException e) {
+            Log.w("Groups", "key ok: " + e.getClass().getSimpleName());
+        }
+    }
+
+    /** Principal com o WS do chat aberto: grupos com live minha cuja chave ainda não chegou a todos (rotação, membro novo). */
+    static void distributeLives(Context c) {
+        try {
+            for (Object[] l : Locations.atomic(c, () -> ChatDb.myLives(c, System.currentTimeMillis()))) {
+                String gid = (String) l[0];
+                if ((boolean) l[1] && !Locations.atomic(c, () -> ChatDb.keyOk(c, gid))) distribute(c, gid);
+            }
+        } catch (IOException e) {
+            Log.w("Groups", "lives: " + e.getClass().getSimpleName());
         }
     }
 
@@ -157,14 +193,18 @@ final class Groups {
                 friendUserId.getBytes(StandardCharsets.UTF_8), theirs).getDisplayableFingerprint().getDisplayText();
     }
 
-    /** Dentro do atomic: ciphertext do GroupCipher com a minha sender key (criada na 1ª vez). */
-    static byte[] encrypt(Context c, String me, String groupId, byte[] plain) throws Exception {
+    /**
+     * Dentro do atomic: ciphertext do GroupCipher com a minha sender key. create = false (o :overlay, que não distribui):
+     * sem chave, null; criar uma ali faria tudo sair com uma chave que ninguém recebeu.
+     */
+    static byte[] encrypt(Context c, String me, String groupId, byte[] plain, boolean create) throws Exception {
         SignalStore st = new SignalStore(c);
         SignalProtocolAddress a = new SignalProtocolAddress(me, 1);
         UUID dist = UUID.fromString(groupId);
         try {
             return new GroupCipher(st, a).encrypt(dist, plain).serialize();
         } catch (NoSessionException e) {
+            if (!create) return null;
             new GroupSessionBuilder(st).create(a, dist);
             return new GroupCipher(st, a).encrypt(dist, plain).serialize();
         }

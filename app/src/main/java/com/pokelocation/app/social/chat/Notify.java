@@ -27,6 +27,8 @@ public final class Notify {
     private static final String CHANNEL = "soc_messages";
     private static final String CHAT_PID = "chat_pid";
     private static final int ID = 0x50c;
+    /** ponytail: por processo (principal e :overlay: no máximo 2 a cada 10 min por conversa). */
+    private static final Rules.Limiter UNREADABLE = new Rules.Limiter();
 
     private Notify() {}
 
@@ -35,6 +37,7 @@ public final class Notify {
         if (msgs.isEmpty() || ChatSocket.listening() || openInMain(c)) return;
         for (Chat.Msg m : msgs) {
             if (m.from == null || !Rules.notifies(m.type)) continue;
+            if (m.type == Chat.UNREADABLE && !UNREADABLE.allow(m.convId, System.currentTimeMillis())) continue;
             Chat.Conv conv = Chat.conversation(c, m.convId);
             if (conv == null) continue; // logout no meio
             if (!conv.group && conv.title == null) conv.title = nameDirect(c, conv.id, m.from);

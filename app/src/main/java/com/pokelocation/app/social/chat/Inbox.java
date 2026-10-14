@@ -53,17 +53,19 @@ public final class Inbox {
         }
     }
 
-    private static final Rules.ResetLimiter RESETS = new Rules.ResetLimiter();
+    private static final Rules.Limiter RESETS = new Rules.Limiter();
 
     private Inbox() {}
 
     public static Result receive(Context c, String from, String groupId, String msgId, byte[] payload) throws Exception {
         Result r = new Result();
+        boolean eph = Rules.ephemeral(msgId);
         ContentValues seen = new ContentValues(3);
         seen.put("sender", from);
         seen.put("msg_id", msgId);
         seen.put("at", System.currentTimeMillis());
-        if (SocialDb.get(c).insertWithOnConflict("seen_envelopes", null, seen, SQLiteDatabase.CONFLICT_IGNORE) == -1) {
+        // efêmera (24/min numa live) fora do dedup, que guarda 31 dias: repetida dá DuplicateMessage e é descartada
+        if (!eph && SocialDb.get(c).insertWithOnConflict("seen_envelopes", null, seen, SQLiteDatabase.CONFLICT_IGNORE) == -1) {
             r.add(ChatDb.byClientId(c, from, msgId), false); // o outro processo já gravou: só reentrega à tela
             return r;
         }
@@ -76,12 +78,14 @@ public final class Inbox {
             plain = groupId != null ? new GroupCipher(st, a).decrypt(payload) : decrypt1to1(st, a, payload);
         } catch (NoSessionException e) {
             if (groupId == null) return unreadable(c, st, a, null, from, msgId, e, r);
+            if (eph) return r; // posição de live sem a chave dele: a próxima vem em segundos
             // a SKDM dele vem num Envelope 1:1 separado e pode chegar depois: gravada na fila, o Ack é seguro.
-            // Teto por remetente (um membro que nunca manda a SKDM não enche o disco): a mais antiga vira ilegível.
+            // Teto por remetente (um membro que nunca manda a SKDM não enche o disco): a mais antiga sai. Pode ser só
+            // posição de live (24/min): um aviso por grupo e dia, sem notificar, não um por mensagem.
             if (ChatDb.pendingCount(c, from) >= Rules.MAX_PENDING_PER_SENDER) {
                 String[] old = ChatDb.oldestPending(c, from);
                 ChatDb.dropPending(c, from, old[0]);
-                r.add(system(c, old[1], true, from, old[0], Chat.UNREADABLE), true);
+                r.add(lost(c, old[1], from), false);
             }
             ChatDb.addPending(c, from, msgId, groupId, payload);
             return r;
@@ -114,7 +118,10 @@ public final class Inbox {
             }
             case Content.MSG: {
                 Chat.Msg m = Content.msg(plain);
-                if (m != null && Content.acceptable(m)) store(c, m, groupId, from, msgId, r);
+                if (m == null || !Content.acceptable(m)) return;
+                // id efêmero só move uma live existente: nunca vira mensagem nova
+                if (Rules.ephemeral(msgId) && (m.type != Chat.LIVE_START || m.text.isEmpty())) return;
+                store(c, m, groupId, from, msgId, r);
                 return;
             }
             default:
@@ -157,9 +164,13 @@ public final class Inbox {
         List<String[]> batch;
         do {
             batch = ChatDb.takeExpiredPending(c, System.currentTimeMillis() - Rules.PENDING_MS);
-            for (String[] p : batch) r.add(system(c, p[2], true, p[0], p[1], Chat.UNREADABLE), true);
+            for (String[] p : batch) r.add(lost(c, p[2], p[0]), false);
         } while (batch.size() == 50);
         return r;
+    }
+
+    private static Chat.Msg lost(Context c, String groupId, String from) throws Exception {
+        return system(c, groupId, true, from, Rules.lostId(groupId, System.currentTimeMillis()), Chat.UNREADABLE);
     }
 
     private static byte[] decrypt1to1(SignalStore st, SignalProtocolAddress a, byte[] payload) throws Exception {
@@ -169,13 +180,13 @@ public final class Inbox {
     }
 
     /**
-     * Ilegível para sempre: avisa na conversa e confirma. No 1:1, só sessão quebrada (NoSession, ou InvalidMessage que
+     * Ilegível para sempre: avisa na conversa (a posição efêmera de uma live, não) e confirma. No 1:1, só sessão quebrada (NoSession, ou InvalidMessage que
      * não é replay) é apagada e pede um reset; Duplicate/Legacy/versão não indicam estado quebrado.
      */
     private static Result unreadable(Context c, SignalStore st, SignalProtocolAddress a, String groupId, String from,
                                      String msgId, Exception e, Result r) throws Exception {
         String convId = groupId != null ? groupId : ChatDb.directId(from);
-        r.add(system(c, convId, groupId != null, from, msgId, Chat.UNREADABLE), true);
+        if (!Rules.ephemeral(msgId)) r.add(system(c, convId, groupId != null, from, msgId, Chat.UNREADABLE), true);
         boolean broken = groupId == null && (e instanceof NoSessionException
                 || (e instanceof InvalidMessageException && !(e instanceof ReusedBaseKeyException)));
         if (broken) {

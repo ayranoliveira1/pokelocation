@@ -72,6 +72,7 @@ public final class Chat {
             ChatDb.setLive(c, convId, true, until);
             return null;
         });
+        Live.hint(c);
         ChatSocket.dispatch(null);
         return m;
     }
@@ -90,6 +91,7 @@ public final class Chat {
             Msg s = ChatDb.byClientId(c, null, start);
             return s == null ? null : ChatDb.updateLive(c, convId, null, start, s.lat, s.lng, now);
         });
+        Live.hint(c);
         ChatSocket.dispatch(ended);
     }
 
@@ -200,7 +202,7 @@ public final class Chat {
             if (Locations.atomic(c, () -> ChatDb.isGroup(c, m.convId))) {
                 Groups.distribute(c, m.convId);
                 String me = Groups.myId(c);
-                frame = Frames.groupEnvelope(m.convId, m.clientMsgId, Locations.atomic(c, () -> Groups.encrypt(c, me, m.convId, plain)));
+                frame = Frames.groupEnvelope(m.convId, m.clientMsgId, Locations.atomic(c, () -> Groups.encrypt(c, me, m.convId, plain, true)));
             } else {
                 String peer = Locations.atomic(c, () -> ChatDb.peer(c, m.convId));
                 frame = Frames.envelope(peer, m.clientMsgId, Groups.seal1to1(c, peer, plain, null));

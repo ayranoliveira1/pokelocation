@@ -37,7 +37,7 @@ public final class SocialDb extends SQLiteOpenHelper {
     public interface Op<T> { T run() throws Exception; }
 
     private SocialDb(Context c) {
-        super(c.getApplicationContext(), NAME, null, 8);
+        super(c.getApplicationContext(), NAME, null, 9);
         setWriteAheadLoggingEnabled(true);
     }
 
@@ -121,6 +121,9 @@ public final class SocialDb extends SQLiteOpenHelper {
         return f.readLong();
     }
 
+    /** A geração que este processo viu na última operação sob o lock: mudou = logout (e talvez login) no outro. */
+    public static synchronized long seenGeneration() { return sGen; }
+
     /** Logout: nova geração (o outro processo vê na próxima operação). Só sob o lock. */
     static long bumpGeneration() throws IOException {
         long g = generation() + 1;
@@ -200,6 +203,7 @@ public final class SocialDb extends SQLiteOpenHelper {
         for (String sql : CHAT) db.execSQL(sql);
         db.execSQL(SESSION_USERNAME);
         for (String sql : CHAT_V8) db.execSQL(sql);
+        db.execSQL(CHAT_V9);
     }
 
     @Override
@@ -214,6 +218,7 @@ public final class SocialDb extends SQLiteOpenHelper {
             db.execSQL(SESSION_USERNAME);
         }
         if (oldVersion < 8) for (String sql : CHAT_V8) db.execSQL(sql);
+        if (oldVersion < 9) db.execSQL(CHAT_V9);
     }
 
     /** O WS do :overlay e o REST do principal podem trazer o mesmo envelope antes do ack. Podado após 31 dias (a fila
@@ -252,6 +257,12 @@ public final class SocialDb extends SQLiteOpenHelper {
             "CREATE INDEX pending_group_at ON pending_group(at)",
             "ALTER TABLE messages ADD COLUMN tries INTEGER NOT NULL DEFAULT 0",
     };
+
+    /**
+     * v9: key_ok = a minha sender key do grupo foi entregue a todos os membros atuais (Ack do servidor). Só o principal
+     * cria e distribui; o :overlay só manda a live com ela; mudou a membresia → 0 até a próxima distribuição.
+     */
+    public static final String CHAT_V9 = "ALTER TABLE conversations ADD COLUMN key_ok INTEGER NOT NULL DEFAULT 0";
 
     /** @nome da conta (selado): o :overlay só abre o WS com ele (o servidor recusa sem). */
     static final String SESSION_USERNAME = "ALTER TABLE session ADD COLUMN username BLOB";

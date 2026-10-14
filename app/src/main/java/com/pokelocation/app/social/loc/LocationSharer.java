@@ -13,6 +13,7 @@ import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.geo.Geo;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.chat.Inbox;
+import com.pokelocation.app.social.chat.Live;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.store.SocialDb;
@@ -29,8 +30,9 @@ import java.util.UUID;
 /**
  * Compartilha minha posição com os amigos, no :overlay; o OverlayService só o cria com login (o motor não muda).
  * A cada 5 s a main só lê lat/lng e entrega à "pl-loc", que segue nesta ordem: sem social.db → nada; "Compartilhar"
- * desligado → LocationOff na transição e fecha o WS; sem sessão no banco (logout/geração nova) → para, nunca limpa;
- * lib carregada; WS aberto; moveu > 5 m → cifra sob o SocialDb.atomic e envia. Rede sempre fora do lock.
+ * desligado → LocationOff na transição e, sem live no chat, fecha o WS; sem sessão no banco (logout/geração nova) →
+ * para, nunca limpa; lib carregada; WS aberto; lives do chat; moveu > 5 m → cifra sob o SocialDb.atomic e envia. Rede
+ * sempre fora do lock.
  */
 public final class LocationSharer {
     private static final String TAG = "LocationSharer";
@@ -50,6 +52,8 @@ public final class LocationSharer {
     private boolean sharing, open;
     private double lastLat = Double.NaN, lastLng = Double.NaN;
     private int ticks;
+    private long gen = -1;
+    private final Map<String, double[]> liveSent = new HashMap<>();
     // ponytail: SKDM 1 vez por amigo por sessão do joystick (em memória), confirmada pelo Ack S→C do servidor (gravou:
     // entrega garantida pela fila dele); sem Ack até cair, reenvia na próxima conexão.
     // ponytail: a sender key loc:{meuId} não rotaciona ao remover/bloquear um amigo (ele guarda a chave; hoje só o
@@ -97,13 +101,18 @@ public final class LocationSharer {
                 halt();
                 return;
             }
-            if (!Prefs.shareLocation(app)) { // MULTI_PROCESS: lido aqui, fora da main
-                off();
-                return;
-            }
+            boolean share = Prefs.shareLocation(app); // MULTI_PROCESS: lido aqui, fora da main
+            boolean live = Live.maybeActive(app, System.currentTimeMillis());
+            if (!share) shareOff(live);
+            if (!share && !live) return;
             if (Session.access(app) == null) { // logout/geração nova sem sessão: para em 1 tick
                 halt();
                 return;
+            }
+            long g = SocialDb.seenGeneration();
+            if (g != gen) { // logout + login entre dois ticks: nada da conta anterior (id, WS, SKDMs) segue
+                halt();
+                gen = g;
             }
             if (!SignalLoader.loaded()) {
                 SignalLoader.start(app, null); // carrega na thread dele (login + compartilhar); segue no próximo tick
@@ -114,13 +123,16 @@ public final class LocationSharer {
                 if (Session.username(app) == null) return; // sem @nome o Auth é recusado; depois, o Error username_required cobre
                 startWs();
             }
-            sharing = true;
+            sharing = share;
             if (!open) return;
+            WsClient w = ws;
+            if (live) Live.send(app, myId, lat, lng, liveSent, w::send);
+            if (!share) return;
             if (ticks++ % FRIENDS_EVERY == 0) distribute();
             if (!moved(lastLat, lastLng, lat, lng)) return;
             String me = myId;
             byte[] p = Locations.atomic(app, () -> Locations.encrypt(app, me, lat, lng, System.currentTimeMillis()));
-            if (ws.send(Frames.location(p))) {
+            if (w.send(Frames.location(p))) {
                 lastLat = lat;
                 lastLng = lng;
             }
@@ -133,13 +145,15 @@ public final class LocationSharer {
     }
 
     /**
-     * Compartilhar desligado: avisa os amigos uma vez (LocationOff sai antes do close) e fecha o WS. Desligado durante
-     * uma reconexão (WS fechado), o aviso não sai: a última posição some sozinha no servidor em até 60 s (TTL).
+     * Compartilhar desligado: avisa os amigos uma vez (LocationOff sai antes do close) e fecha o WS, que fica aberto só
+     * se há live no chat. Desligado durante uma reconexão (WS fechado), o aviso não sai: a última posição some sozinha no
+     * servidor em até 60 s (TTL).
      */
-    private void off() {
+    private void shareOff(boolean live) {
         if (sharing && ws != null && open) ws.send(Frames.locationOff());
         sharing = false;
-        stopWs();
+        lastLat = lastLng = Double.NaN; // religado: a posição sai já
+        if (!live) stopWs();
     }
 
     /** Sem sessão (ou stop): fecha tudo e esquece o desta sessão. A libsignal fica carregada (não descarrega). */
@@ -157,6 +171,7 @@ public final class LocationSharer {
         open = false;
         lastLat = lastLng = Double.NaN;
         ticks = 0;
+        liveSent.clear();
     }
 
     private void startWs() {

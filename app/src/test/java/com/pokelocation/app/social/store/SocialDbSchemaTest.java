@@ -83,6 +83,16 @@ public class SocialDbSchemaTest {
         assertEquals("0", sqlite(db, ".mode list\nSELECT tries FROM messages;").trim());
     }
 
+    /** v9: a conversa que já existia começa sem a minha chave de grupo distribuída (o :overlay não manda a live). */
+    @Test public void v9KeyNotDistributedByDefault() throws Exception {
+        Assume.assumeTrue(new File(SQLITE).canExecute());
+        File db = new File(tmp.getRoot(), "v9.db");
+        sqlite(db, String.join(";", SocialDb.CHAT) + ";" + String.join(";", SocialDb.CHAT_V8) + ";"
+                + "INSERT INTO conversations(id, grp) VALUES ('g', 1);");
+        sqlite(db, SocialDb.CHAT_V9 + ";");
+        assertEquals("0", sqlite(db, ".mode list\nSELECT key_ok FROM conversations;").trim());
+    }
+
     /** Troca os ? em ordem: o sqlite3 da linha de comando não tem parâmetros. */
     private static String bind(String sql, String... values) {
         for (String v : values) sql = sql.replaceFirst("\\?", v);
