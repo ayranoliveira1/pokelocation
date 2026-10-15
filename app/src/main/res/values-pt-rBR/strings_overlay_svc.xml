@@ -15,6 +15,7 @@
     <string name="ov_svc_resume">Retomar</string>
     <string name="ov_svc_next">Próximo ponto</string>
     <string name="ov_svc_route_load_error">Desculpe, houve um erro ao obter a lista de rotas.</string>
+    <string name="ov_svc_mock_lost">Sem a permissão de localização simulada. O joystick parou.</string>
     <string name="ov_mocking_title">Simulando localização</string>
     <string name="ov_mocking_msg">Este diálogo é necessário para a opção Simulação Suspensa simular a localização nas versões recentes do Android. Você pode desativar esse recurso nas Configurações. Ele fecha sozinho assim que a localização for simulada.</string>
     <string name="ov_mocking_need_location">É necessária a permissão de Localização. Ative a permissão de Localização.</string>

@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -95,12 +96,12 @@ public final class OverlayService extends Service
             if (Actions.wantsStart(intent, action) && Perms.canDrawOverlays(this) && Perms.hasFine(this)
                     && Perms.isMockApp(this)) {
                 boolean tp = Intents.ACTION_TELEPORT.equals(action);
-                start(tp ? Intents.getDouble(intent, Intents.EXTRA_LAT, Double.NaN) : Double.NaN,
-                        tp ? Intents.getDouble(intent, Intents.EXTRA_LNG, Double.NaN) : Double.NaN,
-                        tp ? Intents.getDouble(intent, Intents.EXTRA_ALT, Double.NaN) : Double.NaN,
+                double lat = tp ? Intents.getDouble(intent, Intents.EXTRA_LAT, Double.NaN) : Double.NaN;
+                double lng = tp ? Intents.getDouble(intent, Intents.EXTRA_LNG, Double.NaN) : Double.NaN;
+                start(lat, lng, tp ? Intents.getDouble(intent, Intents.EXTRA_ALT, Double.NaN) : Double.NaN,
                         Prefs.getBool(this, Prefs.HIDE_JOYSTICK), null, false);
                 if (running) {
-                    if (!tp) Actions.handle(this, intent, action);
+                    if (!tp || !Intents.validLatLng(lat, lng)) Actions.handle(this, intent, action);
                     return START_STICKY;
                 }
             }
@@ -128,7 +129,7 @@ public final class OverlayService extends Service
                 Intents.getBool(i, Intents.EXTRA_RECORD_ROUTE, false));
     }
 
-    /** lat/lng NaN = última posição (Prefs.lastPosition). */
+    /** lat/lng NaN ou fora da faixa = última posição (Prefs.lastPosition). */
     private void start(double lat, double lng, double alt, boolean hide, String routeId, boolean record) {
         if (running) return;
         if (!Perms.canDrawOverlays(this) || !Perms.hasFine(this)) {
@@ -136,7 +137,7 @@ public final class OverlayService extends Service
             stopSelf();
             return;
         }
-        if (Double.isNaN(lat) || Double.isNaN(lng)) {
+        if (!Intents.validLatLng(lat, lng)) {
             Coord c = Prefs.lastPosition(this);
             lat = c == null ? 0 : c.lat;
             lng = c == null ? 0 : c.lng;
@@ -147,6 +148,11 @@ public final class OverlayService extends Service
         engine = new MockEngineImpl(this, cfg);
         engine.setListener(this);
         engine.setSuspendedPublisher(this);
+        // System Mode (API < 29 com INSTALL_LOCATION_PROVIDER) injeta sem a permissão de localização simulada.
+        if (!Prefs.getBool(this, Prefs.ALWAYS_IGNORE_MOCK_LOCATION) && (Build.VERSION.SDK_INT >= 29
+                || checkSelfPermission("android.permission.INSTALL_LOCATION_PROVIDER") != PackageManager.PERMISSION_GRANTED)) {
+            engine.setOnMockLost(this::onMockLost);
+        }
         ui = new OverlayView(Themes.overlayContext(this), engine, cfg, this);
         engine.start(lat, lng, alt);
         ui.setVisible(!hidden);
@@ -177,6 +183,11 @@ public final class OverlayService extends Service
     public void stopSpoof() {
         sendSession();
         stopSelf();
+    }
+
+    private void onMockLost() {
+        Ui.toast(this, com.pokelocation.app.R.string.ov_svc_mock_lost);
+        stopSpoof();
     }
 
     private void sendSession() {

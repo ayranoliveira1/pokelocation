@@ -674,7 +674,7 @@ public final class MainActivity extends BaseActivity {
         }
         String act = i.getStringExtra(Intents.EXTRA_REPLAY_ACTION);
         double lat = Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN), lng = Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN);
-        if (Intents.ACTION_TELEPORT.equals(act) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        if (Intents.ACTION_TELEPORT.equals(act) && Intents.validLatLng(lat, lng)) {
             // TELEPORT frio: inicia já no ponto, sem reenviar a ação
             double alt = Intents.getDouble(i, Intents.EXTRA_ALT, Double.NaN);
             form.select(MainForm.SRC_SET);

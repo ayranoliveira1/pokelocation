@@ -116,6 +116,10 @@ public final class Actions {
                 double lat = Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN);
                 double lng = Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN);
                 if (Double.isNaN(lat) || Double.isNaN(lng)) return; // sem lat/lng: ignora (02 §3.9)
+                if (!Intents.validLatLng(lat, lng)) {
+                    Intents.broadcastError(s, i, Intents.ERR_INVALID_EXTRAS, "lat must be in [-90, 90] and lng in [-180, 180]");
+                    return;
+                }
                 s.teleportTo(lat, lng, Intents.getDouble(i, Intents.EXTRA_ALT, Double.NaN));
                 return;
             }

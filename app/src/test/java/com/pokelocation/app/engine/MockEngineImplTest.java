@@ -31,6 +31,8 @@ public class MockEngineImplTest {
         double pLat, pLng;
         float pBearing;
         boolean pHasSpeed;
+        boolean registerOk = true, mockOk = true;
+        int mockLost;
         final List<Integer> countdowns = new ArrayList<>();
         final List<String> states = new ArrayList<>();
 
@@ -44,7 +46,8 @@ public class MockEngineImplTest {
         @Override long wallTime() { return wall; }
         @Override void scheduleAt(long t) { scheduled = t; }
         @Override void cancelSchedule() { scheduled = -1; }
-        @Override void registerProviders() {}
+        @Override boolean registerProviders() { return registerOk; }
+        @Override boolean mockAllowed() { return mockOk; }
         @Override void unregisterProviders() {}
         @Override void saveLive(double la, double ln, double al) { saves++; }
         @Override void publish(double la, double ln, double al, float sp, boolean hs, float acc, float br, boolean hb) {
@@ -212,6 +215,38 @@ public class MockEngineImplTest {
         e.setStick(0, 1f);
         for (int i = 0; i < 12; i++) e.pump();
         assertEquals(3, e.saves);                  // no máx. a cada 5 s
+    }
+
+    @Test public void registerFailedStopsOnFirstLoop() {   // item 17
+        TestEngine e = new TestEngine(cfg());
+        e.setOnMockLost(() -> e.mockLost++);
+        e.registerOk = false;
+        e.start(0, 0, NaN);
+        e.pump();
+        assertEquals(1, e.mockLost);
+        assertEquals(0, e.publishes);
+    }
+
+    @Test public void registerFailedIgnoredWhenNotArmed() {
+        TestEngine e = new TestEngine(cfg());
+        e.registerOk = false;
+        e.start(0, 0, NaN);
+        e.pump();
+        assertEquals(1, e.publishes);
+    }
+
+    @Test public void mockRevokedMidSessionCheckedEvery5s() {
+        TestEngine e = new TestEngine(cfg());
+        e.setOnMockLost(() -> e.mockLost++);
+        e.start(0, 0, NaN);
+        e.pump();
+        e.mockOk = false;
+        for (int i = 0; i < 4; i++) e.pump();
+        assertEquals(0, e.mockLost);
+        e.pump();
+        assertEquals(1, e.mockLost);
+        for (int i = 0; i < 10; i++) e.pump();
+        assertEquals(1, e.mockLost);
     }
 
     @Test public void tickDoesNotAllocate() throws Exception {   // N09 / R2

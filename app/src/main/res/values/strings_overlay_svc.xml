@@ -16,6 +16,7 @@
     <string name="ov_svc_resume">Resume</string>
     <string name="ov_svc_next">Next waypoint</string>
     <string name="ov_svc_route_load_error">Sorry, there was an error getting the list of routes.</string>
+    <string name="ov_svc_mock_lost">Mock location permission is missing. The joystick stopped.</string>
     <string name="ov_mocking_title">Mocking Location</string>
     <string name="ov_mocking_msg">This dialog is required for the Suspended Mocking option to allow mocking location on the latest Android version. You can disable this feature from Settings. This dialog will close automatically once the location has been mocked.</string>
     <string name="ov_mocking_need_location">This requires Location permissions. Please enable the Location permission.</string>

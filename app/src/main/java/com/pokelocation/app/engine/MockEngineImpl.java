@@ -7,6 +7,7 @@ import android.os.SystemClock;
 
 import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.geo.Geo;
+import com.pokelocation.app.util.Perms;
 
 /**
  * Motor de mock (10 §3.1 + 11 §5). Roda na main thread do :overlay, num único Handler reagendado por
@@ -15,6 +16,7 @@ import com.pokelocation.app.geo.Geo;
  */
 public class MockEngineImpl implements MockEngine {
     private static final long SAVE_LIVE_MS = 5000;
+    private static final long MOCK_CHECK_MS = 5000;
 
     private final EngineConfig cfg;
     private final Context app;                 // null no teste JVM
@@ -26,8 +28,9 @@ public class MockEngineImpl implements MockEngine {
 
     private Listener listener;
     private SuspendedPublisher publisher;
-    private boolean started, playing, autoSuspendActive;
-    private long target, lastTick, lastSave;
+    private Runnable onMockLost;
+    private boolean started, playing, autoSuspendActive, registered;
+    private long target, lastTick, lastSave, lastMockCheck;
     private int accUpd, accIdle, freezeTicks, countdown;
 
     private double lat, lng, alt = Double.NaN;            // posição lógica
@@ -64,7 +67,8 @@ public class MockEngineImpl implements MockEngine {
     long wallTime() { return System.currentTimeMillis(); }
     void scheduleAt(long uptimeMs) { handler.postAtTime(loop, uptimeMs); }
     void cancelSchedule() { handler.removeCallbacks(loop); }
-    void registerProviders() { injector.register(); }
+    boolean registerProviders() { return injector.register(); }
+    boolean mockAllowed() { return Perms.isMockApp(app); }
     void unregisterProviders() { injector.unregister(); }
     void saveLive(double la, double ln, double al) { Prefs.saveLive(app, la, ln, al); }
     void publish(double la, double ln, double al, float sp, boolean hs, float acc, float br, boolean hb) {
@@ -82,6 +86,9 @@ public class MockEngineImpl implements MockEngine {
     @Override public void setListener(Listener l) { listener = l; }
     @Override public void setSuspendedPublisher(SuspendedPublisher p) { publisher = p; }
 
+    /** Chamado uma vez, na main thread, se o registro falhar ou a permissão de localização simulada sumir. */
+    public void setOnMockLost(Runnable r) { onMockLost = r; }
+
     @Override
     public void start(double lat, double lng, double alt) {
         if (started) return;
@@ -89,8 +96,8 @@ public class MockEngineImpl implements MockEngine {
         this.lat = repLat = lat;
         this.lng = repLng = lng;
         this.alt = repAlt = alt;
-        registerProviders();
-        target = uptime();
+        registered = registerProviders();
+        target = lastMockCheck = uptime();
         if (cfg.suspended) {
             // 11 §2.3: sem injeção imediata; a primeira vem do primeiro gatilho.
             countdown = suspendInterval();
@@ -111,6 +118,15 @@ public class MockEngineImpl implements MockEngine {
     void onLoop() {
         if (!started) return;
         long now = uptime();
+        if (onMockLost != null && (!registered || now - lastMockCheck >= MOCK_CHECK_MS)) {
+            lastMockCheck = now;
+            if (!registered || !mockAllowed()) {
+                Runnable r = onMockLost;
+                onMockLost = null;
+                r.run();
+                return;
+            }
+        }
         if (cfg.suspended) countdownStep(); else tick();
         if (!started) return;   // um callback pode ter chamado shutdown()
         long step = cfg.suspended ? 1000 : cfg.processMs;
