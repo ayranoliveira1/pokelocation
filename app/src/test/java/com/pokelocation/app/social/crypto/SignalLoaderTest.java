@@ -285,6 +285,31 @@ public class SignalLoaderTest {
         assertEquals(null, SignalLoader.pin("arm64-v8a:aa:10,armeabi-v7a:bb:20,x86_64:cc:30", "x86"));
     }
 
+    /** Ping do FCM com a lib carregando: espera a carga terminar (com teto) e segue para drenar a fila. */
+    @Test public void pingWaitsForTheLoadInProgress() throws Exception {
+        SignalLoader.await(null, 10);
+        Thread quick = new Thread(() -> sleep(50));
+        quick.start();
+        SignalLoader.await(quick, 5_000);
+        assertFalse(quick.isAlive());
+        Thread slow = new Thread(() -> sleep(5_000));
+        slow.setDaemon(true);
+        slow.start();
+        try {
+            SignalLoader.await(slow, 50);
+            fail();
+        } catch (IOException expected) {
+            assertEquals("downloading", expected.getMessage());
+        }
+    }
+
+    private static void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException ignored) {
+        }
+    }
+
     private static String hex(byte[] b) {
         StringBuilder sb = new StringBuilder();
         for (byte x : b) sb.append(String.format("%02x", x));

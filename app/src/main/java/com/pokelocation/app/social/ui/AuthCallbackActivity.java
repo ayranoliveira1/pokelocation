@@ -32,6 +32,10 @@ public final class AuthCallbackActivity extends BaseActivity {
             deleteAccount(app, data);
             return;
         }
+        if (Session.loggedIn(app)) { // aba do Google aberta antes de um login por email: não troca de conta por cima
+            LoginActivity.go(this, null);
+            return;
+        }
         task = Io.run(() -> {
             Api.googleFinish(app, data);
             String returnTo = Session.takeReturnTo(app);

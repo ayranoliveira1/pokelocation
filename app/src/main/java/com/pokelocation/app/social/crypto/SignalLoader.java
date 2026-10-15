@@ -34,7 +34,7 @@ public final class SignalLoader {
     static final String SO = "libsignal_jni.so", PART = SO + ".gz.part", TMP = SO + ".tmp";
     public static final String NO_SPACE = "no_space";
     private static final String GITHUB = "https://github.com/ayranoliveira1/pokelocation/releases/download/";
-    private static final int ROUNDS = 4, TIMEOUT_MS = 20_000, STEP = 128 * 1024;
+    private static final int ROUNDS = 4, TIMEOUT_MS = 20_000, STEP = 128 * 1024, PING_WAIT_MS = 10_000;
 
     /** Callbacks na main. */
     public interface Listener {
@@ -181,12 +181,14 @@ public final class SignalLoader {
         });
     }
 
-    /** Ping do FCM (~20 s): só o .so já baixado e conferido, sem rede nem esperas. */
+    /** Ping do FCM (~20 s): espera até 10 s a carga em andamento; senão, só o .so já baixado e conferido, sem rede. */
     public static void loadDownloaded(Context c) throws IOException {
         if (sLoaded) return;
+        Thread t;
         synchronized (SignalLoader.class) {
-            if (sThread != null) throw new IOException("downloading");
+            t = sThread;
         }
+        await(t, PING_WAIT_MS);
         try {
             synchronized (LOAD) {
                 loadLocked(c.getApplicationContext(), true);
@@ -195,6 +197,17 @@ public final class SignalLoader {
             sUnavailable = true;
             throw e;
         }
+    }
+
+    static void await(Thread t, long ms) throws IOException {
+        if (t == null) return;
+        try {
+            t.join(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException(e);
+        }
+        if (t.isAlive()) throw new IOException("downloading");
     }
 
     /** Bloqueante. Retentativas com espera de 2/4/8 s. */
