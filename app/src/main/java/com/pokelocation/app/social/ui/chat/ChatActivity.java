@@ -106,7 +106,6 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
         input = findViewById(R.id.soc_chat_input);
         newChip = findViewById(R.id.soc_chat_new);
         lm = new LinearLayoutManager(this, RecyclerView.VERTICAL, true);
-        lm.setStackFromEnd(true);
         rv.setLayoutManager(lm);
         adapter = new MsgAdapter(this, group, this::onTap);
         if (!group) adapter.setIdentity(title, m -> showSafety(), m -> resend());
