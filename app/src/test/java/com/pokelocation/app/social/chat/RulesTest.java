@@ -35,6 +35,32 @@ public class RulesTest {
         assertFalse(l.allow("a", 9 * 60_000L));
         assertTrue(l.allow("b", 9 * 60_000L));
         assertTrue(l.allow("a", 10 * 60_000L));
+        l.forget("a"); // o reset não saiu: volta para a fila sem esperar os 10 min
+        assertTrue(l.allow("a", 10 * 60_000L + 1));
+    }
+
+    @Test public void resendRequestClearsOnlyAfterEveryAck() {
+        int[] done = {0};
+        Rules.Batch b = new Rules.Batch(() -> done[0]++);
+        b.add();
+        b.add();
+        b.ack();
+        b.ack();
+        assertEquals(0, done[0]); // o lote ainda está sendo montado
+        b.ack();
+        assertEquals(1, done[0]);
+
+        Rules.Batch f = new Rules.Batch(() -> done[0]++);
+        f.add();
+        f.add();
+        f.ack();
+        f.fail();
+        f.ack();
+        assertEquals(1, done[0]);
+
+        Rules.Batch none = new Rules.Batch(() -> done[0]++);
+        none.ack();
+        assertEquals(2, done[0]); // nada reenviável: o pedido sai
     }
 
     @Test public void outboxRetriesThenFails() {

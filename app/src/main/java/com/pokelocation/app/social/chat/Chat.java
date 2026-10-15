@@ -65,7 +65,7 @@ public final class Chat {
 
     /**
      * Toque em 'Reenviar N': recifra pela sessão nova e reenvia (id novo, o original dentro do cifrado); sem WS, sai quando
-     * ele abrir. Nunca sai sem este toque. Devolve quantas; o aviso volta pelo onMessage com resend = 0.
+     * ele abrir. Nunca sai sem este toque. Devolve quantas; o pedido (e o botão) só some com o Ack de todas.
      */
     public static int resend(Context c, String convId) throws IOException {
         if (!SocialDb.useIfHeld()) throw new Rules.Unsent("closed");
@@ -73,13 +73,9 @@ public final class Chat {
         try {
             String peer = Locations.atomic(c, () -> ChatDb.peer(c, convId));
             if (peer == null) return 0;
-            List<String> ids = Locations.atomic(c, () -> {
-                List<String> l = ChatDb.resendRequest(c, convId, System.currentTimeMillis() - Rules.RESEND_WINDOW_MS);
-                ChatDb.clearResendRequest(c, convId);
-                return l;
-            });
+            List<String> ids = Locations.atomic(c,
+                    () -> ChatDb.resendRequest(c, convId, System.currentTimeMillis() - Rules.RESEND_WINDOW_MS));
             if (!ids.isEmpty()) Inbox.resendApproved(c, peer, ids);
-            ChatSocket.dispatch(Locations.atomic(c, () -> ChatDb.latestNotice(c, convId)));
             return ids.size();
         } finally {
             SocialDb.release();
@@ -219,6 +215,7 @@ public final class Chat {
     }
 
     static boolean hasOutbox(Context c) {
+        if (Inbox.resendLater()) return true;
         SocialDb.use();
         try {
             return db(c, () -> !ChatDb.sendingIds(c).isEmpty(), false);

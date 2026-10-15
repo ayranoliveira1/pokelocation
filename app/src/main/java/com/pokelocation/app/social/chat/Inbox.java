@@ -284,37 +284,59 @@ public final class Inbox {
 
     /** WS do chat acabou de abrir: os resets que chegaram pela fila REST. */
     static void sendPendingResets(Context c, Predicate<byte[]> send) {
-        for (String peer : RESET_LATER) {
+        for (String peer : new ArrayList<>(RESET_LATER)) { // cópia: o reset que não sai volta para o RESET_LATER
             RESET_LATER.remove(peer);
             if (RESETS.allow(peer, System.currentTimeMillis())) sendReset(c, peer, send);
         }
         for (String peer : RESEND_LATER.keySet()) {
             List<String> ids = RESEND_LATER.remove(peer);
-            if (ids != null) resend(c, peer, ids, send);
+            if (ids != null) resend(c, peer, ids);
         }
     }
 
     static void resendApproved(Context c, String peer, List<String> ids) {
-        if (ChatSocket.isOpen()) resend(c, peer, ids, null);
+        if (ChatSocket.isOpen()) resend(c, peer, ids);
         else RESEND_LATER.put(peer, ids);
     }
 
+    static boolean resendLater() { return !RESEND_LATER.isEmpty(); }
+
     /**
      * Só o que eu mandei para ele, neste 1:1, nas últimas 24 h (o SQL do ChatDb recusa o resto), pela sessão nova, com
-     * client_msg_id novo e o original dentro do cifrado.
+     * client_msg_id novo e o original dentro do cifrado. Sem o Ack de alguma, o pedido fica e o usuário toca de novo.
      */
-    private static void resend(Context c, String peer, List<String> ids, Predicate<byte[]> send) {
+    private static void resend(Context c, String peer, List<String> ids) {
         long since = System.currentTimeMillis() - Rules.RESEND_WINDOW_MS;
+        String convId = ChatDb.directId(peer);
+        Rules.Batch batch = new Rules.Batch(() -> resent(c, convId, ids));
         for (String id : new LinkedHashSet<>(ids)) {
             try {
                 Chat.Msg m = Locations.atomic(c, () -> ChatDb.resendable(c, peer, id, since));
                 if (m == null) continue;
-                byte[] frame = Frames.envelope(peer, UUID.randomUUID().toString(), Groups.seal1to1(c, peer, Content.resend(id, m), null));
-                if (send != null) send.test(frame);
-                else ChatSocket.send(frame, null, null, null);
+                String cmid = UUID.randomUUID().toString();
+                byte[] frame = Frames.envelope(peer, cmid, Groups.seal1to1(c, peer, Content.resend(id, m), null));
+                batch.add();
+                if (!ChatSocket.send(frame, cmid, batch::ack, batch::fail)) {
+                    batch.fail();
+                    break;
+                }
             } catch (IOException e) {
+                batch.fail();
                 Log.w("Inbox", "resend: " + e.getClass().getSimpleName());
             }
+        }
+        batch.ack();
+    }
+
+    /** Só apaga o pedido que foi reenviado: um RESET novo do amigo nesse meio-tempo fica. */
+    private static void resent(Context c, String convId, List<String> ids) {
+        try {
+            ChatSocket.dispatch(Locations.atomic(c, () -> {
+                if (ChatDb.resendRequest(c, convId, 0).equals(ids)) ChatDb.clearResendRequest(c, convId);
+                return ChatDb.latestNotice(c, convId);
+            }));
+        } catch (IOException e) {
+            Log.w("Inbox", "resent: " + e.getClass().getSimpleName());
         }
     }
 
@@ -382,8 +404,9 @@ public final class Inbox {
             List<String> unread = Locations.atomic(c, () -> ChatDb.unreadableIds(c, peer, System.currentTimeMillis() - Rules.RESEND_WINDOW_MS));
             Api.Bundle b = Api.keyBundle(c, peer);
             byte[] frame = Frames.envelope(peer, UUID.randomUUID().toString(), Groups.seal1to1(c, peer, Content.reset(unread), b));
-            if (send != null) send.test(frame);
-            else ChatSocket.send(frame, null, null, null);
+            if (send != null ? send.test(frame) : ChatSocket.send(frame, null, null, null)) return;
+            RESETS.forget(peer); // o WS caiu: sai na próxima abertura, não só na próxima ilegível
+            RESET_LATER.add(peer);
         } catch (IOException e) {
             Log.w("Inbox", "reset: " + e.getClass().getSimpleName());
         }

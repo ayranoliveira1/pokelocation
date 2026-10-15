@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 final class Rules {
     static final int APPLY = 1, SYNC = 2, DROP = 3, MAX_TRIES = 3, MAX_PENDING_PER_SENDER = 200, PING_PAGES = 10;
@@ -162,5 +164,22 @@ final class Rules {
             last.put(peer, now);
             return true;
         }
+
+        void forget(String peer) { last.remove(peer); }
+    }
+
+    /** Lote de envios: done só roda depois do Ack de todos e sem nenhuma falha; o ack() final fecha o lote montado. */
+    static final class Batch {
+        private final AtomicInteger left = new AtomicInteger(1);
+        private final AtomicBoolean failed = new AtomicBoolean();
+        private final Runnable done;
+
+        Batch(Runnable done) { this.done = done; }
+
+        void add() { left.incrementAndGet(); }
+
+        void ack() { if (left.decrementAndGet() == 0 && !failed.get()) done.run(); }
+
+        void fail() { failed.set(true); }
     }
 }
