@@ -97,9 +97,16 @@ public class FramesTest {
         assertBad(new byte[]{2, 0, 1, 'p'});
     }
 
-    @Test public void rejectsTrailingBytesUnknownTypeAndEmpty() {
-        assertBad(new byte[]{1, 0, 1, 'a', 0});
-        assertBad(new byte[]{99});
+    @Test public void toleratesUnknownTypeAndTrailingFields() throws IOException {
+        Frames.Frame u = Frames.decode(new byte[]{99, 1, 2, 3});
+        assertEquals(99, u.type);
+        assertNull(u.peer);
+        assertNull(u.payload);
+        assertEquals("bad", Frames.decode(new byte[]{7, 0, 3, 'b', 'a', 'd', 0, 1, 'x'}).code);
+        assertEquals("f", Frames.decode(new byte[]{6, 0, 1, 'f', 5}).peer);
+    }
+
+    @Test public void rejectsEmpty() {
         assertBad(new byte[0]);
     }
 

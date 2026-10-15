@@ -54,7 +54,6 @@ public final class Frames {
         return new W(GROUP_ENVELOPE).str(groupId).str(msgId).bin(payload).out();
     }
 
-    /** ProtocolException: vazio, tipo desconhecido, tamanho que passa do frame ou bytes sobrando. */
     public static final int ERR_IGNORE = 0, ERR_RENEW = 1, ERR_STOP = 2, ERR_LOGOUT = 3, ERR_PEER = 4;
 
     public static int onError(String code) {
@@ -65,6 +64,10 @@ public final class Frames {
         return ERR_IGNORE;
     }
 
+    /**
+     * ProtocolException: vazio ou tamanho que passa do frame. Tipo desconhecido vira um Frame só com o tipo, e bytes no fim
+     * são ignorados: o servidor pode ganhar frames e campos novos sem derrubar clientes antigos.
+     */
     public static Frame decode(byte[] f) throws ProtocolException {
         R r = new R(f);
         int type = r.u8();
@@ -84,9 +87,8 @@ public final class Frames {
                 break;
             }
             case GROUP_CHANGED: out = new Frame(type, null, null, null, null, r.str()); break;
-            default: throw new ProtocolException("type " + type);
+            default: out = new Frame(type, null, null, null, null);
         }
-        if (r.left() != 0) throw new ProtocolException("trailing");
         return out;
     }
 

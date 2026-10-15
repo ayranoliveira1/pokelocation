@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Process;
+import android.os.SystemClock;
 import android.util.Log;
 
 import com.pokelocation.app.BuildConfig;
@@ -33,13 +34,15 @@ import java.util.UUID;
  * Compartilha minha posição com os amigos, no :overlay; o OverlayService só o cria com login (o motor não muda).
  * A cada 5 s a main só lê lat/lng e entrega à "pl-loc", que segue nesta ordem: sem social.db → nada; "Compartilhar"
  * desligado → LocationOff na transição e, sem live no chat, fecha o WS; sem sessão no banco (logout/geração nova) →
- * para, nunca limpa; lib carregada; WS aberto; lives do chat; moveu > 5 m → cifra sob o SocialDb.atomic e envia. Rede
- * sempre fora do lock.
+ * para, nunca limpa; lib carregada; WS aberto; lives do chat; moveu > 5 m ou 9 s sem enviar → cifra sob o
+ * SocialDb.atomic e envia. Rede sempre fora do lock.
  */
 public final class LocationSharer {
     private static final String TAG = "LocationSharer";
     private static final long TICK_MS = 5000;
     private static final double MIN_MOVE_M = 5;
+    // 2 ticks com folga para o atraso da pl-loc: o ponto do amigo esmaece aos 15 s e o servidor aceita 1 a cada 4 s
+    private static final long RESEND_MS = 9_000;
     private static final int FRIENDS_EVERY = 60; // ticks (5 min): amigos novos recebem a SKDM
 
     private final Context app;
@@ -53,6 +56,7 @@ public final class LocationSharer {
     private String myId;
     private boolean sharing, open;
     private double lastLat = Double.NaN, lastLng = Double.NaN;
+    private long lastAt;
     private int ticks;
     private boolean dbHeld;
     private long gen = -1;
@@ -139,12 +143,14 @@ public final class LocationSharer {
             if (live) Live.send(app, myId, lat, lng, liveSent, w::send);
             if (!share) return;
             if (ticks++ % FRIENDS_EVERY == 0) distribute();
-            if (!moved(lastLat, lastLng, lat, lng)) return;
+            long now = SystemClock.elapsedRealtime();
+            if (!due(lastLat, lastLng, lastAt, lat, lng, now)) return;
             String me = myId;
             byte[] p = Locations.atomic(app, () -> Locations.encrypt(app, me, lat, lng, System.currentTimeMillis()));
             if (w.send(Frames.location(p))) {
                 lastLat = lat;
                 lastLng = lng;
+                lastAt = now;
             }
         } catch (Api.Error e) {
             if (e.endsSession()) halt(); // sessão morta: para; quem limpa é o principal
@@ -203,6 +209,7 @@ public final class LocationSharer {
                         work.post(() -> {
                             if (ws != self[0]) return;
                             open = true;
+                            lastLat = lastLng = Double.NaN; // republica já ao reconectar, sem esperar os 9 s
                             ticks = 0; // distribui a SKDM já no próximo tick
                             skdmPending.clear(); // sem Ack na conexão velha: manda de novo
                             ChatSocket.bind(app, self[0], work);
@@ -282,6 +289,10 @@ public final class LocationSharer {
                 Log.w(TAG, "skdm: " + e.code); // um amigo sem chaves no servidor não segura os outros
             }
         }
+    }
+
+    static boolean due(double lat0, double lng0, long at0, double lat, double lng, long now) {
+        return now - at0 >= RESEND_MS || moved(lat0, lng0, lat, lng);
     }
 
     /** Manda se nada foi enviado ainda ou se andou mais de 5 m. */
