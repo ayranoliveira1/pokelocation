@@ -53,6 +53,14 @@ public final class Errors {
         return t instanceof Api.Error && "rate_limited".equals(((Api.Error) t).code) ? R.string.soc_err_username_limit : message(t);
     }
 
+    static int deleteMessage(Throwable t) {
+        String c = t instanceof Api.Error ? ((Api.Error) t).code : null;
+        if ("invalid_credentials".equals(c)) return R.string.soc_delete_wrong_password;
+        if ("reauth_mismatch".equals(c)) return R.string.soc_delete_other_google;
+        if ("reauth_required".equals(c)) return R.string.soc_delete_reauth_required;
+        return message(t);
+    }
+
     static boolean aboutUsername(Throwable t) {
         if (!(t instanceof Api.Error)) return false;
         String c = ((Api.Error) t).code;
@@ -61,6 +69,6 @@ public final class Errors {
 
     /** Sessão morreu (a Api já limpou): a tela volta ao login. */
     public static boolean unauthorized(Throwable t) {
-        return t instanceof Api.Error && "unauthorized".equals(((Api.Error) t).code);
+        return t instanceof Api.Error && ((Api.Error) t).endsSession();
     }
 }

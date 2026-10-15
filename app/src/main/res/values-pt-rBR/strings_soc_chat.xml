@@ -8,6 +8,7 @@
     <string name="soc_chat_new_messages">Novas mensagens</string>
     <string name="soc_chat_sending">Aguardando envio</string>
     <string name="soc_chat_failed">Não enviada · toque para reenviar</string>
+    <string name="soc_chat_failed_gone">Não enviada: vocês não são mais amigos ou a conta não existe</string>
     <string name="soc_chat_unreadable">Não foi possível ler esta mensagem</string>
     <string name="soc_chat_identity_changed">O código de segurança mudou</string>
 

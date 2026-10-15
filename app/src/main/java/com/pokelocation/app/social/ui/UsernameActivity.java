@@ -39,6 +39,7 @@ public final class UsernameActivity extends BaseActivity {
             finish();
             return;
         }
+        SessionEnd.watch(this);
         returnTo = getIntent().getStringExtra(LoginActivity.EXTRA_RETURN_TO);
         current = getIntent().getStringExtra(EXTRA_CURRENT);
         setContentView(R.layout.soc_username);

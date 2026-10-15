@@ -26,6 +26,7 @@ import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.ui.Errors;
 import com.pokelocation.app.social.ui.FriendsActivity;
 import com.pokelocation.app.social.ui.LoginActivity;
+import com.pokelocation.app.social.ui.SessionEnd;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.base.StateView;
 import com.pokelocation.app.util.Ui;
@@ -49,6 +50,7 @@ public final class ChatListActivity extends BaseActivity implements Chat.Listene
             toLogin();
             return;
         }
+        SessionEnd.watch(this);
         setContentView(R.layout.soc_chat_list);
         setupToolbar(getString(R.string.soc_chat_title), true);
         applyInsets(findViewById(R.id.soc_chat_list_root));

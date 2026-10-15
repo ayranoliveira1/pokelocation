@@ -58,4 +58,14 @@
     <string name="soc_err_unavailable">Servidor indisponível no momento. Tente de novo em instantes.</string>
     <string name="soc_err_network">Sem conexão com o servidor. Verifique sua internet.</string>
     <string name="soc_err_generic">Algo deu errado. Tente de novo.</string>
+    <string name="soc_delete_account">Excluir minha conta</string>
+    <string name="soc_delete_confirm">Isso apaga sua conta, seus amigos e suas conversas, neste celular e no servidor. Não tem volta.</string>
+    <string name="soc_delete_confirm_google">Isso apaga sua conta, seus amigos e suas conversas, neste celular e no servidor. Não tem volta. Para confirmar, entre com o Google de novo.</string>
+    <string name="soc_delete_password">Senha atual</string>
+    <string name="soc_delete">Excluir</string>
+    <string name="soc_delete_done">Conta excluída.</string>
+    <string name="soc_delete_loading">Carregando sua conta. Tente de novo em instantes.</string>
+    <string name="soc_delete_wrong_password">Senha incorreta.</string>
+    <string name="soc_delete_other_google">É outra conta Google. Use a que está ligada ao PokeLocation.</string>
+    <string name="soc_delete_reauth_required">Confirme de novo com o Google para excluir a conta.</string>
 </resources>

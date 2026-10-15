@@ -31,6 +31,7 @@ import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.ui.Errors;
 import com.pokelocation.app.social.ui.FriendsActivity;
 import com.pokelocation.app.social.ui.LoginActivity;
+import com.pokelocation.app.social.ui.SessionEnd;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.base.StateView;
 import com.pokelocation.app.ui.main.MainActivity;
@@ -93,6 +94,7 @@ public final class ChatActivity extends BaseActivity implements Chat.Listener {
             toLogin();
             return;
         }
+        SessionEnd.watch(this);
         Intent in = getIntent();
         convId = in.getStringExtra(EXTRA_CONV);
         friendUserId = in.getStringExtra(EXTRA_FRIEND);

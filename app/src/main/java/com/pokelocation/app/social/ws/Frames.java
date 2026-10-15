@@ -55,6 +55,16 @@ public final class Frames {
     }
 
     /** ProtocolException: vazio, tipo desconhecido, tamanho que passa do frame ou bytes sobrando. */
+    public static final int ERR_IGNORE = 0, ERR_RENEW = 1, ERR_STOP = 2, ERR_LOGOUT = 3, ERR_PEER = 4;
+
+    public static int onError(String code) {
+        if ("unauthorized".equals(code)) return ERR_RENEW;
+        if ("username_required".equals(code)) return ERR_STOP;
+        if ("account_deleted".equals(code)) return ERR_LOGOUT;
+        if ("forbidden".equals(code)) return ERR_PEER;
+        return ERR_IGNORE;
+    }
+
     public static Frame decode(byte[] f) throws ProtocolException {
         R r = new R(f);
         int type = r.u8();

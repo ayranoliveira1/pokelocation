@@ -278,6 +278,8 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_actions" />
         </receiver>
+        <receiver android:name=".social.SessionEndedReceiver" android:exported="false"
+            android:permission="${applicationId}.permission.INTERNAL" />
         <receiver android:name=".ipc.SpoofStateReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="pokelocation.action.SPOOF_STATE_CHANGED" />

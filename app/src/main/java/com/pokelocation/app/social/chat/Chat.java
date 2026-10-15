@@ -24,6 +24,7 @@ import java.util.UUID;
 public final class Chat {
     public static final int TEXT = 1, LOC = 2, LIVE_START = 3, LIVE_STOP = 4, UNREADABLE = 5, IDENTITY_CHANGED = 6;
     public static final int SENDING = 1, SENT = 2, FAILED = 3;
+    public static final int FAIL_GONE = 1;
 
     /** myLiveUntil: minha live ativa nesta conversa (0 = nenhuma); liveUntil: a mais longa ativa de outro membro. */
     public static final class Conv {
@@ -36,6 +37,7 @@ public final class Chat {
         public long id; public String clientMsgId, convId, from;   // from == null: minha
         public int type, state; public String text; public double lat, lng; public long liveUntil, ts;
         public int resend;   // só no aviso IDENTITY_CHANGED mais recente com pedido válido: N do 'Reenviar N'
+        public int fail;
     }
     public interface Listener { void onMessage(Msg m); void onConversationsChanged(); }   // entregue na main
 
@@ -286,12 +288,45 @@ public final class Chat {
         if (!SocialDb.useIfHeld()) throw new Rules.Unsent("closed");
         if (App.process() != App.PROC_MAIN) ChatSocket.wantWs();
         try {
+            known(c, convId);
             Locations.atomic(c, () -> ChatDb.insert(c, m));
             transmit(c, m);
         } finally {
             SocialDb.release();
         }
         return m;
+    }
+
+    /** ChatActivity aberta por um id sem linha (conversa nova, grupo que este aparelho ainda não sincronizou). */
+    private static void known(Context c, String convId) throws IOException {
+        if (Locations.atomic(c, () -> ChatDb.conversation(c, convId)) != null) return;
+        String peer = ChatDb.directPeer(convId);
+        if (peer != null) {
+            Locations.atomic(c, () -> {
+                ChatDb.ensureConversation(c, convId, false, peer, null);
+                return null;
+            });
+        } else if (uuid(convId)) {
+            Groups.sync(c, convId);
+        }
+        if (Locations.atomic(c, () -> ChatDb.conversation(c, convId)) == null) throw new Rules.Unsent("unknown conversation");
+    }
+
+    private static boolean uuid(String s) {
+        try {
+            return UUID.fromString(s).toString().equalsIgnoreCase(s);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public static void failNotFriends(Context c) throws IOException {
+        List<Long> gone = Rules.notFriends(Locations.atomic(c, () -> ChatDb.sendingDirect(c)), () -> {
+            List<String> ids = new ArrayList<>();
+            for (Api.Friend f : Api.friends(c).accepted) ids.add(f.userId);
+            return ids;
+        });
+        for (long id : gone) ChatSocket.setState(c, id, ChatDb.GONE);
     }
 
     private static void transmit(Context c, Msg m) {
@@ -312,7 +347,7 @@ public final class Chat {
             if (ChatSocket.sendMessage(c, frame, m)) {
                 Locations.atomic(c, () -> ChatDb.incTries(c, m.id));
             }
-        }, () -> fail(c, m.id));
+        }, () -> fail(c, m.id), () -> ChatSocket.setState(c, m.id, ChatDb.directPeer(m.convId) != null ? ChatDb.GONE : FAILED));
     }
 
     static void noAck(Context c, long id) {

@@ -3,6 +3,7 @@ package com.pokelocation.app.social.chat;
 import android.util.Log;
 
 import com.pokelocation.app.geo.Geo;
+import com.pokelocation.app.social.net.Api;
 
 import org.signal.libsignal.protocol.InvalidMessageException;
 import org.signal.libsignal.protocol.NoSessionException;
@@ -68,13 +69,31 @@ final class Rules {
     }
 
     /** Nenhuma exceção deixa a mensagem em SENDING para sempre: vira FAILED (o usuário reenvia). */
-    static void sendOrFail(Send send, Runnable fail) {
+    static void sendOrFail(Send send, Runnable fail) { sendOrFail(send, fail, fail); }
+
+    static void sendOrFail(Send send, Runnable fail, Runnable gone) {
         try {
             send.run();
         } catch (Exception | LinkageError e) {
             Log.w("Chat", "send: " + cause(e));
-            fail.run();
+            if (peerGone(e)) gone.run();
+            else fail.run();
         }
+    }
+
+    /** O servidor não distingue conta apagada de amizade desfeita: os dois dão 403 forbidden nas chaves. */
+    private static boolean peerGone(Throwable e) {
+        return e instanceof Api.Error && ((Api.Error) e).http == 403 && "forbidden".equals(((Api.Error) e).code);
+    }
+
+    interface Friends { List<String> ids() throws IOException; }
+
+    static List<Long> notFriends(List<Object[]> sendingDirect, Friends friends) throws IOException {
+        List<Long> out = new ArrayList<>();
+        if (sendingDirect.isEmpty()) return out;
+        List<String> f = friends.ids();
+        for (Object[] s : sendingDirect) if (!f.contains((String) s[1])) out.add((Long) s[0]);
+        return out;
     }
 
     /** Classe, motivo fixo se for nosso, e a classe da causa raiz; nunca a mensagem de fora (pode ter corpo/token). */

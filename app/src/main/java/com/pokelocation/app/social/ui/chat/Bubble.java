@@ -100,7 +100,8 @@ final class Bubble {
         h.meta.setCompoundDrawableTintList(queued ? ColorStateList.valueOf(muted) : null);
         h.meta.setContentDescription(queued ? when + ", " + c.getString(R.string.soc_chat_sending) : null);
         if (!mine || notice || queued) h.meta.setText(when);
-        else if (m.state == Chat.FAILED) h.meta.setText(c.getString(R.string.soc_chat_failed));
+        else if (m.state == Chat.FAILED)
+            h.meta.setText(m.fail == Chat.FAIL_GONE ? R.string.soc_chat_failed_gone : R.string.soc_chat_failed);
         else h.meta.setText(when + "  ✓");
 
         row.setOnClickListener(v -> onTap.accept(m));

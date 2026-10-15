@@ -279,15 +279,19 @@ public final class ChatSocket {
                     Groups.distributeLives(app);
                     dispatch(null);
                     break;
-                case Frames.ERROR:
-                    if ("unauthorized".equals(f.code)) Api.renewNow(app); // refresh revogado → 401 → para sem laço
-                    else if ("username_required".equals(f.code)) stopSocket(from);
+                case Frames.ERROR: {
+                    int a = Frames.onError(f.code);
+                    if (a == Frames.ERR_RENEW) Api.renewNow(app); // refresh revogado → 401 → para sem laço
+                    else if (a == Frames.ERR_PEER) Chat.failNotFriends(app);
+                    else if (a != Frames.ERR_IGNORE) stopSocket(from);
+                    if (a == Frames.ERR_LOGOUT) Session.ended(app);
                     break;
+                }
                 default:
                     break;
             }
         } catch (Api.Error e) {
-            if (e.http == 401) stopSocket(from); // sem laço de reconexão; quem limpa a sessão é o principal
+            if (e.endsSession()) stopSocket(from); // sem laço de reconexão; quem limpa a sessão é o principal
             else Log.w(TAG, "frame " + f.type + ": " + e.code);
         } catch (Exception e) {
             Log.w(TAG, "frame " + f.type + ": " + e.getClass().getSimpleName());

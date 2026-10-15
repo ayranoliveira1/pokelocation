@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.pokelocation.app.social.net.Api;
+
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -132,5 +134,31 @@ public class RulesTest {
         assertEquals("Unsent left", Rules.cause(new Rules.Unsent("left")));
         String s = Rules.cause(new java.io.IOException("corpo do servidor", new javax.net.ssl.SSLException("token=abc")));
         assertEquals("IOException <- SSLException", s);
+    }
+
+    @Test public void peerWithoutKeysFailsAsGoneRightAway() {
+        assertEquals("gone", sendOutcome(new Api.Error(403, "forbidden")));
+        assertEquals("failed", sendOutcome(new Api.Error(404, "not_found")));
+        assertEquals("failed", sendOutcome(new Api.Error(403, "username_required")));
+        assertEquals("failed", sendOutcome(new Api.Error(410, "account_deleted")));
+        assertEquals("failed", sendOutcome(new java.io.IOException()));
+    }
+
+    private static String sendOutcome(Exception e) {
+        String[] r = {"none"};
+        Rules.sendOrFail(() -> { throw e; }, () -> r[0] = "failed", () -> r[0] = "gone");
+        return r[0];
+    }
+
+    @Test public void directConversationNamesItsPeer() {
+        assertEquals("u1", ChatDb.directPeer(ChatDb.directId("u1")));
+        assertEquals(null, ChatDb.directPeer("d:"));
+        assertEquals(null, ChatDb.directPeer("2cdc86e2-0000-4000-8000-000000000000"));
+    }
+
+    @Test public void forbiddenWithOnlyGroupEnvelopesPendingDoesNotFetchFriends() throws Exception {
+        assertTrue(Rules.notFriends(java.util.Collections.emptyList(), () -> { throw new AssertionError("GET /v1/friends"); }).isEmpty());
+        assertEquals(Arrays.asList(2L), Rules.notFriends(Arrays.asList(new Object[]{1L, "a"}, new Object[]{2L, "b"}),
+                () -> Arrays.asList("a")));
     }
 }
