@@ -354,4 +354,80 @@ public class ApiTest {
         assertEquals("unknown", Api.errorCode("<html>502</html>"));
         assertEquals("unknown", Api.errorCode(""));
     }
+    @Test public void meHasPasswordOnlyWhenTheServerSaysSo() throws JSONException {
+        assertTrue(Api.parseMe("{\"id\":\"u\",\"email\":null,\"friend_code\":\"C\",\"has_password\":true}").hasPassword);
+        assertFalse(Api.parseMe("{\"id\":\"u\",\"email\":null,\"friend_code\":\"C\",\"has_password\":false}").hasPassword);
+        assertFalse(Api.parseMe("{\"id\":\"u\",\"email\":null,\"friend_code\":\"C\"}").hasPassword);
+    }
+
+    private static final Api.Attempt NO_RENEW = t -> { throw new AssertionError("não pode renovar"); };
+    private static final Runnable NO_CLEAR = () -> { throw new AssertionError("não pode limpar"); };
+
+    @Test public void wrongPasswordNeitherRenewsNorEndsTheSession() throws Exception {
+        try {
+            Api.authed("a0", t -> { throw new Api.Error(401, "invalid_credentials"); }, NO_RENEW, NO_CLEAR);
+            org.junit.Assert.fail();
+        } catch (Api.Error e) {
+            assertEquals("invalid_credentials", e.code);
+            assertFalse(e.endsSession());
+        }
+    }
+
+    @Test public void expiredAccessRenewsOnceAndRepeats() throws Exception {
+        assertEquals("ok", Api.authed("a0", t -> {
+            if (t.equals("a0")) throw new Api.Error(401, "unauthorized");
+            return "ok";
+        }, t -> "a1", NO_CLEAR));
+    }
+
+    @Test public void accountDeletedMidCallEndsTheSessionWithoutRenewing() throws Exception {
+        int[] cleared = {0};
+        try {
+            Api.authed("a0", t -> { throw new Api.Error(410, "account_deleted"); }, NO_RENEW, () -> cleared[0]++);
+            org.junit.Assert.fail();
+        } catch (Api.Error e) {
+            assertEquals(410, e.http);
+            assertTrue(e.endsSession());
+        }
+        assertEquals(1, cleared[0]);
+        assertFalse(new Api.Error(410, "gone").endsSession());
+        assertFalse(new Api.Error(403, "forbidden").endsSession());
+    }
+
+    @Test public void deletedAccountOnRefreshEndsTheSession() throws Exception {
+        assertNull(Api.renewLocked(new Db(), "a0", rt -> { throw new Api.Error(410, "account_deleted"); }));
+        int[] cleared = {0};
+        try {
+            Api.authed("a0", t -> { throw new Api.Error(401, "unauthorized"); },
+                    t -> { throw new Api.Error(401, "unauthorized"); }, () -> cleared[0]++);
+            org.junit.Assert.fail();
+        } catch (Api.Error e) {
+            assertEquals("unauthorized", e.code);
+        }
+        assertEquals(1, cleared[0]);
+    }
+
+    @Test public void deleteAccountIsDoneOnlyOn204Or410() throws Exception {
+        assertEquals("deleted:1:0", deleteOutcome(null));
+        assertEquals("deleted:1:0", deleteOutcome(new Api.Error(410, "account_deleted")));
+        assertEquals("unauthorized:0:1", deleteOutcome(new Api.Error(401, "unauthorized")));
+        assertEquals("invalid_credentials:0:0", deleteOutcome(new Api.Error(401, "invalid_credentials")));
+        assertEquals("reauth_required:0:0", deleteOutcome(new Api.Error(403, "reauth_required")));
+        assertEquals("rate_limited:0:0", deleteOutcome(new Api.Error(429, "rate_limited")));
+    }
+
+    private static String deleteOutcome(Api.Error response) throws Exception {
+        int[] n = {0, 0};
+        String r;
+        try {
+            Api.deleteAccount(() -> Api.authed("a0", t -> {
+                if (response != null) throw response;
+                return "";
+            }, t -> { throw new Api.Error(401, "unauthorized"); }, () -> {}), () -> n[0]++, () -> n[1]++);
+            r = "deleted";
+        } catch (Api.Error e) {
+            r = e.code;
+        }
+        return r + ":" + n[0] + ":" + n[1];
+    }
 }

@@ -44,6 +44,7 @@ public final class Api {
     private static final Pattern USERNAME = Pattern.compile("[a-z][a-z0-9_.]{2,19}");
     private static final char[] B64URL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".toCharArray();
     private static final char[] B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
+    public static final String REAUTH = "reauth";
 
     /** code = campo "error" do servidor ("unknown" se não veio o JSON esperado). */
     public static final class Error extends IOException {
@@ -55,9 +56,11 @@ public final class Api {
             this.http = http;
             this.code = code;
         }
+
+        public boolean endsSession() { return sessionDead(this) || accountGone(this); }
     }
 
-    public static final class Me { public String id, email, friendCode, username; }
+    public static final class Me { public String id, email, friendCode, username; public boolean hasPassword; }
     public static final class Friend { public String userId, friendCode, username, label; }
     public static final class Request { public String id, userId, friendCode, username; public long createdAt; }
     public static final class Friends { public List<Friend> accepted; public List<Request> incoming, outgoing; }
@@ -95,24 +98,68 @@ public final class Api {
 
     /** PKCE (S256) e state vão selados pelo Vault (Keystore), por isso bloqueia: fora da main. Devolve a URL do navegador. */
     public static Uri googleStart(Context c, String returnTo) throws IOException {
+        return googleStart(c, returnTo, false);
+    }
+
+    public static Uri googleReauthStart(Context c) throws IOException { return googleStart(c, REAUTH, true); }
+
+    private static Uri googleStart(Context c, String returnTo, boolean reauth) throws IOException {
         String verifier = random(32), state = random(16);
         Session.savePkce(c, verifier, state, returnTo);
-        return Uri.parse(BuildConfig.SOCIAL_API + "/v1/auth/google/start").buildUpon()
+        Uri.Builder b = Uri.parse(BuildConfig.SOCIAL_API + "/v1/auth/google/start").buildUpon()
                 .appendQueryParameter("code_challenge", challenge(verifier))
                 .appendQueryParameter("code_challenge_method", "S256")
-                .appendQueryParameter("state", state)
-                .build();
+                .appendQueryParameter("state", state);
+        if (reauth) b.appendQueryParameter("reauth", "1");
+        return b.build();
     }
 
     public static void googleFinish(Context c, Uri callback) throws IOException {
+        String[] cv = googleCode(c, callback);
+        store(c, http(c, "POST", "/v1/auth/google/exchange", null, obj("code", cv[0], "code_verifier", cv[1])));
+    }
+
+    public static String googleReauthFinish(Context c, Uri callback) throws IOException {
+        String[] cv = googleCode(c, callback);
+        try {
+            return new JSONObject(call(c, "POST", "/v1/auth/google/exchange",
+                    new JSONObject().put("code", cv[0]).put("code_verifier", cv[1]).put("reauth", true))).getString("reauth_token");
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
+    private static String[] googleCode(Context c, Uri callback) throws IOException {
         String err = callback.getQueryParameter("error"), code = callback.getQueryParameter("code");
         // state antes de consumir: um callback forjado não aborta o login pendente
         String verifier = Session.takePkce(c, callback.getQueryParameter("state"));
         if (verifier == null) throw new Error(400, "invalid_state");
+        if (REAUTH.equals(Session.pendingReturnTo(c))) Session.takeReturnTo(c);
         if (err != null) throw new Error(400, err);
         if (code == null) throw new Error(400, "invalid_state");
-        store(c, http(c, "POST", "/v1/auth/google/exchange", null, obj("code", code, "code_verifier", verifier)));
+        return new String[]{code, verifier};
     }
+
+    public static void deleteAccount(Context c, String password, String reauthToken) throws IOException {
+        JSONObject body = password != null ? obj("password", password) : obj("reauth_token", reauthToken);
+        deleteAccount(() -> call(c, "DELETE", "/v1/me", body, MAX_BODY, () -> {}), () -> Session.clear(c), () -> Session.ended(c));
+    }
+
+    interface Call { void run() throws IOException; }
+
+    static void deleteAccount(Call delete, Runnable clear, Runnable ended) throws IOException {
+        try {
+            delete.run();
+        } catch (Error e) {
+            if (!accountGone(e)) {
+                if (e.endsSession()) ended.run();
+                throw e;
+            }
+        }
+        clear.run();
+    }
+
+    static boolean accountGone(Error e) { return e.http == 410 && "account_deleted".equals(e.code); }
 
     /** Revoga no servidor (melhor esforço) e SEMPRE limpa a sessão local. */
     public static void logout(Context c) {
@@ -498,20 +545,33 @@ public final class Api {
     }
 
     private static String call(Context c, String method, String path, JSONObject body, int maxBody) throws IOException {
+        return call(c, method, path, body, maxBody, () -> Session.ended(c));
+    }
+
+    private static String call(Context c, String method, String path, JSONObject body, int maxBody, Runnable ended)
+            throws IOException {
         String token = Session.access(c);
         if (token == null) throw unauthorized(c);
+        return authed(token, t -> http(c, method, path, t, body, TIMEOUT_MS, maxBody), t -> renew(c, t), ended);
+    }
+
+    interface Attempt { String run(String token) throws IOException; }
+
+    static String authed(String token, Attempt http, Attempt renew, Runnable clear) throws IOException {
         try {
-            return http(c, method, path, token, body, TIMEOUT_MS, maxBody);
+            try {
+                return http.run(token);
+            } catch (Error e) {
+                if (!sessionDead(e)) throw e;
+            }
+            return http.run(renew.run(token));
         } catch (Error e) {
-            if (e.http != 401) throw e;
-        }
-        try {
-            return http(c, method, path, renew(c, token), body, TIMEOUT_MS, maxBody);
-        } catch (Error e) {
-            if (e.http == 401) throw unauthorized(c);
+            if (e.endsSession()) clear.run();
             throw e;
         }
     }
+
+    static boolean sessionDead(Error e) { return e.http == 401 && "unauthorized".equals(e.code); }
 
     /**
      * Sob files/token.lock, separado do social.lock: um /refresh lento (até 10 s) não segura o estado Signal. Antes de
@@ -571,7 +631,7 @@ public final class Api {
     }
 
     private static Error unauthorized(Context c) {
-        Session.clear(c);
+        Session.ended(c);
         return new Error(401, "unauthorized");
     }
 
@@ -719,6 +779,7 @@ public final class Api {
         m.email = o.isNull("email") ? null : o.getString("email"); // optString(k, null) do Android devolve "null"
         m.friendCode = o.getString("friend_code");
         m.username = optString(o, "username");
+        m.hasPassword = o.optBoolean("has_password");
         return m;
     }
 

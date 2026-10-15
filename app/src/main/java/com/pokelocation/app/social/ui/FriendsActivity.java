@@ -64,6 +64,7 @@ public final class FriendsActivity extends BaseActivity {
             toLogin();
             return;
         }
+        SessionEnd.watch(this);
         setContentView(R.layout.soc_friends);
         setupToolbar(getString(R.string.soc_friends), true);
         applyInsets(findViewById(R.id.soc_friends_root));

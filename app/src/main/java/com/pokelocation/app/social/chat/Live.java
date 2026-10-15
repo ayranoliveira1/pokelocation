@@ -75,7 +75,7 @@ public final class Live {
                 sent.put(convId, new double[]{lat, lng, now});
                 Locations.atomic(c, () -> ChatDb.updateLive(c, convId, null, start, lat, lng, m.liveUntil));
             } catch (Api.Error e) {
-                if (e.http == 401) throw e;
+                if (e.endsSession()) throw e;
                 Log.w("Live", "update: " + e.code);
             } catch (IOException e) {
                 Log.w("Live", "update: " + e.getClass().getSimpleName());

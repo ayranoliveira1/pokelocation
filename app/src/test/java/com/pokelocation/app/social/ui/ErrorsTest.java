@@ -79,7 +79,18 @@ public class ErrorsTest {
     @Test
     public void unauthorizedOnlyForThatCode() {
         assertTrue(Errors.unauthorized(new Api.Error(401, "unauthorized")));
+        assertTrue(Errors.unauthorized(new Api.Error(410, "account_deleted")));
         assertFalse(Errors.unauthorized(new Api.Error(401, "invalid_credentials")));
         assertFalse(Errors.unauthorized(new IOException()));
+    }
+
+    @Test
+    public void deleteHasItsOwnMessagesAndFallsBackToTheCommonOnes() {
+        assertEquals(R.string.soc_delete_wrong_password, Errors.deleteMessage(new Api.Error(401, "invalid_credentials")));
+        assertEquals(R.string.soc_delete_other_google, Errors.deleteMessage(new Api.Error(403, "reauth_mismatch")));
+        assertEquals(R.string.soc_delete_reauth_required, Errors.deleteMessage(new Api.Error(403, "reauth_required")));
+        assertEquals(R.string.soc_err_invalid_grant, Errors.deleteMessage(new Api.Error(400, "invalid_grant")));
+        assertEquals(R.string.soc_err_rate_limited, Errors.deleteMessage(new Api.Error(429, "rate_limited")));
+        assertEquals(R.string.soc_err_network, Errors.deleteMessage(new IOException("timeout")));
     }
 }

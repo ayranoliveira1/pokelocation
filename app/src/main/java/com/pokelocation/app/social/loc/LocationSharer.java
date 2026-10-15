@@ -12,6 +12,7 @@ import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.geo.Geo;
 import com.pokelocation.app.social.Session;
+import com.pokelocation.app.social.chat.Chat;
 import com.pokelocation.app.social.chat.ChatSocket;
 import com.pokelocation.app.social.chat.Inbox;
 import com.pokelocation.app.social.chat.Live;
@@ -146,7 +147,7 @@ public final class LocationSharer {
                 lastLng = lng;
             }
         } catch (Api.Error e) {
-            if (e.http == 401) halt(); // sessão morta: para; quem limpa é o principal
+            if (e.endsSession()) halt(); // sessão morta: para; quem limpa é o principal
             else Log.w(TAG, "tick: " + e.code);
         } catch (IOException | RuntimeException e) {
             Log.w(TAG, "tick: " + e.getClass().getSimpleName()); // nada de corpo/token no log
@@ -244,16 +245,18 @@ public final class LocationSharer {
                 String to = skdmPending.remove(f.msgId);
                 if (to != null) skdmSent.add(to);
                 else ChatSocket.acked(f.msgId);
-            } else if (f.type == Frames.ERROR && "username_required".equals(f.code)) {
-                halt();
-            } else if (f.type == Frames.ERROR && "unauthorized".equals(f.code)) {
+            } else if (f.type == Frames.ERROR) {
+                int a = Frames.onError(f.code);
                 // logout/reuso/vínculo Google derrubam o WS: renova já (não só se o JWT venceu); refresh revogado → 401 →
                 // halt sem laço; refresh bom → a reconexão usa o token novo
-                Api.renewNow(app);
+                if (a == Frames.ERR_RENEW) Api.renewNow(app);
+                else if (a == Frames.ERR_PEER) Chat.failNotFriends(app);
+                else if (a != Frames.ERR_IGNORE) halt();
+                if (a == Frames.ERR_LOGOUT) Session.ended(app);
             }
             // LocationUpdate: quem desenha é o mapa no principal (Locations.fetch); aqui só se envia
         } catch (Api.Error e) {
-            if (e.http == 401) halt();
+            if (e.endsSession()) halt();
         } catch (Exception e) {
             Log.w(TAG, "frame " + f.type + ": " + e.getClass().getSimpleName());
         }
@@ -275,7 +278,7 @@ public final class LocationSharer {
                 // só conta como entregue no Ack S→C (o servidor gravou); enfileirado não basta
                 if (ws != null && ws.send(Frames.envelope(to, id, env))) skdmPending.put(id, to);
             } catch (Api.Error e) {
-                if (e.http == 401) throw e;
+                if (e.endsSession()) throw e;
                 Log.w(TAG, "skdm: " + e.code); // um amigo sem chaves no servidor não segura os outros
             }
         }

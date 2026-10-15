@@ -10,6 +10,8 @@ import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.util.Base64;
 
 import com.pokelocation.app.App;
+import com.pokelocation.app.Io;
+import com.pokelocation.app.R;
 import com.pokelocation.app.social.chat.Chat;
 import com.pokelocation.app.social.chat.Live;
 import com.pokelocation.app.social.chat.Notify;
@@ -17,6 +19,7 @@ import com.pokelocation.app.social.chat.Push;
 import com.pokelocation.app.social.crypto.SignalLoader;
 import com.pokelocation.app.social.store.SocialDb;
 import com.pokelocation.app.social.store.Vault;
+import com.pokelocation.app.util.Ui;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +39,8 @@ public final class Session {
     private static volatile String sAccess;
     /** O @nome troca mas nunca volta a null: em memória até a geração mudar, sem Keystore a cada leitura. */
     private static volatile String sUsername;
+    private static volatile boolean sDead;
+    private static final Object END = new Object();
 
     private Session() {}
 
@@ -80,6 +85,7 @@ public final class Session {
      */
     public static String access(Context c) throws IOException {
         return locked(c, () -> {
+            if (sDead) return null;
             String a = sAccess;
             if (a != null) return a;
             String[] t = readTokens(c);
@@ -96,6 +102,13 @@ public final class Session {
     public static void forget() {
         sAccess = null;
         sUsername = null;
+        sDead = false;
+    }
+
+    static synchronized boolean died() {
+        if (sDead) return false;
+        sDead = true;
+        return true;
     }
 
     /** {access, refresh} do banco (null sem arquivo/linha), sob o social.lock ou o token.lock. Atualiza o access em memória. */
@@ -223,6 +236,29 @@ public final class Session {
         Chat.broadcastLoggedOut(c);
     }
 
+    /**
+     * Sessão morta sem o usuário pedir (401/410). O :overlay não escreve a sessão: lembra até a geração mudar e acorda o
+     * principal, senão repetiria a chamada a cada tick enquanto o app fica fechado.
+     */
+    public static void ended(Context c) {
+        if (App.process() != App.PROC_MAIN) {
+            if (died()) SessionEndedReceiver.send(c, SocialDb.seenGeneration());
+            return;
+        }
+        boolean was;
+        synchronized (END) {
+            was = loggedIn(c);
+            clear(c);
+        }
+        if (was) Io.main().post(() -> Ui.toast(c.getApplicationContext(), R.string.soc_err_unauthorized));
+    }
+
+    /** A geração confere: o aviso atrasado do :overlay não derruba um login novo. */
+    static void ended(Context c, long gen) throws IOException {
+        Long now = locked(c, SocialDb::seenGeneration);
+        if (now != null && now == gen) ended(c);
+    }
+
     /** Verifier e state do PKCE cifrados pelo Vault (Io: o Keystore pode bloquear). IOException = Keystore falhou. */
     public static void savePkce(Context c, String verifier, String state, String returnTo) throws IOException {
         try {
@@ -248,6 +284,8 @@ public final class Session {
         p.edit().remove(VERIFIER).remove(STATE).commit();
         return v;
     }
+
+    public static String pendingReturnTo(Context c) { return sp(c).getString(RETURN_TO, null); }
 
     /** Origem do Login guardada no googleStart; lida (e apagada) ao fim do googleFinish. null = Main. */
     public static String takeReturnTo(Context c) {

@@ -8,6 +8,7 @@
     <string name="soc_chat_new_messages">New messages</string>
     <string name="soc_chat_sending">Waiting to send</string>
     <string name="soc_chat_failed">Not sent · tap to retry</string>
+    <string name="soc_chat_failed_gone">Not sent: you\'re no longer friends or the account no longer exists</string>
     <string name="soc_chat_unreadable">Couldn\'t read this message</string>
     <string name="soc_chat_identity_changed">The security code changed</string>
 

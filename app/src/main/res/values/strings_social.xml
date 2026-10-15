@@ -65,4 +65,14 @@
     <string name="soc_err_unavailable">The server is unavailable right now. Try again in a moment.</string>
     <string name="soc_err_network">Can\'t reach the server. Check your internet connection.</string>
     <string name="soc_err_generic">Something went wrong. Please try again.</string>
+    <string name="soc_delete_account">Delete my account</string>
+    <string name="soc_delete_confirm">This deletes your account, your friends and your chats, on this phone and on the server. It can\'t be undone.</string>
+    <string name="soc_delete_confirm_google">This deletes your account, your friends and your chats, on this phone and on the server. It can\'t be undone. To confirm, sign in with Google again.</string>
+    <string name="soc_delete_password">Current password</string>
+    <string name="soc_delete">Delete</string>
+    <string name="soc_delete_done">Account deleted.</string>
+    <string name="soc_delete_loading">Loading your account. Try again in a moment.</string>
+    <string name="soc_delete_wrong_password">Wrong password.</string>
+    <string name="soc_delete_other_google">That\'s a different Google account. Use the one linked to PokeLocation.</string>
+    <string name="soc_delete_reauth_required">Confirm with Google again to delete the account.</string>
 </resources>

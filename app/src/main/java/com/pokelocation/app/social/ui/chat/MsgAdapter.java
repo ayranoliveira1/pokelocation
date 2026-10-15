@@ -21,7 +21,7 @@ final class MsgAdapter extends ListAdapter<Chat.Msg, MsgAdapter.VH> {
             return a.clientMsgId.equals(b.clientMsgId);
         }
         @Override public boolean areContentsTheSame(@NonNull Chat.Msg a, @NonNull Chat.Msg b) {
-            return a.state == b.state && a.resend == b.resend && a.type == b.type && a.ts == b.ts && a.liveUntil == b.liveUntil && a.lat == b.lat
+            return a.state == b.state && a.fail == b.fail && a.resend == b.resend && a.type == b.type && a.ts == b.ts && a.liveUntil == b.liveUntil && a.lat == b.lat
                     && a.lng == b.lng && Objects.equals(a.text, b.text) && Objects.equals(a.from, b.from);
         }
     };

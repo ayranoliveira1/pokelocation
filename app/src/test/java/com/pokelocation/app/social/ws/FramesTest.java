@@ -114,4 +114,13 @@ public class FramesTest {
         } catch (IOException expected) {
         }
     }
+
+    @Test public void deletedAccountStopsTheSocketForGood() {
+        assertEquals(Frames.ERR_LOGOUT, Frames.onError("account_deleted"));
+        assertEquals(Frames.ERR_STOP, Frames.onError("username_required"));
+        assertEquals(Frames.ERR_RENEW, Frames.onError("unauthorized"));
+        assertEquals(Frames.ERR_PEER, Frames.onError("forbidden"));
+        assertEquals(Frames.ERR_IGNORE, Frames.onError("rate_limited"));
+        assertEquals(Frames.ERR_IGNORE, Frames.onError(null));
+    }
 }

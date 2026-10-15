@@ -29,6 +29,11 @@ final class ChatDb {
 
     static String directId(String userId) { return "d:" + userId; }
 
+    static String directPeer(String convId) { return convId.startsWith("d:") && convId.length() > 2 ? convId.substring(2) : null; }
+
+    /** Só no banco: o Msg sai como FAILED + FAIL_GONE, que é o que as telas já tratam. */
+    static final int GONE = 4;
+
     static void ensureConversation(Context c, String id, boolean group, String peer, String title) throws GeneralSecurityException {
         ContentValues v = new ContentValues(4);
         v.put("id", id);
@@ -256,6 +261,15 @@ final class ChatDb {
         return r;
     }
 
+    static List<Object[]> sendingDirect(Context c) {
+        List<Object[]> out = new ArrayList<>();
+        try (Cursor q = db(c).rawQuery("SELECT m.id, v.peer FROM messages m JOIN conversations v ON v.id = m.conv_id"
+                + " WHERE m.sender = '' AND m.state = " + Chat.SENDING + " AND v.grp = 0", null)) {
+            while (q.moveToNext()) out.add(new Object[]{q.getLong(0), q.getString(1)});
+        }
+        return out;
+    }
+
     static void failSending(Context c) {
         db(c).execSQL("UPDATE messages SET state = " + Chat.FAILED + " WHERE sender = '' AND state = " + Chat.SENDING);
     }
@@ -384,6 +398,10 @@ final class ChatDb {
         m.from = MINE.equals(sender) ? null : sender;
         m.type = q.getInt(3);
         m.state = q.getInt(4);
+        if (m.state == GONE) {
+            m.state = Chat.FAILED;
+            m.fail = Chat.FAIL_GONE;
+        }
         m.ts = q.getLong(5);
         m.liveUntil = q.getLong(6);
         m.convId = convId != null ? convId : q.getString(8);
