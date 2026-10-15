@@ -4,8 +4,8 @@ App Android de **localização simulada** (fake GPS). Ele substitui a posição 
 permite se mover com um **joystick flutuante**, seguir **rotas**, teleportar para **favoritos** e automatizar tudo por
 **deep links** e **intents**.
 
-Feito em Java puro, sem bibliotecas pesadas (sem Compose, RxJava, Firebase, Retrofit etc.), com foco em pouco uso de
-RAM e bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
+Feito em Java puro, sem bibliotecas pesadas (sem Compose, RxJava, Retrofit etc.), com foco em pouco uso de RAM e
+bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
 
 - Android 7.0+ (minSdk 24, targetSdk 36)
 - Idiomas: português (Brasil) e inglês
@@ -13,8 +13,37 @@ RAM e bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
 
 ---
 
+## Versões
+
+### v1.1: amigos e chat (opcional, com login)
+
+Tudo da v1.0 continua igual e funciona sem conta. Quem entrar (e-mail e senha ou Google) ganha:
+
+- **Amigos:** adicione por **@nome** único ou por código; abas de amigos e pedidos.
+- **Amigos no mapa:** veja a posição **simulada** dos amigos enquanto o joystick deles roda. Dá para desligar em
+  **Conta → Compartilhar minha localização**.
+- **Chat com criptografia ponta a ponta** (protocolo Signal), 1:1 e em grupos: texto, **localização atual** e
+  **localização em tempo real** (15 min, 1 h ou 8 h). O servidor só repassa pacotes cifrados: não lê mensagens nem
+  posições.
+- **Chat sobre o jogo:** no joystick clássico vira mais uma bolinha; no modo gaveta, um item da gaveta. Tocar numa
+  localização recebida abre o **Teleportar para o local**, sem abrir o mapa.
+- **Lista de conversas** com avatar e não lidas, notificações de mensagem nova e histórico carregado aos poucos.
+- **Conta:** tela própria no menu, com @nome, compartilhamento e **excluir minha conta** (apaga tudo no servidor).
+
+A biblioteca de criptografia (libsignal) não vem no APK: é baixada uma vez no primeiro login, com o hash conferido.
+Sem login o app tem o mesmo tamanho e consumo da v1.0.
+
+### v1.0: simulação de localização
+
+Joystick flutuante, rotas (desenhar, gravar, reproduzir em loop ou ida e volta), favoritos e marcadores com pastas,
+busca e links de mapas, importação e exportação GPX/KML, widget, automação por deep links e intents, assistente de
+configuração e os modos avançados de injeção. Os detalhes estão em [Como usar](#como-usar).
+
+---
+
 ## Sumário
 
+- [Versões](#versões)
 - [Instalação](#instalação)
 - [Primeira execução](#primeira-execução)
 - [Como usar](#como-usar)
@@ -284,6 +313,7 @@ Pacote base: `app/src/main/java/com/pokelocation/app/`
 | `geo/`, `net/`  | Cálculos geográficos, parser de coordenadas, cooldown e busca de elevação.                 |
 | `ipc/`          | Intents públicas, broadcasts e comunicação entre os processos.                             |
 | `widget/`       | Widget de ações rápidas.                                                                   |
+| `social/`       | v1.1: sessão e API, banco `social.db` cifrado, libsignal baixada, WebSocket próprio, chat, amigos no mapa e as telas sociais. |
 
 O joystick e o mini-mapa rodam em processos separados (`:overlay` e `:map`) para que a tela principal possa ser
 fechada sem interromper a simulação e para manter o consumo de memória baixo.
