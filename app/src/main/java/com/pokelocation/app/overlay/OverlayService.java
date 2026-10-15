@@ -96,12 +96,12 @@ public final class OverlayService extends Service
             if (Actions.wantsStart(intent, action) && Perms.canDrawOverlays(this) && Perms.hasFine(this)
                     && Perms.isMockApp(this)) {
                 boolean tp = Intents.ACTION_TELEPORT.equals(action);
-                double lat = tp ? Intents.getDouble(intent, Intents.EXTRA_LAT, Double.NaN) : Double.NaN;
-                double lng = tp ? Intents.getDouble(intent, Intents.EXTRA_LNG, Double.NaN) : Double.NaN;
-                start(lat, lng, tp ? Intents.getDouble(intent, Intents.EXTRA_ALT, Double.NaN) : Double.NaN,
+                start(tp ? Intents.getDouble(intent, Intents.EXTRA_LAT, Double.NaN) : Double.NaN,
+                        tp ? Intents.getDouble(intent, Intents.EXTRA_LNG, Double.NaN) : Double.NaN,
+                        tp ? Intents.getDouble(intent, Intents.EXTRA_ALT, Double.NaN) : Double.NaN,
                         Prefs.getBool(this, Prefs.HIDE_JOYSTICK), null, false);
                 if (running) {
-                    if (!tp || !Intents.validLatLng(lat, lng)) Actions.handle(this, intent, action);
+                    if (!tp) Actions.handle(this, intent, action);
                     return START_STICKY;
                 }
             }

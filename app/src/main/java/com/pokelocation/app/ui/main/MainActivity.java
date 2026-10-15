@@ -674,7 +674,8 @@ public final class MainActivity extends BaseActivity {
         }
         String act = i.getStringExtra(Intents.EXTRA_REPLAY_ACTION);
         double lat = Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN), lng = Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN);
-        if (Intents.ACTION_TELEPORT.equals(act) && Intents.validLatLng(lat, lng)) {
+        if (Intents.ACTION_TELEPORT.equals(act)) {
+            if (!Intents.validLatLng(lat, lng)) return; // só um replay antigo da notificação chega aqui inválido
             // TELEPORT frio: inicia já no ponto, sem reenviar a ação
             double alt = Intents.getDouble(i, Intents.EXTRA_ALT, Double.NaN);
             form.select(MainForm.SRC_SET);

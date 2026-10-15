@@ -40,6 +40,7 @@ public final class Actions {
                 break;
             default:
                 if (wantsStart(i, action)) replay(s, i);
+                else if (Intents.ACTION_TELEPORT.equals(action)) handle(s, i, action); // só responde o erro de faixa
                 else if (!isPublic(action) && !action.startsWith(INTERNAL)) {
                     Intents.broadcastError(s, i, Intents.ERR_UNKNOWN_ACTION, "Unrecognized action: " + action);
                 }
@@ -87,15 +88,15 @@ public final class Actions {
         }
     }
 
-    /** Ação pública que, com o serviço parado, sobe o joystick. TELEPORT sem lat/lng e WALK vazio só são ignorados (10 §3.4). */
+    /** Ação pública que, com o serviço parado, sobe o joystick. TELEPORT sem lat/lng e WALK vazio só são ignorados (10 §3.4); fora da faixa, só o erro. */
     public static boolean wantsStart(Intent i, String action) {
         switch (action) {
             case Intents.ACTION_STOP:
             case Intents.ACTION_STATUS:
                 return false;
             case Intents.ACTION_TELEPORT:
-                return !Double.isNaN(Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN))
-                        && !Double.isNaN(Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN));
+                return Intents.validLatLng(Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN),
+                        Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN));
             case Intents.ACTION_WALK:
                 return Route.count(CoordParser.waypoints(i.getStringExtra(Intents.EXTRA_WAYPOINTS))) > 0;
             default:
@@ -108,7 +109,7 @@ public final class Actions {
         return false;
     }
 
-    /** Serviço rodando. */
+    /** Serviço rodando; o cold só o usa para o TELEPORT que não sobe o joystick. */
     public static void handle(OverlayService s, Intent i, String action) {
         MockEngine e = s.engine();
         switch (action) {
