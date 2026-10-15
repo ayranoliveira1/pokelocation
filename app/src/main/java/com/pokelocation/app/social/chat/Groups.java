@@ -82,6 +82,7 @@ final class Groups {
             return null;
         });
         SENT.remove(groupId);
+        ChatSocket.dispatch(null); // o leave passou a outbox do grupo para FAILED direto no banco
         if (App.process() == App.PROC_MAIN) Live.hint(c); // o social_share só tem um escritor
     }
 

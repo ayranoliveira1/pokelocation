@@ -199,6 +199,7 @@ public final class OverlayService extends Service
                 if (ui == null) return;
                 if (i.getBooleanExtra(Intents.EXTRA_LOGGED_OUT, false)) ui.setChatEnabled(false);
                 else {
+                    ui.setChatEnabled(true); // login de novo depois de um logout nesta sessão
                     ui.setUnread(i.getIntExtra(Intents.EXTRA_UNREAD, 0));
                     ui.chatChanged();
                 }

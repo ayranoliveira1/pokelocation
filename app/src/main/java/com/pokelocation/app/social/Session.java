@@ -76,6 +76,7 @@ public final class Session {
         // commit(): sem o flag gravado, um kill agora deixaria tokens órfãos e a tela no login
         if (!sp(c).edit().putBoolean(IN, true).commit()) throw new IOException("prefs");
         SignalLoader.kick(c);
+        Chat.broadcastUnread(c, 0); // joystick ligado desde antes do logout: o botão do chat volta
     }
 
     /**
