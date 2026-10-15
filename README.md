@@ -65,10 +65,10 @@ configuração e os modos avançados de injeção. Os detalhes estão em [Como u
 ## Instalação
 
 **[⬇️ Baixar o APK mais recente](https://github.com/ayranoliveira1/pokelocation/releases/latest)** (também em
-[`apks/`](apks/pokelocation-v1.0-release.apk)).
+[`apks/`](apks/pokelocation-v1.1-release.apk)).
 
 ```bash
-adb install -r apks/pokelocation-v1.0-release.apk
+adb install -r apks/pokelocation-v1.1-release.apk
 ```
 
 Ou copie o APK para o aparelho e abra pelo gerenciador de arquivos (permita "instalar apps desconhecidos").
