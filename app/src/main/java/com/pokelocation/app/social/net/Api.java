@@ -230,6 +230,15 @@ public final class Api {
         call(c, "POST", "/v1/blocks/" + Uri.encode(userId), null);
     }
 
+    /** friendCode fica null: o GET /v1/blocks não o devolve. */
+    public static List<Friend> blocks(Context c) throws IOException {
+        try {
+            return parseBlocks(call(c, "GET", "/v1/blocks", null));
+        } catch (JSONException e) {
+            throw new IOException("bad response");
+        }
+    }
+
     public static void unblock(Context c, String userId) throws IOException {
         call(c, "DELETE", "/v1/blocks/" + Uri.encode(userId), null);
     }
@@ -800,6 +809,20 @@ public final class Api {
         f.incoming = requests(o.optJSONArray("incoming"));
         f.outgoing = requests(o.optJSONArray("outgoing"));
         return f;
+    }
+
+    static List<Friend> parseBlocks(String body) throws JSONException {
+        JSONArray a = new JSONObject(body).optJSONArray("blocks");
+        int n = a == null ? 0 : a.length();
+        List<Friend> out = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            JSONObject j = a.getJSONObject(i);
+            Friend x = new Friend();
+            x.userId = j.getString("user_id");
+            x.username = optString(j, "username");
+            out.add(x);
+        }
+        return out;
     }
 
     private static List<Request> requests(JSONArray a) throws JSONException {

@@ -27,6 +27,10 @@
     <string name="soc_block">Bloquear</string>
     <string name="soc_remove_confirm">Remover %s dos seus amigos?</string>
     <string name="soc_block_confirm">Bloquear %s? Essa pessoa não poderá te enviar pedidos.</string>
+    <string name="soc_tab_blocked">Bloqueados</string>
+    <string name="soc_unblock">Desbloquear</string>
+    <string name="soc_no_blocked">Ninguém bloqueado.</string>
+    <string name="soc_no_username">Ainda sem @nome</string>
 
     <string name="soc_account_signed_in">Conectado</string>
     <string name="soc_logout">Sair</string>

@@ -30,6 +30,10 @@
     <string name="soc_block">Block</string>
     <string name="soc_remove_confirm">Remove %s from your friends?</string>
     <string name="soc_block_confirm">Block %s? They won\'t be able to send you requests.</string>
+    <string name="soc_tab_blocked">Blocked</string>
+    <string name="soc_unblock">Unblock</string>
+    <string name="soc_no_blocked">No one blocked.</string>
+    <string name="soc_no_username">No @name yet</string>
 
     <!-- Conta -->
     <string name="soc_account_signed_in">Signed in</string>

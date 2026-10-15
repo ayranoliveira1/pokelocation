@@ -37,12 +37,13 @@ import com.pokelocation.app.util.Ui;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
 public final class FriendsActivity extends BaseActivity {
-    private static final int MENU_CHATS = 1, TAB_REQUESTS = 1;
+    private static final int MENU_CHATS = 1, TAB_REQUESTS = 1, TAB_BLOCKED = 2;
     private static final long ONLINE_S = 15;
     private StateView state;
     private View busyBar, outgoingH;
@@ -51,6 +52,7 @@ public final class FriendsActivity extends BaseActivity {
     private LinearLayout list, outgoing;
     private Api.Me me;
     private Api.Friends data;
+    private List<Api.Friend> blocked;
     private Map<String, Long> seen = Collections.emptyMap();
     private Io.Task task;
     private SignalProgress signal;
@@ -77,6 +79,7 @@ public final class FriendsActivity extends BaseActivity {
         outgoingH = findViewById(R.id.soc_friends_outgoing_h);
         tabs.addTab(tabs.newTab().setText(R.string.soc_tab_friends));
         tabs.addTab(tabs.newTab().setText(R.string.soc_tab_requests));
+        tabs.addTab(tabs.newTab().setText(R.string.soc_tab_blocked));
         tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override public void onTabSelected(TabLayout.Tab tab) { if (data != null) show(); }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
@@ -152,6 +155,7 @@ public final class FriendsActivity extends BaseActivity {
         task = Io.run(() -> {
             Api.Me m = needMe ? Api.me(app) : null;
             Api.Friends f = Api.friends(app);
+            List<Api.Friend> b = Api.blocks(app);
             Map<String, Long> at = needSeen ? new HashMap<>() : null;
             if (needSeen && SignalLoader.loaded()) {
                 try {
@@ -159,7 +163,7 @@ public final class FriendsActivity extends BaseActivity {
                 } catch (Exception ignored) {   // presença é só um detalhe da linha: sem ela, a lista sai igual
                 }
             }
-            return new Object[]{m, f, at};
+            return new Object[]{m, f, at, b};
         }, new Io.Callback<Object[]>() {
             @SuppressWarnings("unchecked")
             @Override public void onResult(Object[] r) {
@@ -171,6 +175,7 @@ public final class FriendsActivity extends BaseActivity {
                 }
                 data = (Api.Friends) r[1];
                 if (r[2] != null) seen = (Map<String, Long>) r[2];
+                blocked = (List<Api.Friend>) r[3];
                 show();
             }
             @Override public void onError(Throwable t) {
@@ -196,7 +201,16 @@ public final class FriendsActivity extends BaseActivity {
         if (reqTab != null) reqTab.setText(n == 0 ? getString(R.string.soc_tab_requests) : getString(R.string.soc_tab_requests_n, n));
         list.removeAllViews();
         outgoing.removeAllViews();
-        if (tabs.getSelectedTabPosition() == TAB_REQUESTS) {
+        if (tabs.getSelectedTabPosition() == TAB_BLOCKED) {
+            for (Api.Friend b : blocked) {
+                View r = row(list, b.username, null, null, R.string.soc_unblock,
+                        v -> act(() -> { Api.unblock(app, b.userId); return null; }, 0), 0, null);
+                if (b.username == null) ((TextView) r.findViewById(R.id.soc_row_title)).setText(R.string.soc_no_username);
+            }
+            empty.setText(R.string.soc_no_blocked);
+            empty.setVisibility(blocked.isEmpty() ? View.VISIBLE : View.GONE);
+            outgoingH.setVisibility(View.GONE);
+        } else if (tabs.getSelectedTabPosition() == TAB_REQUESTS) {
             for (Api.Request r : data.incoming) {
                 row(list, r.username, r.friendCode, null, R.string.soc_accept, v -> act(() -> { Api.accept(app, r.id); return null; }, 0),
                         R.string.soc_decline, v -> act(() -> { Api.decline(app, r.id); return null; }, 0));

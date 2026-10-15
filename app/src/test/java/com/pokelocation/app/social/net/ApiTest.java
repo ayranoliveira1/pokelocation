@@ -342,6 +342,17 @@ public class ApiTest {
         assertEquals(0, f.outgoing.size());
     }
 
+    @Test public void blocks() throws JSONException {
+        java.util.List<Api.Friend> b = Api.parseBlocks("{\"blocks\":[{\"user_id\":\"u2\",\"username\":\"bob\"},"
+                + "{\"user_id\":\"u3\",\"username\":null}]}");
+        assertEquals(2, b.size());
+        assertEquals("u2", b.get(0).userId);
+        assertEquals("bob", b.get(0).username);
+        assertNull(b.get(1).username);
+        assertEquals(0, Api.parseBlocks("{\"blocks\":[]}").size());
+        assertEquals(0, Api.parseBlocks("{}").size());
+    }
+
     @Test public void friends_missingListsAreEmpty() throws JSONException {
         Api.Friends f = Api.parseFriends("{}");
         assertEquals(0, f.accepted.size());
