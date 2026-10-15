@@ -12,18 +12,20 @@ android {
         // Build de teste lado a lado com o app instalado: outro pacote, dados separados.
         providers.gradleProperty("POKELOCATION_ID_SUFFIX").orNull?.let { applicationIdSuffix = it }
         buildConfigField("String", "SOCIAL_API",
-            "\"" + (providers.gradleProperty("POKELOCATION_SOCIAL_API").orNull ?: "https://api.pokelocation.app") + "\"")
+            "\"" + (providers.gradleProperty("POKELOCATION_SOCIAL_API").orNull ?: "https://pokelocation.waveplay.xyz") + "\"")
         // abi:sha256:bytes do .so descomprimido, gerado por tools/libsignal/prepare.sh.
         buildConfigField("String", "LIBSIGNAL_VERSION", "\"0.86.5\"")
         buildConfigField("String", "LIBSIGNAL_SO", "\"" +
             "arm64-v8a:2b9188dcbbfbb6716f31e09b54f97e2732e1d3085594fdcf90a8fa222b56e71e:6707408," +
             "armeabi-v7a:008381906eadde5ef97e6d7dcb45842e65fde78ebd0d461aaacb64134f02d276:4942304," +
             "x86_64:7cf4b3990f6bae29259bfa5f72d39796411e2511f3812363c497344d16beae72:7825800\"")
-        // Placeholders até o deploy.
-        buildConfigField("String", "FIREBASE_APP_ID", "\"1:000000000000:android:0000000000000000\"")
-        buildConfigField("String", "FIREBASE_API_KEY", "\"AIzaPlaceholderPlaceholderPlaceholder000\"")
-        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"pokelocation-placeholder\"")
-        buildConfigField("String", "FIREBASE_SENDER_ID", "\"000000000000\"")
+        // Valores reais por -P (~/pokelocation-secrets/firebase-app.txt), nunca no repo; sem eles não chega push.
+        fun firebase(name: String, placeholder: String) = buildConfigField("String", name,
+            "\"" + (providers.gradleProperty("POKELOCATION_$name").orNull ?: placeholder) + "\"")
+        firebase("FIREBASE_APP_ID", "1:000000000000:android:0000000000000000")
+        firebase("FIREBASE_API_KEY", "AIzaPlaceholderPlaceholderPlaceholder000")
+        firebase("FIREBASE_PROJECT_ID", "pokelocation-placeholder")
+        firebase("FIREBASE_SENDER_ID", "000000000000")
     }
     buildFeatures { buildConfig = true }
 
