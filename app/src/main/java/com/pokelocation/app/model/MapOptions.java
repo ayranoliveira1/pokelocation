@@ -14,7 +14,6 @@ public final class MapOptions {
     public int routeMode;                 // route_mode 0 stop,1 loop,2 reverse
     public int routeStartMode;            // route_start_mode 0 teleport,1 walk
     public boolean customMarkersEnabled;  // custom_markers_enabled
-    public boolean pogoLayer;             // pogo_layer
     public int generateMode;              // generate_mode 0 random,1 circle
     public int generateCount = 10;        // generate_marker_count
     public double generateOffset = 50.0;  // generate_offset
@@ -28,7 +27,6 @@ public final class MapOptions {
         o.routeMode = routeMode;
         o.routeStartMode = routeStartMode;
         o.customMarkersEnabled = customMarkersEnabled;
-        o.pogoLayer = pogoLayer;
         o.generateMode = generateMode;
         o.generateCount = generateCount;
         o.generateOffset = generateOffset;
@@ -41,7 +39,6 @@ public final class MapOptions {
         o.routeMode = Prefs.getInt(c, Prefs.ROUTE_MODE);
         o.routeStartMode = Prefs.getInt(c, Prefs.ROUTE_START_MODE);
         o.customMarkersEnabled = Prefs.getBool(c, Prefs.CUSTOM_MARKERS_ENABLED);
-        o.pogoLayer = Prefs.getBool(c, Prefs.POGO_LAYER);
         o.generateMode = Prefs.getInt(c, Prefs.GENERATE_MODE);
         o.generateCount = Prefs.getInt(c, Prefs.GENERATE_MARKER_COUNT);
         o.generateOffset = Prefs.getDouble(c, Prefs.GENERATE_OFFSET);
@@ -54,7 +51,6 @@ public final class MapOptions {
                 .putInt(Prefs.ROUTE_MODE, routeMode)
                 .putInt(Prefs.ROUTE_START_MODE, routeStartMode)
                 .putBoolean(Prefs.CUSTOM_MARKERS_ENABLED, customMarkersEnabled)
-                .putBoolean(Prefs.POGO_LAYER, pogoLayer)
                 .putInt(Prefs.GENERATE_MODE, generateMode)
                 .putInt(Prefs.GENERATE_MARKER_COUNT, generateCount);
         Prefs.putDouble(e, Prefs.GENERATE_OFFSET, generateOffset);
@@ -66,7 +62,6 @@ public final class MapOptions {
                 .putExtra(Prefs.ROUTE_MODE, routeMode)
                 .putExtra(Prefs.ROUTE_START_MODE, routeStartMode)
                 .putExtra(Prefs.CUSTOM_MARKERS_ENABLED, customMarkersEnabled)
-                .putExtra(Prefs.POGO_LAYER, pogoLayer)
                 .putExtra(Prefs.GENERATE_MODE, generateMode)
                 .putExtra(Prefs.GENERATE_MARKER_COUNT, generateCount)
                 .putExtra(Prefs.GENERATE_OFFSET, generateOffset);
@@ -80,7 +75,6 @@ public final class MapOptions {
         o.routeMode = Intents.getInt(i, Prefs.ROUTE_MODE, o.routeMode);
         o.routeStartMode = Intents.getInt(i, Prefs.ROUTE_START_MODE, o.routeStartMode);
         o.customMarkersEnabled = Intents.getBool(i, Prefs.CUSTOM_MARKERS_ENABLED, o.customMarkersEnabled);
-        o.pogoLayer = Intents.getBool(i, Prefs.POGO_LAYER, o.pogoLayer);
         o.generateMode = Intents.getInt(i, Prefs.GENERATE_MODE, o.generateMode);
         o.generateCount = Intents.getInt(i, Prefs.GENERATE_MARKER_COUNT, o.generateCount);
         o.generateOffset = Intents.getDouble(i, Prefs.GENERATE_OFFSET, o.generateOffset);
@@ -92,7 +86,6 @@ public final class MapOptions {
         b.putInt(Prefs.ROUTE_MODE, routeMode);
         b.putInt(Prefs.ROUTE_START_MODE, routeStartMode);
         b.putBoolean(Prefs.CUSTOM_MARKERS_ENABLED, customMarkersEnabled);
-        b.putBoolean(Prefs.POGO_LAYER, pogoLayer);
         b.putInt(Prefs.GENERATE_MODE, generateMode);
         b.putInt(Prefs.GENERATE_MARKER_COUNT, generateCount);
         b.putDouble(Prefs.GENERATE_OFFSET, generateOffset);

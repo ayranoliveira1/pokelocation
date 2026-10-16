@@ -2,4 +2,6 @@
 <resources>
     <color name="pogo_surface_variant">#2A2E33</color>
     <color name="pogo_outline">#8E9099</color>
+    <color name="pogo_tile">#262A2F</color>
+    <color name="pogo_warn">#FFB74D</color>
 </resources>

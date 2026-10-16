@@ -30,7 +30,8 @@ public final class Prefs {
     public static final String DRAWER_X = "drawer_x", DRAWER_Y = "drawer_y";
     public static final String LAST_MOCKED_TIME = "last_mocked_time";
     public static final String CUSTOM_MARKERS_ENABLED = "custom_markers_enabled";
-    public static final String POGO_LAYER = "pogo_layer";
+    /** Camada Pokémon: arquivo próprio, fora da sessão (o :overlay devolvia um valor velho no Stop). */
+    public static final String POGO_FILE = "pogo_map", POGO_LAYER = "pogo_layer";
     public static final String TELEPORT_WALK_MODE = "teleport_walk_mode";
     public static final String GENERATE_MODE = "generate_mode";
     public static final String GENERATE_MARKER_COUNT = "generate_marker_count";
@@ -82,7 +83,7 @@ public final class Prefs {
     public static final String[] SESSION_KEYS = {
             LAST_LATITUDE, LAST_LONGITUDE, LAST_ALTITUDE, LAST_MOCKED_TIME,
             JOYSTICK_X, JOYSTICK_Y, DRAWER_X, DRAWER_Y, TELEPORT_WALK_MODE,
-            ROUTE_OPTIONS_VISIBILITY, ROUTE_MODE, ROUTE_START_MODE, CUSTOM_MARKERS_ENABLED, POGO_LAYER,
+            ROUTE_OPTIONS_VISIBILITY, ROUTE_MODE, ROUTE_START_MODE, CUSTOM_MARKERS_ENABLED,
             GENERATE_MODE, GENERATE_MARKER_COUNT, GENERATE_OFFSET};
 
     /** Chaves gravadas como double (long bits). */
@@ -109,7 +110,6 @@ public final class Prefs {
         d.put(DRAWER_Y, -1);
         d.put(LAST_MOCKED_TIME, 0L);
         d.put(CUSTOM_MARKERS_ENABLED, false);
-        d.put(POGO_LAYER, false);
         d.put(TELEPORT_WALK_MODE, false);
         d.put(GENERATE_MODE, 0);
         d.put(GENERATE_MARKER_COUNT, 10);
@@ -270,6 +270,20 @@ public final class Prefs {
     @SuppressWarnings("deprecation")
     public static void setShareLocation(Context c, boolean on) {
         c.getSharedPreferences(SHARE_FILE, Context.MODE_MULTI_PROCESS).edit().putBoolean(SHARE_LOCATION, on).commit();
+    }
+
+    /**
+     * Só o mapa do main e o do :map leem e gravam (o switch), cada um direto no arquivo: uma chave só, então a escrita
+     * de um processo não atropela nada do outro.
+     */
+    @SuppressWarnings("deprecation")
+    public static boolean pogoLayer(Context c) {
+        return c.getSharedPreferences(POGO_FILE, Context.MODE_MULTI_PROCESS).getBoolean(POGO_LAYER, false);
+    }
+
+    @SuppressWarnings("deprecation")
+    public static void setPogoLayer(Context c, boolean on) {
+        c.getSharedPreferences(POGO_FILE, Context.MODE_MULTI_PROCESS).edit().putBoolean(POGO_LAYER, on).apply();
     }
 
     public static String widgetKey(String base, int appWidgetId) { return base + "_" + appWidgetId; }

@@ -1,6 +1,7 @@
 package com.pokelocation.app.pogo;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.drawable.GradientDrawable;
 import android.text.Editable;
 import android.text.InputType;
@@ -10,9 +11,12 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.BaseAdapter;
-import android.widget.CheckedTextView;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
+import android.widget.CheckBox;
+import android.widget.ImageView;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -63,8 +67,7 @@ public final class PogoFilterForm {
         scroll = new ScrollView(c);
         body = new LinearLayout(c);
         body.setOrientation(LinearLayout.VERTICAL);
-        int side = Ui.dp(c, 20);
-        body.setPadding(side, 0, side, pad);
+        body.setPadding(pad, 0, pad, pad); // 16dp em tudo (filtros-design-v3)
         scroll.addView(body);
         root.addView(scroll);
         render();
@@ -147,11 +150,14 @@ public final class PogoFilterForm {
         title(R.string.pogo_f_quality);
         boolean any = f.ivMin == null && f.ivMax == null;
         int iv = any ? 0 : f.ivMax == null && Double.valueOf(90).equals(f.ivMin) ? 1 : Double.valueOf(100).equals(f.ivMin) ? 2 : -1;
-        seg(new String[]{c.getString(R.string.pogo_any), "≥ 90", "100"}, iv, w -> {
+        // atalhos: o mesmo ChoiceGrid dos tamanhos, com escolha única (o render reaplica o estado)
+        body.addView(new PogoChips.ChoiceGrid(c, new String[]{c.getString(R.string.pogo_any), "≥ 90", "100"},
+                new boolean[]{iv == 0, iv == 1, iv == 2}, (w, v) -> {
             f.ivMin = w == 0 ? null : w == 1 ? 90.0 : 100.0;
             f.ivMax = null;
+            changed();
             body.post(this::render);
-        });
+        }));
         pair(R.string.pogo_f_iv, true, f.ivMin, f.ivMax, (a, b) -> { f.ivMin = a; f.ivMax = b; });
         pair(R.string.pogo_f_cp, false, dbl(f.cpMin), dbl(f.cpMax), (a, b) -> { f.cpMin = integer(a); f.cpMax = integer(b); });
         pair(R.string.pogo_f_level, true, f.levelMin, f.levelMax, (a, b) -> { f.levelMin = a; f.levelMax = b; });
@@ -232,7 +238,7 @@ public final class PogoFilterForm {
         t.setTextSize(16);
         t.setTypeface(PogoChips.MEDIUM);
         t.setTextColor(c.getColor(R.color.on_surface));
-        t.setPadding(0, Ui.dp(c, 24), 0, Ui.dp(c, 4));
+        t.setPadding(0, Ui.dp(c, 24), 0, Ui.dp(c, 8));
     }
 
     private TextView label(int res) {
@@ -404,70 +410,237 @@ public final class PogoFilterForm {
         });
     }
 
-    /** Subtela empilhada: "‹" volta; uma linha "qualquer forma" por espécie e uma por forma quando há mais de uma. */
+    /** Linha da lista de espécies: views da linha reciclada + a chave atual (descarta foto de pedido antigo). */
+    private static final class Holder {
+        ImageView img;
+        TextView name, dex;
+        CheckBox box;
+        Pogo.Mon mon;
+        /** 1× por linha: aplica a foto do Mon atual (linha reciclada já cai no novo, sem lambda por bind). */
+        final Consumer<Bitmap> photo = b -> img.setImageBitmap(PogoIcons.cached(mon));
+    }
+
+    /**
+     * Subtela empilhada (filtros-design-v3 §4): busca fixa, escolhidas como avatares removíveis e uma linha de 64dp com
+     * foto por espécie ("qualquer forma") e por forma quando há mais de uma. Fotos só das linhas visíveis (PogoIcons).
+     */
     private void speciesPage() {
-        List<String> keys = new ArrayList<>(), labels = new ArrayList<>();
+        List<String> keys = new ArrayList<>(), labels = new ArrayList<>(), titles = new ArrayList<>(), dex = new ArrayList<>();
+        List<Pogo.Mon> icons = new ArrayList<>();
         for (int i = 0; i < catalog.size(); i++) {
             Pogo.Species s = catalog.get(i);
             String name = s.name != null ? s.name : "#" + s.id;
+            boolean several = (i > 0 && catalog.get(i - 1).id == s.id) || (i + 1 < catalog.size() && catalog.get(i + 1).id == s.id);
             if (i == 0 || catalog.get(i - 1).id != s.id) {
                 keys.add(PogoFilter.labelKey(s.id, -1));
-                labels.add(c.getString(R.string.pogo_f_any_form, name));
+                labels.add(several ? c.getString(R.string.pogo_f_any_form, name) : name);
+                titles.add(several ? c.getString(R.string.pogo_f_any_form, name) : name);
+                icons.add(icon(s.id, name, null));
+                dex.add(String.format(Locale.ROOT, "#%03d", s.id));
             }
-            if ((i > 0 && catalog.get(i - 1).id == s.id) || (i + 1 < catalog.size() && catalog.get(i + 1).id == s.id)) {
+            if (several) {
+                String form = s.formName != null ? s.formName : "#" + s.form;
                 keys.add(PogoFilter.labelKey(s.id, s.form));
-                labels.add(name + " · " + (s.formName != null ? s.formName : "#" + s.form));
+                labels.add(name + " · " + form);
+                titles.add(name + " · " + form);
+                icons.add(icon(s.id, name, s.formName));
+                dex.add(dex.get(dex.size() - 1));
             }
         }
         List<Integer> shown = new ArrayList<>();
         for (int i = 0; i < keys.size(); i++) shown.add(i);
-        LayoutInflater inf = LayoutInflater.from(c);
-        BaseAdapter adapter = new BaseAdapter() {
-            @Override public int getCount() { return shown.size(); }
-            @Override public Object getItem(int p) { return keys.get(shown.get(p)); }
-            @Override public long getItemId(int p) { return shown.get(p); }
-            @Override public View getView(int p, View v, ViewGroup parent) {
-                CheckedTextView t = (CheckedTextView) (v != null ? v
-                        : inf.inflate(android.R.layout.simple_list_item_multiple_choice, parent, false));
-                t.setText(labels.get(shown.get(p)));
-                t.setChecked(selected(keys.get(shown.get(p))));
-                return t;
-            }
-        };
+        int dp = Ui.dp(c, 1);
         LinearLayout p = new LinearLayout(c);
         p.setOrientation(LinearLayout.VERTICAL);
-        p.setPadding(pad, 0, pad, 0);
+        p.setPadding(16 * dp, 0, 16 * dp, 0);
+
+        LinearLayout head = new LinearLayout(c);
+        head.setGravity(Gravity.CENTER_VERTICAL);
         TextView back = new TextView(c);
         back.setText("‹  " + c.getString(R.string.pogo_f_species));
         back.setTextSize(16);
         back.setTypeface(PogoChips.MEDIUM);
         back.setTextColor(c.getColor(R.color.on_surface));
-        back.setMinHeight(Ui.dp(c, 48));
         back.setGravity(Gravity.CENTER_VERTICAL);
         back.setOnClickListener(v -> back());
-        p.addView(back);
+        head.addView(back, new LinearLayout.LayoutParams(0, 48 * dp, 1));
+        TextView clear = new TextView(c);
+        clear.setText(R.string.pogo_f_clear);
+        clear.setTextSize(16);
+        clear.setTextColor(c.getColor(R.color.primary));
+        clear.setGravity(Gravity.CENTER);
+        clear.setPadding(12 * dp, 0, 0, 0);
+        head.addView(clear, new LinearLayout.LayoutParams(-2, 48 * dp));
+        p.addView(head);
+
         EditText search = edit(R.string.pogo_f_search);
-        p.addView(search);
+        search.setBackground(PogoChips.round(c, 24, c.getColor(R.color.pogo_surface_variant), 0));
+        search.setPadding(16 * dp, 0, 16 * dp, 0);
+        p.addView(search, new LinearLayout.LayoutParams(-1, 48 * dp));
+
+        HorizontalScrollView chosenBar = new HorizontalScrollView(c);
+        chosenBar.setHorizontalScrollBarEnabled(false);
+        LinearLayout chosen = new LinearLayout(c);
+        chosen.setPadding(0, 8 * dp, 0, 8 * dp);
+        chosenBar.addView(chosen);
+        p.addView(chosenBar);
+
+        BaseAdapter[] adapter = new BaseAdapter[1];
+        boolean[] flinging = {false}; // no fling só o cache: um fling de ponta a ponta não enfileira ~1.455 downloads
+        Runnable[] refresh = new Runnable[1]; // o avatar removido remonta a faixa (e a esconde se ficou vazia)
+        refresh[0] = () -> {
+            chosen.removeAllViews();
+            for (int i = 0; i < keys.size(); i++) {
+                if (!selected(keys.get(i))) continue;
+                int idx = i;
+                chosen.addView(avatar(icons.get(i), titles.get(i), v -> {
+                    toggle(keys.get(idx), null);
+                    changed();
+                    adapter[0].notifyDataSetChanged();
+                    v.post(refresh[0]);
+                }));
+            }
+            chosenBar.setVisibility(chosen.getChildCount() > 0 ? View.VISIBLE : View.GONE);
+        };
+        adapter[0] = new BaseAdapter() {
+            @Override public int getCount() { return shown.size(); }
+            @Override public Object getItem(int pos) { return keys.get(shown.get(pos)); }
+            @Override public long getItemId(int pos) { return shown.get(pos); }
+            @Override public View getView(int pos, View v, ViewGroup parent) {
+                Holder h = v != null ? (Holder) v.getTag() : null;
+                if (h == null) {
+                    h = new Holder();
+                    v = row(h);
+                }
+                int i = shown.get(pos);
+                h.mon = icons.get(i);
+                h.name.setText(labels.get(i));
+                h.dex.setText(dex.get(i));
+                h.box.setChecked(selected(keys.get(i)));
+                Bitmap b = PogoIcons.cached(h.mon);
+                h.img.setImageBitmap(b);
+                if (b == null && !flinging[0]) PogoIcons.load(c, h.mon, h.photo);
+                return v;
+            }
+        };
         ListView lv = new ListView(c);
-        lv.setAdapter(adapter);
+        lv.setDivider(null);
+        lv.setAdapter(adapter[0]);
+        lv.setOnScrollListener(new AbsListView.OnScrollListener() {
+            @Override public void onScrollStateChanged(AbsListView view, int state) {
+                flinging[0] = state == SCROLL_STATE_FLING;
+                if (state != SCROLL_STATE_IDLE) return;
+                for (int k = 0; k < view.getChildCount(); k++) { // parou: só as linhas visíveis
+                    Holder h = (Holder) view.getChildAt(k).getTag();
+                    if (h != null && h.mon != null && PogoIcons.cached(h.mon) == null) PogoIcons.load(c, h.mon, h.photo);
+                }
+            }
+            @Override public void onScroll(AbsListView view, int first, int count, int total) {}
+        });
         lv.setOnItemClickListener((x, v, pos, id) -> {
             int i = shown.get(pos);
             toggle(keys.get(i), selected(keys.get(i)) ? null : labels.get(i));
             changed();
-            adapter.notifyDataSetChanged();
+            adapter[0].notifyDataSetChanged();
+            refresh[0].run();
         });
         p.addView(lv, new LinearLayout.LayoutParams(-1, 0, 1));
+        clear.setOnClickListener(v -> {
+            for (String k : new ArrayList<>(keys)) if (selected(k)) toggle(k, null);
+            changed();
+            adapter[0].notifyDataSetChanged();
+            refresh[0].run();
+        });
         watch(search, s -> {
             String q = s.trim().toLowerCase(Locale.ROOT);
             shown.clear();
             for (int i = 0; i < keys.size(); i++)
                 if (q.isEmpty() || labels.get(i).toLowerCase(Locale.ROOT).contains(q) || keys.get(i).startsWith(q + "|"))
                     shown.add(i);
-            adapter.notifyDataSetChanged();
+            adapter[0].notifyDataSetChanged();
         });
+        refresh[0].run();
         scroll.setVisibility(View.GONE);
         page = p;
         root.addView(p, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    /** Mon só para o PogoIcons (id, nome e forma em rótulo): a foto da espécie ou da forma. */
+    private static Pogo.Mon icon(int id, String name, String form) {
+        Pogo.Mon m = new Pogo.Mon();
+        m.id = id;
+        m.name = name;
+        m.form = form;
+        return m;
+    }
+
+    /** 64dp: foto de 40dp num disco de 48dp, nome + #dex, checkbox (a linha toda é o alvo). */
+    private View row(Holder h) {
+        int dp = Ui.dp(c, 1);
+        LinearLayout r = new LinearLayout(c);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setMinimumHeight(64 * dp);
+        r.setLayoutParams(new ListView.LayoutParams(-1, 64 * dp));
+        h.img = disc(r, 48, 40);
+        LinearLayout col = new LinearLayout(c);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPadding(12 * dp, 0, 12 * dp, 0);
+        h.name = new TextView(c);
+        h.name.setTextSize(16);
+        h.name.setTextColor(c.getColor(R.color.on_surface));
+        h.name.setSingleLine(true);
+        h.name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        h.dex = new TextView(c);
+        h.dex.setTextSize(14);
+        h.dex.setTextColor(c.getColor(R.color.on_surface_variant));
+        h.dex.setFontFeatureSettings("tnum");
+        col.addView(h.name);
+        col.addView(h.dex);
+        r.addView(col, new LinearLayout.LayoutParams(0, -2, 1));
+        h.box = new CheckBox(c);
+        h.box.setClickable(false);
+        h.box.setFocusable(false);
+        r.addView(h.box);
+        r.setTag(h);
+        return r;
+    }
+
+    /** Avatar de 40dp das escolhidas, com ✕ no canto; um toque remove. */
+    private View avatar(Pogo.Mon m, String label, View.OnClickListener remove) {
+        int dp = Ui.dp(c, 1);
+        FrameLayout f = new FrameLayout(c);
+        ImageView img = disc(f, 40, 32);
+        Bitmap b = PogoIcons.cached(m);
+        if (b != null) img.setImageBitmap(b);
+        else PogoIcons.load(c, m, bmp -> { if (bmp != null) img.setImageBitmap(bmp); });
+        TextView x = new TextView(c);
+        x.setText("✕");
+        x.setTextSize(10);
+        x.setGravity(Gravity.CENTER);
+        x.setTextColor(c.getColor(R.color.on_primary));
+        x.setBackground(PogoChips.round(c, 8, c.getColor(R.color.primary), 0));
+        f.addView(x, new FrameLayout.LayoutParams(16 * dp, 16 * dp, Gravity.TOP | Gravity.END));
+        f.setContentDescription(label);
+        f.setOnClickListener(remove);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(44 * dp, 44 * dp);
+        lp.setMarginEnd(8 * dp);
+        f.setLayoutParams(lp);
+        return f;
+    }
+
+    /** Disco surface_variant de discDp com a foto de imgDp centralizada; devolve a ImageView. */
+    private ImageView disc(ViewGroup parent, int discDp, int imgDp) {
+        int dp = Ui.dp(c, 1);
+        FrameLayout d = new FrameLayout(c);
+        GradientDrawable o = new GradientDrawable();
+        o.setShape(GradientDrawable.OVAL);
+        o.setColor(c.getColor(R.color.pogo_surface_variant));
+        d.setBackground(o);
+        ImageView img = new ImageView(c);
+        img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        d.addView(img, new FrameLayout.LayoutParams(imgDp * dp, imgDp * dp, Gravity.CENTER));
+        parent.addView(d, new ViewGroup.LayoutParams(discDp * dp, discDp * dp));
+        return img;
     }
 
     private static int indexOf(int[] a, int v) {

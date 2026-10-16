@@ -46,6 +46,8 @@ public final class PogoIcons {
     private static LruCache<String, Bitmap> sMem;
     private static ThreadPoolExecutor sExec;
     private static boolean sSwept;
+    /** Bytes no disco desde o último sweep: passou do teto, o próximo fetch varre de novo (o seletor baixa centenas). */
+    private static long sDisk;
     private static final Map<String, List<Consumer<Bitmap>>> PENDING = new HashMap<>();
     /** chave → quando tentar de novo (cadeia toda 404 ou rede fora). */
     private static final Map<String, Long> FAILED = new HashMap<>();
@@ -183,7 +185,8 @@ public final class PogoIcons {
             File f = new File(dir, fileName(url)), miss = new File(dir, f.getName() + ".404");
             if (miss.exists() && System.currentTimeMillis() - miss.lastModified() < MISS_MS) continue;
             try {
-                if (!f.exists()) {
+                boolean hit = f.exists();
+                if (!hit) {
                     int got = download(url, f, miss);
                     if (got == NOT_FOUND) continue;
                     if (got == SKIP) {
@@ -192,7 +195,10 @@ public final class PogoIcons {
                     }
                 }
                 Bitmap b = decode(f.getPath());
-                if (b != null) return b;
+                if (b != null) {
+                    if (hit) f.setLastModified(System.currentTimeMillis()); // o sweep apaga pelo uso, não pela data do download
+                    return b;
+                }
                 f.delete();
             } catch (IOException e) {
                 Log.w(TAG, f.getName() + ": " + e);
@@ -244,6 +250,9 @@ public final class PogoIcons {
                 throw e;
             }
             if (!tmp.renameTo(f)) tmp.delete();
+            synchronized (LOCK) {
+                if ((sDisk += f.length()) > DISK_MAX) sSwept = false;
+            }
             return OK;
         } catch (IOException | RuntimeException e) {
             con.disconnect();
@@ -288,6 +297,9 @@ public final class PogoIcons {
             if (!stale && total <= DISK_MAX) continue;
             total -= f.length();
             f.delete();
+        }
+        synchronized (LOCK) {
+            sDisk = total;
         }
     }
 

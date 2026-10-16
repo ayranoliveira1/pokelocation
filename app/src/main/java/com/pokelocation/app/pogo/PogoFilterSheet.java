@@ -56,7 +56,7 @@ public final class PogoFilterSheet {
 
         LinearLayout head = new LinearLayout(c);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.setPadding(Ui.dp(c, 20), 0, 0, 0);
+        head.setPadding(dp16, 0, 0, 0);
         TextView title = text(R.string.pogo_panel_filters, R.color.on_surface);
         title.setTextSize(20);
         title.setTypeface(PogoChips.MEDIUM);
@@ -79,13 +79,12 @@ public final class PogoFilterSheet {
         apply.setTypeface(PogoChips.MEDIUM);
         apply.setBackground(shape(R.color.primary, null));
         apply.setOnClickListener(v -> { if (!closing) onApply.accept(edit); }); // quem hospeda fecha no onApply
-        int dp20 = Ui.dp(c, 20);
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-1, Ui.dp(c, 52));
-        al.setMargins(dp20, Ui.dp(c, 8), dp20, dp20);
+        al.setMargins(dp16, Ui.dp(c, 8), dp16, dp16);
         sheet.addView(apply, al);
         // rodapé acima da barra de navegação (no app; no :overlay o inset vem 0)
         root.setOnApplyWindowInsetsListener((v, in) -> {
-            int bottom = dp20 + in.getSystemWindowInsetBottom();
+            int bottom = dp16 + in.getSystemWindowInsetBottom();
             if (al.bottomMargin != bottom) {
                 al.bottomMargin = bottom;
                 apply.setLayoutParams(al);

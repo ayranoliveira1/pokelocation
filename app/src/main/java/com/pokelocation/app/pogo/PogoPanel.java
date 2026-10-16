@@ -4,9 +4,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.InsetDrawable;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.RippleDrawable;
+import android.content.res.ColorStateList;
 import android.os.Process;
 import android.text.TextUtils;
 import android.util.Log;
@@ -15,7 +15,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -83,7 +85,6 @@ public final class PogoPanel {
     private final LinearLayout filtersBtn;
     private final TextView filtersText, badge;
     private final BaseAdapter adapter;
-    private final int iconPx;
     private final Consumer<Bitmap> onIcon;
     // Memo por Pokémon da busca atual (o tick de 1 s não refaz título, números nem distância); limpo a cada busca.
     private final IdentityHashMap<Pogo.Mon, Row> rows = new IdentityHashMap<>();
@@ -91,23 +92,33 @@ public final class PogoPanel {
     private String[] despawn;
 
     private static final class Row {
-        final String title, fixed, dist;
-        Drawable icon;
+        final String title, stats, dist, iv;
+        Bitmap photo;
 
-        Row(String title, String fixed, String dist) {
+        Row(String title, String stats, String dist, String iv) {
             this.title = title;
-            this.fixed = fixed;
+            this.stats = stats;
             this.dist = dist;
+            this.iv = iv;
         }
     }
 
+    /** O bloco de um Pokémon (design v3): disco com a foto, nome / PC · Nv · tempo / local, pílula de IV. */
     private static final class Holder {
-        final TextView title, sub;
+        final ImageView photo;
+        final TextView name, stats, time, place, iv;
+        final GradientDrawable ivBg;
         Pogo.Mon mon;
+        boolean warn;
 
-        Holder(TextView title, TextView sub) {
-            this.title = title;
-            this.sub = sub;
+        Holder(ImageView photo, TextView name, TextView stats, TextView time, TextView place, TextView iv, GradientDrawable ivBg) {
+            this.photo = photo;
+            this.name = name;
+            this.stats = stats;
+            this.time = time;
+            this.place = place;
+            this.iv = iv;
+            this.ivBg = ivBg;
         }
     }
     private final Runnable onPlace;
@@ -175,7 +186,6 @@ public final class PogoPanel {
         status = view.findViewById(R.id.pogo_status);
         progress = view.findViewById(R.id.pogo_progress);
         close = view.findViewById(R.id.pogo_close);
-        iconPx = Ui.dp(c, 48);
         if (fullScreen) {
             view.findViewById(R.id.pogo_title).setVisibility(View.GONE);   // a toolbar já diz
             frame.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -185,36 +195,47 @@ public final class PogoPanel {
             @Override public Object getItem(int i) { return mons.get(i); }
             @Override public long getItemId(int i) { return i; }
 
-            /** O tick de 1 s rebinda as linhas visíveis: só o texto de baixo (tempo/local) é refeito. */
+            /** O tick de 1 s rebinda os blocos visíveis: só o tempo e o local são refeitos; o resto, quando muda o Pokémon. */
             @Override public View getView(int i, View row, ViewGroup parent) {
-                Holder h;
-                if (row == null) {
-                    row = LayoutInflater.from(ctx).inflate(R.layout.panel_item_row, parent, false);
-                    row.setTag(h = new Holder(row.findViewById(R.id.row_title), row.findViewById(R.id.row_subtitle)));
-                } else {
-                    h = (Holder) row.getTag();
-                }
+                if (row == null) row = newRow();
+                Holder h = (Holder) row.getTag();
                 Pogo.Mon m = mons.get(i);
                 Row r = rows.get(m);
-                if (r == null) rows.put(m, r = new Row(PogoText.title(m), PogoText.fixedStats(ctx, m), km == WORLD ? null : distance(m)));
+                if (r == null) {
+                    r = new Row(PogoText.title(m), PogoText.cpLevel(ctx, m), km == WORLD ? null : distance(m),
+                            m.iv >= 0 ? (int) m.iv + "%" : null);
+                    rows.put(m, r);
+                }
                 if (h.mon != m) {
                     h.mon = m;
-                    h.title.setText(r.title);
-                    h.title.setCompoundDrawablesRelative(icon(m, r), null, null, null);
-                } else if (r.icon == null && icon(m, r) != null) {
-                    h.title.setCompoundDrawablesRelative(r.icon, null, null, null);
+                    h.name.setText(r.title);
+                    h.stats.setText(r.stats);
+                    h.photo.setImageBitmap(photo(m, r));
+                    h.iv.setVisibility(r.iv == null ? View.GONE : View.VISIBLE);
+                    if (r.iv != null) {
+                        h.iv.setText(r.iv);
+                        int strong = PogoText.ivPill(m);
+                        h.ivBg.setColor(strong != 0 ? strong : ctx.getColor(R.color.pogo_surface_variant));
+                        h.iv.setTextColor(strong == PogoText.PILL_RED ? 0xFFFFFFFF : strong == PogoText.PILL_ORANGE ? 0xFF1A1C1E
+                                : ctx.getColor(R.color.on_surface));
+                    }
+                } else if (r.photo == null && photo(m, r) != null) {
+                    h.photo.setImageBitmap(r.photo);
                 }
                 StringBuilder s = line;
                 s.setLength(0);
-                s.append(r.fixed);
-                long now = System.currentTimeMillis();
-                if (m.despawnMs > now) {
-                    if (despawn == null) despawn = PogoText.around(ctx, R.string.pogo_map_despawn);
-                    PogoText.clock(PogoText.dot(s).append(despawn[0]), m.despawnMs - now).append(despawn[1]);
+                long left = m.despawnMs - System.currentTimeMillis();
+                if (m.despawnMs > 0 && left > 0) PogoText.clock(s.append(r.stats.isEmpty() ? "" : " · "), left);
+                h.time.setText(s);
+                boolean warn = left > 0 && left < 3 * 60_000;
+                if (warn != h.warn) {
+                    h.warn = warn;
+                    h.time.setTextColor(ctx.getColor(warn ? R.color.pogo_warn : R.color.on_surface_variant));
                 }
+                s.setLength(0);
                 rowPlace(s, m, r);
-                h.sub.setText(s);
-                h.sub.setVisibility(s.length() == 0 ? View.GONE : View.VISIBLE);
+                h.place.setText(s);
+                h.place.setVisibility(s.length() == 0 ? View.GONE : View.VISIBLE);
                 return row;
             }
         };
@@ -230,16 +251,15 @@ public final class PogoPanel {
         chips.setGravity(android.view.Gravity.CENTER_VERTICAL);
         strip.addView(chips);
         ((ViewGroup) view.findViewById(R.id.pogo_chips)).addView(strip);
-        // Botão "Filtros": 44dp visíveis (alvo 48), badge on_primary com o número em primary, dentro dele
+        // Botão "Filtros": pílula de 40dp pela largura do conteúdo (ícone + texto + badge), nunca círculo
         filtersBtn = new LinearLayout(c);
         filtersBtn.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        filtersBtn.setMinimumHeight(Ui.dp(c, 48));
-        int ph = Ui.dp(c, 16);
-        filtersBtn.setPadding(ph, 0, Ui.dp(c, 12), 0);
         filtersText = new TextView(c);
         filtersText.setText(R.string.pogo_panel_filters);
         filtersText.setTextSize(15);
         filtersText.setTypeface(PogoChips.MEDIUM);
+        filtersText.setSingleLine(true);
+        filtersText.setCompoundDrawablePadding(Ui.dp(c, 8));
         filtersBtn.addView(filtersText);
         badge = new TextView(c);
         badge.setTextSize(12);
@@ -255,9 +275,15 @@ public final class PogoPanel {
         blp.setMarginStart(Ui.dp(c, 8));
         filtersBtn.addView(badge, blp);
         filtersBtn.setOnClickListener(x -> openSheet());
-        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(c, 40));
         flp.setMarginEnd(Ui.dp(c, 8));
         chips.addView(filtersBtn, flp);
+        list.setDivider(new ColorDrawable(0));   // blocos separados por 8dp, não por divisória
+        list.setDividerHeight(Ui.dp(c, 8));
+        list.setSelector(new ColorDrawable(0));  // o ripple é do próprio bloco
+        int m16 = Ui.dp(c, 16);
+        list.setPadding(m16, Ui.dp(c, 8), m16, Ui.dp(c, 8));
+        list.setClipToPadding(false);
         renderChips();
         close.setOnClickListener(x -> {
             if (detail.getVisibility() == View.VISIBLE) closeDetail();
@@ -285,7 +311,7 @@ public final class PogoPanel {
         sheet = null;
         mons.clear();
         rows.clear();
-        list.setAdapter(null);   // solta os scraps do ListView (linhas com BitmapDrawable)
+        list.setAdapter(null);   // solta os scraps do ListView (blocos com as fotos)
     }
 
     /** Na volta da conta PoGo (vincular treinador) o sheet aberto remonta o shiny. */
@@ -364,11 +390,14 @@ public final class PogoPanel {
         int n = f == null ? 0 : f.activeCount();
         badge.setText(String.valueOf(n));
         badge.setVisibility(n > 0 ? View.VISIBLE : View.GONE);
-        // com filtro ativo, pílula primary; sem filtro, só a borda (e sem badge)
-        int v = Ui.dp(ctx, 2);
-        filtersBtn.setBackground(new InsetDrawable(n > 0 ? PogoChips.round(ctx, 22, ctx.getColor(R.color.primary), 0)
-                : PogoChips.round(ctx, 22, 0, ctx.getColor(R.color.outline)), 0, v, 0, v));
-        filtersText.setTextColor(ctx.getColor(n > 0 ? R.color.on_primary : R.color.on_surface));
+        // com filtro ativo, pílula primary; sem filtro, só a borda (e sem badge). O padding vem DEPOIS do fundo: o
+        // setBackground troca o padding do view pelo do drawable (era o que encolhia o botão num círculo).
+        int fg = ctx.getColor(n > 0 ? R.color.on_primary : R.color.primary);
+        filtersBtn.setBackground(n > 0 ? PogoChips.round(ctx, 20, ctx.getColor(R.color.primary), 0)
+                : PogoChips.round(ctx, 20, 0, ctx.getColor(R.color.outline)));
+        filtersBtn.setPadding(Ui.dp(ctx, 16), 0, Ui.dp(ctx, n > 0 ? 10 : 16), 0);
+        filtersText.setTextColor(fg);
+        filtersText.setCompoundDrawablesRelative(PogoChips.lines(ctx, fg), null, null, null);
         if (f == null) return;
         chip(f.km == WORLD || Double.isNaN(lat) ? ctx.getString(R.string.pogo_panel_world) : ctx.getString(R.string.pogo_chip_near, f.km), null);
         int species = f.pokemonIds.size() + f.speciesForms.size();
@@ -441,17 +470,71 @@ public final class PogoPanel {
         if (!loaded && !destroyed) load();
     }
 
-    /** Ícone de 48dp da linha, criado uma vez; sem ele (ainda não veio ou o LRU expulsou), pede e redesenha ao chegar. */
-    private Drawable icon(Pogo.Mon m, Row r) {
-        if (r.icon != null) return r.icon;
+    /** A foto do bloco, guardada no memo; sem ela (ainda não veio ou o LRU expulsou), pede e redesenha ao chegar. */
+    private Bitmap photo(Pogo.Mon m, Row r) {
+        if (r.photo != null) return r.photo;
         Bitmap b = PogoIcons.cached(m);
-        if (b == null) {
-            PogoIcons.load(app, m, onIcon);
-            return null;
-        }
-        BitmapDrawable d = new BitmapDrawable(ctx.getResources(), b);
-        d.setBounds(0, 0, iconPx, iconPx);
-        return r.icon = d;
+        if (b == null) PogoIcons.load(app, m, onIcon);
+        return r.photo = b;
+    }
+
+    /** O bloco é montado em código (sem layout): fundo tile raio 16dp com ripple, 72dp de altura mínima, padding 12dp. */
+    private View newRow() {
+        Context c = ctx;
+        int p = Ui.dp(c, 12);
+        LinearLayout row = new LinearLayout(c);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(Ui.dp(c, 72));
+        int on = c.getColor(R.color.on_surface);
+        row.setBackground(new RippleDrawable(ColorStateList.valueOf((on & 0x00FFFFFF) | 0x1F000000),
+                PogoChips.round(c, 16, c.getColor(R.color.pogo_tile), 0), null));
+        row.setPadding(p, p, p, p);
+        FrameLayout disc = new FrameLayout(c);
+        GradientDrawable d = new GradientDrawable();
+        d.setShape(GradientDrawable.OVAL);
+        d.setColor(c.getColor(R.color.surface));
+        disc.setBackground(d);
+        ImageView photo = new ImageView(c);
+        int ph = Ui.dp(c, 48);
+        disc.addView(photo, new FrameLayout.LayoutParams(ph, ph, android.view.Gravity.CENTER));
+        int dd = Ui.dp(c, 56);
+        row.addView(disc, new LinearLayout.LayoutParams(dd, dd));
+        LinearLayout col = new LinearLayout(c);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView name = rowText(16, on);
+        name.setTypeface(PogoChips.MEDIUM);
+        col.addView(name);
+        LinearLayout l2 = new LinearLayout(c);
+        TextView stats = rowText(14, c.getColor(R.color.on_surface_variant)), time = rowText(14, c.getColor(R.color.on_surface_variant));
+        l2.addView(stats);
+        l2.addView(time);
+        col.addView(l2);
+        TextView place = rowText(14, c.getColor(R.color.on_surface_variant));
+        col.addView(place);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        clp.setMarginStart(p);
+        clp.setMarginEnd(Ui.dp(c, 8));
+        row.addView(col, clp);
+        TextView iv = rowText(14, on);
+        iv.setTypeface(PogoChips.MEDIUM);
+        iv.setGravity(android.view.Gravity.CENTER);
+        int ip = Ui.dp(c, 10);
+        GradientDrawable ivBg = PogoChips.round(c, 14, c.getColor(R.color.pogo_surface_variant), 0);
+        iv.setBackground(ivBg);
+        iv.setPadding(ip, 0, ip, 0);
+        row.addView(iv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(c, 28)));
+        row.setTag(new Holder(photo, name, stats, time, place, iv, ivBg));
+        return row;
+    }
+
+    private TextView rowText(int sp, int color) {
+        TextView t = new TextView(ctx);
+        t.setTextSize(sp);
+        t.setTextColor(color);
+        t.setSingleLine(true);
+        t.setEllipsize(TextUtils.TruncateAt.END);
+        t.setFontFeatureSettings("tnum");   // dígitos de largura fixa: o tempo não "pula" a cada segundo
+        return t;
     }
 
     private String distance(Pogo.Mon m) {

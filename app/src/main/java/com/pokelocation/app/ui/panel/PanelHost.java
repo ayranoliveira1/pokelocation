@@ -16,6 +16,9 @@ import android.os.Build;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
@@ -47,7 +50,7 @@ public final class PanelHost {
     private WindowManager.LayoutParams lp;
     private Runnable onDismiss, coverBack;
     private View cover;
-    private boolean showing;
+    private boolean showing, backWithIme;
     // overGame: janela arrastável do tamanho do card, posição salva por painel (key)
     private static final String POS_FILE = "overlay_panels";
     private String key;
@@ -116,8 +119,11 @@ public final class PanelHost {
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
                 if (handleBack && e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-                    if (e.getAction() == KeyEvent.ACTION_UP) {
-                        if (coverBack != null) coverBack.run();
+                    // o sistema pode esconder o teclado já no DOWN: o estado vale de quando o BACK começou
+                    if (e.getAction() == KeyEvent.ACTION_DOWN) backWithIme = imeShown();
+                    else if (e.getAction() == KeyEvent.ACTION_UP) {
+                        if (backWithIme) hideIme();   // 1º BACK só fecha o teclado; o 2º fecha o painel
+                        else if (coverBack != null) coverBack.run();
                         else dismiss();
                     }
                     return true;
@@ -192,7 +198,10 @@ public final class PanelHost {
             // ela não arrasta o painel, as listas e os bitmaps junto.
             ((ViewGroup) window).removeAllViews();
         }
-        if (window != null) window.removeOnLayoutChangeListener(refit);
+        if (window != null) {
+            window.removeOnLayoutChangeListener(refit);
+            window.getViewTreeObserver().removeOnWindowFocusChangeListener(showImeOnFocus);
+        }
         wm = null;
         window = null;
         lp = null;
@@ -334,9 +343,51 @@ public final class PanelHost {
 
     public void setFocusable(boolean focusable) {
         if (wm == null || window == null) return;
+        boolean was = (lp.flags & WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) == 0;
         if (focusable) lp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
         else lp.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
         update();
+        if (focusable && !was) {
+            ViewTreeObserver vto = window.getViewTreeObserver();
+            vto.removeOnWindowFocusChangeListener(showImeOnFocus);   // um setFocusable(false) antes do foco deixaria o antigo
+            vto.addOnWindowFocusChangeListener(showImeOnFocus);
+        }
+    }
+
+    /**
+     * A janela acaba de ficar focável, mas o foco dela chega depois do updateViewLayout: o showSoftInput feito antes
+     * disso é ignorado (o teclado só abria no 2º toque). Abre quando o foco chega, para o campo que estiver focado.
+     */
+    private final ViewTreeObserver.OnWindowFocusChangeListener showImeOnFocus = new ViewTreeObserver.OnWindowFocusChangeListener() {
+        @Override public void onWindowFocusChanged(boolean has) {
+            if (!has || window == null) return;
+            View w = window;
+            w.getViewTreeObserver().removeOnWindowFocusChangeListener(this);
+            w.post(() -> {
+                View f = w.findFocus();
+                if (f instanceof EditText) imm(w).showSoftInput(f, 0);
+            });
+        }
+    };
+
+    private static InputMethodManager imm(View v) {
+        return (InputMethodManager) v.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+    }
+
+    private boolean imeShown() {
+        if (window == null) return false;
+        if (Build.VERSION.SDK_INT >= 30) {
+            WindowInsets in = window.getRootWindowInsets();
+            return in != null && in.isVisible(WindowInsets.Type.ime());
+        }
+        return (lp.flags & WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) == 0 && window.findFocus() instanceof EditText;
+    }
+
+    private void hideIme() {
+        if (window == null) return;
+        imm(window).hideSoftInputFromWindow(window.getWindowToken(), 0);
+        View f = window.findFocus();
+        if (f != null) f.clearFocus();
     }
 
     private void update() {

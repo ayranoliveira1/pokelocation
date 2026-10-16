@@ -1,9 +1,13 @@
 package com.pokelocation.app.pogo;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
+import android.graphics.PixelFormat;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.InsetDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,14 +18,13 @@ import com.pokelocation.app.R;
 import com.pokelocation.app.util.Ui;
 
 /**
- * Controles do filtros-design-v2, só framework e GradientDrawable: Segmented (escolha única), ChoiceGrid (múltipla, 4
- * colunas), summaryChip (filtro ativo com "×") e Flow (quebra linha, só para as espécies). Bordas interativas no
- * outline do app (contraste ≥ 3:1); o pogo_outline claro fica para divisórias.
+ * Controles dos filtros (design v3), só framework e GradientDrawable: Segmented (escolha única), ChoiceGrid (múltipla,
+ * uma linha), summaryChip (filtro ativo com "✕"), lines (ícone em Canvas) e Flow (quebra linha, só para as espécies).
  */
 final class PogoChips {
     private PogoChips() {}
 
-    /** Quebra linha: 8dp entre itens na linha; entre linhas a folga já vem do alvo de 48dp. */
+    /** Quebra linha: 8dp entre itens e entre linhas. */
     static final class Flow extends ViewGroup {
         private final int gap;
 
@@ -53,7 +56,7 @@ final class PogoChips {
                 if (v.getVisibility() == GONE) continue;
                 int w = v.getMeasuredWidth(), h = v.getMeasuredHeight();
                 if (x > 0 && x + w > max) {
-                    y += line;
+                    y += line + gap;
                     x = 0;
                     line = 0;
                 }
@@ -149,39 +152,38 @@ final class PogoChips {
     }
 
     /**
-     * Múltipla escolha (tamanhos, atalhos de IV): 4 colunas de largura igual que nunca refluem; célula de 44dp visíveis
-     * (alvo 48dp), raio 12dp, borda outline; selecionada = primary + medium + ✓ à esquerda, com o espaço do ✓ reservado
-     * também na não selecionada (a largura não muda).
+     * Múltipla escolha (tamanhos, atalhos de IV): uma linha com N colunas iguais (os 7 tamanhos cabem), 40dp, raio 10dp,
+     * 2dp entre células, texto centralizado sem ✓; selecionada = primary + medium. Em tela estreita/fonte grande com
+     * mais de 4 opções: 2 linhas (4 + o resto, centralizado com a mesma largura de célula).
      */
     static final class ChoiceGrid extends LinearLayout {
         interface OnToggle { void toggle(int index, boolean on); }
 
         private final TextView[] cell;
-        private final android.graphics.drawable.Drawable check, blank;
 
         ChoiceGrid(Context c, CharSequence[] labels, boolean[] on, OnToggle cb) {
             super(c);
             setOrientation(VERTICAL);
-            int s = Ui.dp(c, 18);
-            check = c.getDrawable(R.drawable.ic_check).mutate();
-            check.setTint(c.getColor(R.color.on_primary));
-            check.setBounds(0, 0, s, s);
-            blank = new android.graphics.drawable.ColorDrawable(0);
-            blank.setBounds(0, 0, s, s);
             cell = new TextView[labels.length];
-            int gap = Ui.dp(c, 8);
+            android.content.res.Configuration cf = c.getResources().getConfiguration();
+            int perRow = labels.length > 4 && (cf.screenWidthDp < 340 || cf.fontScale > 1.15f) ? 4 : labels.length;
+            int gap = Ui.dp(c, 2);
             LinearLayout row = null;
             for (int i = 0; i < labels.length; i++) {
-                if (i % 4 == 0) {
+                if (i % perRow == 0) {
                     row = new LinearLayout(c);
-                    addView(row, new LayoutParams(LayoutParams.MATCH_PARENT, Ui.dp(c, 48)));
+                    LayoutParams rlp = new LayoutParams(LayoutParams.MATCH_PARENT, Ui.dp(c, 40));
+                    if (i > 0) rlp.topMargin = gap;
+                    addView(row, rlp);
+                    int left = Math.min(perRow, labels.length - i);
+                    if (left < perRow) row.setWeightSum(perRow);   // linha incompleta: mesma largura de célula
+                    row.setGravity(Gravity.CENTER_HORIZONTAL);
                 }
                 TextView t = new TextView(c);
                 t.setText(labels[i]);
-                t.setTextSize(15);
+                t.setTextSize(14);
                 t.setGravity(Gravity.CENTER);
                 t.setSingleLine(true);
-                t.setCompoundDrawablePadding(Ui.dp(c, 4));
                 int idx = i;
                 t.setOnClickListener(v -> {
                     boolean now = !v.isSelected();
@@ -189,16 +191,10 @@ final class PogoChips {
                     cb.toggle(idx, now);
                 });
                 LayoutParams lp = new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-                if (i % 4 != 0) lp.setMarginStart(gap);
+                if (i % perRow != 0) lp.setMarginStart(gap);
                 row.addView(t, lp);
                 cell[i] = t;
                 set(i, on != null && on[i]);
-            }
-            // última linha incompleta: células vazias mantêm as 4 colunas iguais
-            for (int k = labels.length % 4; k != 0 && k < 4; k++) {
-                LayoutParams lp = new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-                lp.setMarginStart(gap);
-                row.addView(new View(c), lp);
             }
         }
 
@@ -207,26 +203,50 @@ final class PogoChips {
             Context c = getContext();
             TextView t = cell[i];
             t.setSelected(on);
-            int v = Ui.dp(c, 2);
-            t.setBackground(new InsetDrawable(round(c, 12, on ? c.getColor(R.color.primary) : 0,
-                    on ? 0 : c.getColor(R.color.outline)), 0, v, 0, v));
+            t.setBackground(round(c, 10, c.getColor(on ? R.color.primary : R.color.pogo_surface_variant), 0));
             t.setTextColor(c.getColor(on ? R.color.on_primary : R.color.on_surface));
             t.setTypeface(on ? MEDIUM : Typeface.DEFAULT);
-            t.setCompoundDrawablesRelative(on ? check : blank, null, null, null);
             t.setContentDescription(on ? t.getText() + ", " + c.getString(R.string.pogo_selected) : t.getText());
         }
     }
 
+    /** Ícone de 3 linhas (filtros) em Canvas: 3 traços de 2dp, 16dp de largura; sem drawable no APK. */
+    static Drawable lines(Context c, int color) {
+        float w = Ui.dp(c, 16), h = Ui.dp(c, 12), sw = Ui.dp(c, 2);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(color);
+        p.setStrokeWidth(sw);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        Drawable d = new Drawable() {
+            @Override public void draw(Canvas cv) {
+                android.graphics.Rect b = getBounds();
+                float x0 = b.left + sw / 2, x1 = b.right - sw / 2;
+                for (int k = 0; k < 3; k++) {
+                    float y = b.top + sw / 2 + k * (b.height() - sw) / 2f;
+                    float end = k == 0 ? x1 : k == 1 ? x1 - w / 4 : x1 - w / 2;   // traços em escada, como o ícone de filtro
+                    cv.drawLine(x0, y, end, y, p);
+                }
+            }
+
+            @Override public void setAlpha(int a) { p.setAlpha(a); }
+            @Override public void setColorFilter(ColorFilter cf) { p.setColorFilter(cf); }
+            @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+            @Override public int getIntrinsicWidth() { return (int) w; }
+            @Override public int getIntrinsicHeight() { return (int) h; }
+        };
+        d.setBounds(0, 0, (int) w, (int) h);
+        return d;
+    }
+
     /**
-     * Chip de resumo de um filtro ativo (fora do modal): 36dp visíveis, borda outline; tocar no texto = open, o "×" tem
-     * alvo próprio de 40dp = remove. remove null = sem "×" (o escopo).
+     * Chip de resumo de um filtro ativo (fora do modal): 32dp, raio 16dp, fundo surface_variant sem borda; tocar no texto
+     * = open, o "✕" tem alvo próprio de 32dp = remove. remove null = sem "✕" (o escopo).
      */
     static View summaryChip(Context c, CharSequence text, View.OnClickListener open, View.OnClickListener remove) {
         LinearLayout chip = new LinearLayout(c);
         chip.setGravity(Gravity.CENTER_VERTICAL);
-        chip.setMinimumHeight(Ui.dp(c, 48));
-        int v = Ui.dp(c, 6);
-        chip.setBackground(new InsetDrawable(round(c, 18, 0, c.getColor(R.color.outline)), 0, v, 0, v));
+        chip.setMinimumHeight(Ui.dp(c, 32));
+        chip.setBackground(round(c, 16, c.getColor(R.color.pogo_surface_variant), 0));
         TextView t = new TextView(c);
         t.setText(text);
         t.setTextSize(14);
@@ -239,13 +259,13 @@ final class PogoChips {
         chip.addView(t, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.MATCH_PARENT));
         if (remove != null) {
             TextView x = new TextView(c);
-            x.setText("×");
-            x.setTextSize(18);
+            x.setText("✕");
+            x.setTextSize(13);
             x.setGravity(Gravity.CENTER);
             x.setTextColor(c.getColor(R.color.on_surface_variant));
             x.setContentDescription(c.getString(R.string.pogo_remove, text));
             x.setOnClickListener(remove);
-            chip.addView(x, new LinearLayout.LayoutParams(Ui.dp(c, 40), LinearLayout.LayoutParams.MATCH_PARENT));
+            chip.addView(x, new LinearLayout.LayoutParams(Ui.dp(c, 32), LinearLayout.LayoutParams.MATCH_PARENT));
         }
         return chip;
     }

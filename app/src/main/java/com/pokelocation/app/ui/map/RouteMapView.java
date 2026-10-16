@@ -442,7 +442,7 @@ public class RouteMapView extends FrameLayout {
             friends = new FriendLayer(c, mv);
             if (resumed) friends.resume();
         }
-        if (options.pogoLayer) setPogo(true);
+        if (Prefs.pogoLayer(c)) setPogo(true);
         if (!model.hasStart()) {
             Coord s = current != null ? current : Prefs.lastPosition(c);
             if (s != null) model.setStart(s.lat, s.lng, s.alt);
@@ -718,10 +718,9 @@ public class RouteMapView extends FrameLayout {
             if (layer != null) layer.setEnabled(on);
         });
         vis(swPogo, mode == MODE_MAIN || mode == MODE_FLOATING);
-        swPogo.setChecked(options.pogoLayer);
+        swPogo.setChecked(Prefs.pogoLayer(getContext()));
         swPogo.setOnCheckedChangeListener((b, on) -> {
-            options.pogoLayer = on;
-            optionsChanged();
+            Prefs.setPogoLayer(getContext(), on);
             setPogo(on);
         });
     }

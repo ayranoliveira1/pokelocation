@@ -3,17 +3,17 @@
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:orientation="vertical" android:paddingTop="@dimen/panel_padding" android:paddingBottom="@dimen/gap">
     <TextView android:id="@+id/pogo_title" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:paddingStart="@dimen/panel_padding" android:paddingEnd="@dimen/panel_padding" android:text="@string/pogo_map_layer"
+        android:paddingStart="16dp" android:paddingEnd="16dp" android:text="@string/pogo_map_layer"
         android:textAppearance="@style/TextAppearance.PokeLocation.PanelTitle" />
     <FrameLayout android:id="@+id/pogo_chips" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:paddingStart="@dimen/gap_large" android:paddingEnd="@dimen/gap_large" />
+        android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="8dp" />
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="@dimen/panel_padding"
-        android:paddingEnd="@dimen/panel_padding">
+        android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp"
+        android:paddingEnd="16dp">
         <ProgressBar android:id="@+id/pogo_progress" style="?android:attr/progressBarStyleSmall"
             android:layout_width="16dp" android:layout_height="16dp" android:layout_marginEnd="@dimen/gap" android:visibility="gone" />
         <TextView android:id="@+id/pogo_status" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" />
+            android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" android:textSize="14sp" />
     </LinearLayout>
     <FrameLayout android:id="@+id/pogo_frame" android:layout_width="match_parent" android:layout_height="240dp">
         <ListView android:id="@+id/pogo_list" android:layout_width="match_parent" android:layout_height="match_parent"

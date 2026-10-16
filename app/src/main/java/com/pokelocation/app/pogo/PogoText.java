@@ -21,6 +21,22 @@ final class PogoText {
         return sb.toString();
     }
 
+    /** "PC 492 · Nv 23": a linha de números da lista (o IV vai na pílula, o tempo entra a cada tick). */
+    static String cpLevel(Context c, Pogo.Mon m) {
+        StringBuilder sb = new StringBuilder();
+        if (m.cp > 0) sb.append(c.getString(R.string.pogo_map_cp, m.cp));
+        if (m.level > 0) dot(sb).append(c.getString(R.string.pogo_map_level, level(m.level)));
+        return sb.toString();
+    }
+
+    /** A pílula é um selo com texto: vermelho mais escuro que o halo (branco ~5,6:1) e laranja com texto escuro (~8:1). */
+    static final int PILL_RED = 0xFFC62828, PILL_ORANGE = 0xFFFB8C00;
+
+    /** Fundo da pílula de IV da lista (igual nos dois temas); 0 = neutro. */
+    static int ivPill(Pogo.Mon m) {
+        return m.iv >= 100 ? PILL_RED : m.iv >= 90 ? PILL_ORANGE : 0;
+    }
+
     /** {antes, depois} do %s de uma string de recurso: lida uma vez, o tick só concatena (getString com args formata). */
     static String[] around(Context c, int res) {
         String raw = c.getString(res);
@@ -88,9 +104,11 @@ final class PogoText {
     }
 
     /** Cor do brilho do marcador e do chip de IV, como o site; 0 = sem brilho. */
+    static final int RED = 0xFFEF2B3D, ORANGE = 0xFFF5A623;
+
     static int glow(Pogo.Mon m) {
-        if (m.iv >= 100) return 0xFFEF2B3D;
-        if (m.iv >= 90) return 0xFFF5A623;
+        if (m.iv >= 100) return RED;
+        if (m.iv >= 90) return ORANGE;
         if (m.iv == 0) return 0xFF9CA3AF;
         if ("XXL".equals(m.size)) return 0xFF2B7FFF;
         if ("XXS".equals(m.size)) return 0xFF22C55E;
