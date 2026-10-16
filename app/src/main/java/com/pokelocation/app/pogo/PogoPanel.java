@@ -1,5 +1,8 @@
 package com.pokelocation.app.pogo;
 
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.content.ComponentCallbacks2;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -7,12 +10,14 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.content.res.ColorStateList;
+import android.os.PowerManager;
 import android.os.Process;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.LinearInterpolator;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -78,7 +83,7 @@ public final class PogoPanel {
     private final List<Pogo.Mon> mons = new ArrayList<>();
     private final ListView list;
     private final ViewGroup detail;
-    private final View frame, progress;
+    private final View frame;
     private final TextView status;
     private final Button close;
     private final LinearLayout chips;          // faixa de resumo: uma linha, rola na horizontal
@@ -126,13 +131,40 @@ public final class PogoPanel {
     private PogoFilterSheet sheet;
     private PogoFilter base, filter;   // base: o último carregado; filter: o enviado (asSent), que os chips mostram
     private Io.Task task;
+    private final ImageView refresh;
+    private final ObjectAnimator spin;
+    private boolean attached, paused;
+    private long lastAt;
+    private static final long FRESH_MS = 5 * 60_000, MAX_AGE_MS = 30 * 60_000;
+    private static String sKey;
+    private static List<Pogo.Mon> sMons;
+    private static long sAt;
+    private static boolean sTrimHook;
+    /** A cada 5 min com a lista/painel visível; com a tela desligada, só reagenda. */
+    private final Runnable auto = new Runnable() {
+        @Override public void run() {
+            if (destroyed || !attached || paused) return;
+            if (!((PowerManager) app.getSystemService(Context.POWER_SERVICE)).isInteractive()) Io.main().postDelayed(this, FRESH_MS);
+            else load(false);
+        }
+    };
+    private String stale;   // aviso "Mostrando a última busca · …" enquanto a nova não dá certo
     private int km;
+    private static final long RETRY_MS = 30_000;
+    /** PoGo lento: tenta de novo sozinho (o mapa já tem o tick de 60 s); com o card aberto, espera ele fechar. */
+    private final Runnable retry = new Runnable() {
+        @Override public void run() {
+            if (destroyed) return;
+            load(false);
+        }
+    };
     private boolean destroyed, loaded;
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             long now = System.currentTimeMillis();
-            if (task == null && mons.removeIf(m -> PogoText.gone(m.despawnMs, now))) showStatus(PogoText.count(app, mons.size(), filter, km == WORLD));
+            if (task == null && mons.removeIf(m -> gone(m, now)))
+                showStatus(stale != null && !mons.isEmpty() ? stale : PogoText.count(app, mons.size(), filter, km == WORLD));
             adapter.notifyDataSetChanged();
             Io.main().postDelayed(this, 1000);
         }
@@ -184,7 +216,6 @@ public final class PogoPanel {
         detail = view.findViewById(R.id.pogo_detail);
         frame = view.findViewById(R.id.pogo_frame);
         status = view.findViewById(R.id.pogo_status);
-        progress = view.findViewById(R.id.pogo_progress);
         close = view.findViewById(R.id.pogo_close);
         if (fullScreen) {
             view.findViewById(R.id.pogo_title).setVisibility(View.GONE);   // a toolbar já diz
@@ -250,7 +281,24 @@ public final class PogoPanel {
         chips = new LinearLayout(c);
         chips.setGravity(android.view.Gravity.CENTER_VERTICAL);
         strip.addView(chips);
-        ((ViewGroup) view.findViewById(R.id.pogo_chips)).addView(strip);
+        LinearLayout bar = new LinearLayout(c);
+        bar.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        bar.addView(strip, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        refresh = new ImageView(c);
+        refresh.setImageDrawable(PogoChips.refresh(c, c.getColor(R.color.primary)));
+        refresh.setScaleType(ImageView.ScaleType.CENTER);
+        refresh.setBackground(PogoChips.round(c, 20, 0, c.getColor(R.color.outline)));
+        refresh.setContentDescription(c.getString(R.string.pogo_refresh));
+        refresh.setOnClickListener(x -> load(false));
+        int r40 = Ui.dp(c, 40);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(r40, r40);
+        rlp.setMarginStart(Ui.dp(c, 8));
+        bar.addView(refresh, rlp);
+        spin = ObjectAnimator.ofFloat(refresh, View.ROTATION, 0f, 360f);   // 1 animador por painel: nada por frame
+        spin.setDuration(900);
+        spin.setRepeatCount(ValueAnimator.INFINITE);
+        spin.setInterpolator(new LinearInterpolator());
+        ((ViewGroup) view.findViewById(R.id.pogo_chips)).addView(bar);
         // Botão "Filtros": pílula de 40dp pela largura do conteúdo (ícone + texto + badge), nunca círculo
         filtersBtn = new LinearLayout(c);
         filtersBtn.setGravity(android.view.Gravity.CENTER_VERTICAL);
@@ -290,15 +338,93 @@ public final class PogoPanel {
             else host.close();
         });
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
-            @Override public void onViewAttachedToWindow(View x) { Io.main().postDelayed(tick, 1000); }
-            @Override public void onViewDetachedFromWindow(View x) { Io.main().removeCallbacks(tick); }
+            @Override public void onViewAttachedToWindow(View x) {
+                attached = true;
+                running();
+            }
+
+            @Override public void onViewDetachedFromWindow(View x) {
+                attached = false;
+                running();
+            }
         });
     }
 
-    /** alert: o card do push por cima e a lista só carrega quando ele fecha (sem gastar o /search à toa). */
+    /**
+     * alert: o card do push por cima e a lista só carrega quando ele fecha (sem gastar o /search à toa). Sem alert: o
+     * último resultado do processo aparece na hora se for da mesma busca e tiver < 30 min; com > 5 min, busca também.
+     */
     public void start(Pogo.Mon alert) {
-        if (alert != null) showMon(alert);
-        else load();
+        if (alert != null) {
+            showMon(alert);
+            return;
+        }
+        PogoFilter raw = PogoFilter.load(app), f = PogoText.asSent(app, raw.copy());
+        int k = Double.isNaN(lat) ? WORLD : f.km;
+        long now = System.currentTimeMillis(), age = now - sAt;
+        if (sMons == null || age >= MAX_AGE_MS || !key(f, k).equals(sKey)) {
+            load(false);
+            return;
+        }
+        loaded = true;
+        base = raw;
+        filter = f;
+        km = k;
+        lastAt = sAt;
+        renderChips();
+        for (Pogo.Mon m : sMons) if (!PogoText.gone(m.despawnMs, now)) mons.add(m);
+        adapter.notifyDataSetChanged();
+        showStatus(PogoText.count(app, mons.size(), filter, km == WORLD));
+        if (age >= FRESH_MS) load(false);
+        else running();
+    }
+
+    /** Lista do app: visível entre onResume e onPause (o painel do joystick usa só o attach). */
+    public void setPaused(boolean on) {
+        paused = on;
+        running();
+    }
+
+    /** Logout, pouca memória: o próximo abrir busca de novo. */
+    public static void clearCache() {
+        sKey = null;
+        sMons = null;
+    }
+
+    private String key(PogoFilter sent, int k) {
+        return sent.stored() + (k == WORLD ? "|w" : "|" + Math.round(lat * 1000) + "," + Math.round(lng * 1000))
+                + "|" + Pogo.loggedIn(app);
+    }
+
+    /** O tick de 1 s e a auto-atualização de 5 min só rodam com a lista/painel visível e a tela ligada. */
+    private void running() {
+        Io.main().removeCallbacks(tick);
+        Io.main().removeCallbacks(auto);
+        spin();
+        if (destroyed || !attached || paused) return;
+        Io.main().postDelayed(tick, 1000);
+        if (task == null && loaded) Io.main().postDelayed(auto, Math.max(0, lastAt + FRESH_MS - System.currentTimeMillis()));
+    }
+
+    private void busy(boolean on) {
+        refresh.setEnabled(!on);
+        if (on) {
+            spin();
+        } else {
+            spin.cancel();
+            refresh.setRotation(0);
+        }
+    }
+
+    /** O loading gira só com a busca em curso E o painel à vista: escondido, pausa (o Choreographer não gera frames). */
+    private void spin() {
+        if (task == null) return;
+        if (!destroyed && attached && !paused) {
+            if (spin.isPaused()) spin.resume();
+            else if (!spin.isStarted()) spin.start();
+        } else if (spin.isRunning() && !spin.isPaused()) {
+            spin.pause();
+        }
     }
 
     public void destroy() {
@@ -306,6 +432,9 @@ public final class PogoPanel {
         cancel(task);
         task = null;
         Io.main().removeCallbacks(tick);
+        Io.main().removeCallbacks(retry);
+        Io.main().removeCallbacks(auto);
+        spin.cancel();
         if (card != null) card.destroy();
         if (sheet != null) sheet.destroy();
         sheet = null;
@@ -319,16 +448,16 @@ public final class PogoPanel {
         if (sheet != null) sheet.render();
     }
 
-    private void load() {
+    /** user: troca de filtro/escopo pelo usuário (fecha o card); atualizar/automático não mexem no card. */
+    private void load(boolean user) {
         loaded = true;
-        closeDetail();
+        if (user) closeDetail();
         cancel(task);
         Io.Task t = task = new Io.Task();
-        mons.clear();
-        rows.clear();
-        adapter.notifyDataSetChanged();
-        status.setText(R.string.pogo_map_loading);
-        progress.setVisibility(View.VISIBLE);
+        Io.main().removeCallbacks(retry);   // a lista da busca anterior fica até esta dar certo (T29)
+        Io.main().removeCallbacks(auto);
+        busy(true);
+        if (mons.isEmpty()) status.setText(R.string.pogo_map_loading);
         NET.execute(() -> {
             if (t.isCancelled()) return;
             List<Pogo.Mon> got = null;
@@ -353,17 +482,58 @@ public final class PogoPanel {
                 task = null;
                 base = raw;
                 filter = f;
-                km = k;
                 renderChips();
+                busy(false);
                 if (e != null) {
-                    showStatus(PogoText.error(app, e));
+                    long now = System.currentTimeMillis();
+                    mons.removeIf(m -> gone(m, now));
+                    adapter.notifyDataSetChanged();
+                    stale = mons.isEmpty() ? null : PogoText.stale(app, e);
+                    showStatus(stale != null ? stale : PogoText.error(app, e));
+                    lastAt = System.currentTimeMillis();   // a próxima automática conta desta tentativa, não fica em laço
+                    if (Pogo.slow(e)) Io.main().postDelayed(retry, RETRY_MS);
+                    else running();
                     return;
                 }
+                stale = null;
+                km = k;
+                lastAt = System.currentTimeMillis();
+                cache(key(f, k), l, k);
+                mons.clear();
+                rows.clear();
                 mons.addAll(l);
                 adapter.notifyDataSetChanged();
                 showStatus(PogoText.count(app, mons.size(), filter, km == WORLD));
+                running();
             });
         });
+    }
+
+    /** Um resultado por processo, só os Mon (sem bitmaps); o trim de memória o descarta. */
+    private void cache(String key, List<Pogo.Mon> l, int k) {
+        sKey = key;
+        sMons = new ArrayList<>(l);
+        sAt = lastAt;
+        if (!sTrimHook) {
+            sTrimHook = true;
+            app.registerComponentCallbacks(new ComponentCallbacks2() {
+                // UI_HIDDEN (20) fica de fora: o main o recebe toda vez que o usuário volta ao jogo
+                @Override public void onTrimMemory(int level) {
+                    if (level != TRIM_MEMORY_UI_HIDDEN && level >= TRIM_MEMORY_RUNNING_LOW) clearCache();
+                }
+
+                @Override public void onConfigurationChanged(android.content.res.Configuration c) {}
+
+                @Override public void onLowMemory() { clearCache(); }
+            });
+        }
+    }
+
+    /** Despawnou: sai da lista e do memo junto. */
+    private boolean gone(Pogo.Mon m, long now) {
+        if (!PogoText.gone(m.despawnMs, now)) return false;
+        rows.remove(m);
+        return true;
     }
 
     /** O sheet edita uma cópia: só "Mostrar resultados" salva (no :overlay, no arquivo dele) e busca de novo. */
@@ -374,7 +544,7 @@ public final class PogoPanel {
         sheet = new PogoFilterSheet(ctx, base != null ? base : PogoFilter.load(app), f -> {
             f.save(app);
             sheet.close();
-            load();
+            load(true);
         }, () -> {
             host.cover(null, null);
             host.focusable(false);
@@ -425,7 +595,7 @@ public final class PogoPanel {
             PogoFilter f = base.copy();
             remove.accept(f);
             f.save(app);
-            load();
+            load(true);
         });
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.setMarginEnd(Ui.dp(ctx, 8));
@@ -467,7 +637,7 @@ public final class PogoPanel {
         detail.setVisibility(View.GONE);
         list.setVisibility(View.VISIBLE);
         close.setText(R.string.close);
-        if (!loaded && !destroyed) load();
+        if (!loaded && !destroyed) start(null);
     }
 
     /** A foto do bloco, guardada no memo; sem ela (ainda não veio ou o LRU expulsou), pede e redesenha ao chegar. */
@@ -553,7 +723,6 @@ public final class PogoPanel {
     }
 
     private void showStatus(String s) {
-        progress.setVisibility(View.GONE);
         status.setText(s);
     }
 

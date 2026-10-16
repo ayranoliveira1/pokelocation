@@ -79,4 +79,5 @@
     </plurals>
     <string name="pogo_need_account">Sign in to your PokeLocation account to link PoGo Coordinates</string>
     <string name="pogo_alerts_channel">Pokémon alerts</string>
+    <string name="pogo_slow">PoGo Coordinates is taking long to answer. Trying again…</string>
 </resources>

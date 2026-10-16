@@ -40,8 +40,10 @@ public final class PogoFilter {
     public boolean shinyOnly, backgroundOnly;
     public String shinyAccount;
     public int numResults = 100;
-    /** Escopo da lista: raio de "Perto de mim" em km; 0 = Mundo inteiro. Só local, não vai para a API. */
-    public int km = 1;
+    /** Escopo da lista: raio de "Perto de mim" em km; 0 = Mundo inteiro (o padrão). Só local, não vai para a API. */
+    public int km = 0;
+    /** A pessoa escolheu o escopo no form: antes do padrão Mundo, todo filtro salvo levava km=1 sem ter escolhido. */
+    boolean kmSet;
     /** Rótulo das espécies escolhidas ("id|form" → "Rattata · Alola"), para os chips sem baixar o catálogo. Só local. */
     public final Map<String, String> labels = new HashMap<>();
 
@@ -87,6 +89,7 @@ public final class PogoFilter {
             if (v != null) n++;
         if (!pokemonIds.isEmpty() || !speciesForms.isEmpty()) n++;
         if (!sizes.isEmpty()) n++;
+        if (km != 0) n++; // o padrão Mundo não conta
         return n;
     }
 
@@ -119,6 +122,7 @@ public final class PogoFilter {
         shinyAccount = o.shinyAccount;
         numResults = o.numResults;
         km = o.km;
+        kmSet = o.kmSet;
         labels.clear();
         labels.putAll(o.labels);
     }
@@ -126,7 +130,7 @@ public final class PogoFilter {
     /** O que vai para as prefs: os filtros + num_results + km. */
     JSONObject stored() {
         try {
-            return toJson().put("num_results", numResults).put("km", km).put("labels", new JSONObject(labels));
+            return toJson().put("num_results", numResults).put("km", km).put("km_set", kmSet).put("labels", new JSONObject(labels));
         } catch (JSONException e) {
             throw new IllegalStateException(e);
         }
@@ -197,8 +201,10 @@ public final class PogoFilter {
             String k = it.next();
             f.labels.put(k, l.optString(k));
         }
-        int km = o.optInt("km", 1);
-        f.km = km == 0 || km == 2 || km == 5 || km == 10 ? km : 1;
+        int km = o.optInt("km", 0);
+        f.kmSet = o.optBoolean("km_set");
+        f.km = km == 1 || km == 2 || km == 5 || km == 10 ? km : 0;
+        if (f.km == 1 && !f.kmSet) f.km = 0; // o 1 km antigo era o padrão, não uma escolha
         return f;
     }
 

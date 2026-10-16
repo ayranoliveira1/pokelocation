@@ -79,4 +79,5 @@
     </plurals>
     <string name="pogo_need_account">Entre na sua conta PokeLocation para vincular o PoGo Coordinates</string>
     <string name="pogo_alerts_channel">Alertas de Pokémon</string>
+    <string name="pogo_slow">O PoGo Coordinates está demorando para responder. Tentando de novo…</string>
 </resources>

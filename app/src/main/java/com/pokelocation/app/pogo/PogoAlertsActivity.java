@@ -234,7 +234,8 @@ public final class PogoAlertsActivity extends BaseActivity {
 
     private String summary(Pogo.Rule r) {
         String s = r.world ? getString(R.string.pogo_panel_world) : getString(R.string.pogo_chip_near, r.radiusKm);
-        int n = r.filter != null ? r.filter.activeCount() : 0;
+        // o escopo já está no texto ("Perto · 2 km"); o activeCount também o conta
+        int n = r.filter == null ? 0 : r.filter.activeCount() - (r.filter.km > 0 ? 1 : 0);
         return n > 0 ? s + " · " + getString(R.string.pogo_alert_filters, n) : s;
     }
 

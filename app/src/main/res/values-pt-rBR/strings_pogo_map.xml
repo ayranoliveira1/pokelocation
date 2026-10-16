@@ -51,4 +51,6 @@
     <string name="pogo_alert_bad_account">A conta de treinador escolhida não está ativa</string>
     <string name="pogo_selected">selecionado</string>
     <string name="pogo_remove">Remover %s</string>
+    <string name="pogo_map_stale">Mostrando a última busca · %s</string>
+    <string name="pogo_refresh">Atualizar</string>
 </resources>

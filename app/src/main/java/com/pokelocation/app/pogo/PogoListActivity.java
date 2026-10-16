@@ -123,6 +123,13 @@ public final class PogoListActivity extends BaseActivity {
     protected void onResume() {
         super.onResume();
         panel.onResume();
+        panel.setPaused(false);
+    }
+
+    @Override
+    protected void onPause() {
+        panel.setPaused(true);
+        super.onPause();
     }
 
     @Override

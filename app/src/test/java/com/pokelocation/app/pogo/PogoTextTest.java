@@ -126,4 +126,14 @@ public class PogoTextTest {
         m.form = "FORM_UNSET";
         assertEquals("Raichu", PogoText.title(m));
     }
+
+    @Test
+    public void nearCountsAsActiveFilterLikeTheBadge() {
+        PogoFilter f = new PogoFilter();
+        f.km = 0;
+        assertEquals(R.string.pogo_map_count, PogoText.countRes(4, f, false));
+        f.km = 2;
+        assertEquals(R.string.pogo_map_count_filtered, PogoText.countRes(4, f, false));
+        assertEquals(R.string.pogo_map_none_filtered, PogoText.countRes(0, f, false));
+    }
 }

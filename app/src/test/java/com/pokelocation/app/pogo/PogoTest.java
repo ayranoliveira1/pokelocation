@@ -390,4 +390,11 @@ public class PogoTest {
         assertNull(Pogo.parseRule(new JSONObject("{\"id\":\"u\",\"scope\":\"world\",\"disabled_reason\":null}")).disabledReason);
         assertFalse(Pogo.ruleJson(off).has("disabled_reason"));
     }
+
+    @Test public void slowIsTheProxyTimeoutOrTheDirectOne() {
+        assertTrue(Pogo.slow(Pogo.fromApi(504, "upstream_timeout", "{\"error\":\"upstream_timeout\"}", 60)));
+        assertTrue(Pogo.slow(new java.net.SocketTimeoutException("Read timed out")));
+        assertFalse(Pogo.slow(Pogo.fromApi(502, "upstream_unavailable", "{}", 60)));
+        assertFalse(Pogo.slow(new java.io.IOException("x")));
+    }
 }

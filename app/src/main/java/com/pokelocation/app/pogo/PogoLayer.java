@@ -182,6 +182,7 @@ public final class PogoLayer extends Overlay implements MapPoiLayer {
             PogoFilter f = null;
             try {
                 f = PogoText.asSent(app, PogoFilter.load(app));
+                f.km = 0;   // o mapa busca a caixa visível: o escopo do painel não vale aqui (nem conta como filtro)
                 got = Pogo.lookup(app, b[0], b[1], b[2], b[3], f);
             } catch (Exception e) {   // os últimos ficam e somem pelo despawn
                 err = e;
@@ -201,11 +202,18 @@ public final class PogoLayer extends Overlay implements MapPoiLayer {
                     blockedUntil = now + (r > 0 ? r * 1000 : POLL_MS);
                 }
                 if (l != null) apply(l);
-                show(e != null ? PogoText.error(app, e) : PogoText.count(app, l.size(), filter, false));
+                if (e == null) show(PogoText.count(app, l.size(), filter, false));
+                else show(alive(now) > 0 ? PogoText.stale(app, e) : PogoText.error(app, e));   // os da última busca ficam (T29)
                 if (mv != null) mv.invalidate();
                 poll();
             });
         });
+    }
+
+    private int alive(long now) {
+        int n = 0;
+        for (Pogo.Mon m : mons) if (!PogoText.gone(m.despawnMs, now)) n++;
+        return n;
     }
 
     private void apply(List<Pogo.Mon> l) {

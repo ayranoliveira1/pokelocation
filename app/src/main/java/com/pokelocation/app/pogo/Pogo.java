@@ -28,6 +28,7 @@ import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -62,6 +63,8 @@ public final class Pogo {
             + "&scope=identify%20applications.commands&integration_type=1&state=login:discord";
     private static final long PENDING_MS = 10 * 60_000L;
     /** O lookup de treinador pode levar até 1 min (spec §14.2). */
+    /** O PoGo leva 7–15 s no lookup; o nosso proxy espera até 30 s (504 upstream_timeout). */
+    private static final int SLOW_MS = 30_000;
     private static final int TIMEOUT_MS = 15_000, TRAINER_TIMEOUT_MS = 60_000, MAX_BODY = 64 * 1024,
             CATALOG_MAX = 512 * 1024, SEARCH_MAX = 256 * 1024, LOOKUP_MAX = 1024 * 1024, RULES_MAX = 128 * 1024;
     /** pogo_linked que este processo viu morrer (pogo_relogin/pogo_disabled): só o main apaga a pref; um novo vínculo muda o valor. */
@@ -153,7 +156,7 @@ public final class Pogo {
                 stripShiny(filters, t);
                 return new JSONObject().put("mode", "pokemon").put("n_lat", n).put("w_lng", w).put("s_lat", s)
                         .put("e_lng", e).put("filters", filters).put("num_results", f.numResults);
-            }, LOOKUP_MAX, TIMEOUT_MS, r -> results(r, true));
+            }, LOOKUP_MAX, SLOW_MS, r -> results(r, true));
         } catch (JSONException x) {
             throw new IOException("bad response");
         }
@@ -162,7 +165,7 @@ public final class Pogo {
     /** POST /search (§4.1): o mundo inteiro, cap 5 anônimo / 10 logado / até 100 VIP, itens sem coordenada. */
     public static List<Mon> search(Context c, PogoFilter f) throws IOException {
         try {
-            return route(c, "POST", "/search", "/search", t -> searchBody(f, t), SEARCH_MAX, TIMEOUT_MS, r -> results(r, false));
+            return route(c, "POST", "/search", "/search", t -> searchBody(f, t), SEARCH_MAX, SLOW_MS, r -> results(r, false));
         } catch (JSONException x) {
             throw new IOException("bad response");
         } catch (Error e) {
@@ -216,7 +219,7 @@ public final class Pogo {
         }
         Mon found = null;
         try {
-            for (Mon x : route(c, "POST", "/search", "/search", t -> enrichBody(m), SEARCH_MAX, TIMEOUT_MS, r -> results(r, false)))
+            for (Mon x : route(c, "POST", "/search", "/search", t -> enrichBody(m), SEARCH_MAX, SLOW_MS, r -> results(r, false)))
                 if (m.encounter.equals(x.encounter)) found = x;
         } catch (JSONException x) {
             throw new IOException("bad response");
@@ -469,6 +472,9 @@ public final class Pogo {
 
     public static boolean ruleLimit(Throwable t) { return code(t, "too_many_rules"); }
 
+    /** PoGo demorou: 504 upstream_timeout do nosso proxy ou o read timeout no direto. A próxima tentativa é o tick normal. */
+    public static boolean slow(Throwable t) { return code(t, "upstream_timeout") || t instanceof SocketTimeoutException; }
+
     /** 422 ao salvar regra com shiny sem treinador ativo (T22): o mesmo aviso de "Vincular treinador". */
     public static boolean trainerRequired(Throwable t) { return code(t, "trainer_required"); }
 
@@ -561,7 +567,7 @@ public final class Pogo {
                 if (!"pogo_relogin".equals(e.error) && !"pogo_disabled".equals(e.error)) throw e;
             }
         }
-        return http(c, method, direct, body.of(new JSONArray()), max, timeout, in -> json(in, pull));
+        return http(c, method, direct, body.of(new JSONArray()), max, timeout + 5_000, in -> json(in, pull)); // o mesmo teto do proxy
     }
 
     interface Pull<T> { T read(JsonReader r) throws IOException; }
@@ -818,7 +824,7 @@ public final class Pogo {
             throws IOException {
         HttpURLConnection con = (HttpURLConnection) new URL(API + path).openConnection();
         try {
-            con.setConnectTimeout(timeoutMs);
+            con.setConnectTimeout(Math.min(timeoutMs, TIMEOUT_MS)); // sem rede não vira "demorando": só o read espera o PoGo
             con.setReadTimeout(timeoutMs);
             con.setInstanceFollowRedirects(false);
             con.setUseCaches(false);

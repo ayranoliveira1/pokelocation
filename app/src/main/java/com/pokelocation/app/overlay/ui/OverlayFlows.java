@@ -72,7 +72,9 @@ final class OverlayFlows {
     }
 
     void closePogo() {
-        if (pogoOpened) PogoPanel.dismissOpen();   // nunca aberto: nem carrega a classe
+        if (!pogoOpened) return;   // nunca aberto: nem carrega a classe
+        PogoPanel.dismissOpen();
+        PogoPanel.clearCache();   // logout: o resultado era da conta que saiu
     }
 
     void openPogo() {

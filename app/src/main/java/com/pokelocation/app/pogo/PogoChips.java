@@ -242,6 +242,53 @@ final class PogoChips {
      * Chip de resumo de um filtro ativo (fora do modal): 32dp, raio 16dp, fundo surface_variant sem borda; tocar no texto
      * = open, o "✕" tem alvo próprio de 32dp = remove. remove null = sem "✕" (o escopo).
      */
+    /** Ícone de atualizar em Canvas: arco de 300° com a ponta de seta (20dp); gira no próprio botão durante a busca. */
+    static Drawable refresh(Context c, int color) {
+        float size = Ui.dp(c, 20), sw = Ui.dp(c, 2);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(color);
+        p.setStrokeWidth(sw);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fill.setColor(color);
+        android.graphics.RectF oval = new android.graphics.RectF();
+        android.graphics.Path head = new android.graphics.Path();
+        Drawable d = new Drawable() {
+            @Override public void draw(Canvas cv) {
+                android.graphics.Rect b = getBounds();
+                float r = b.width() / 2f - sw * 2, cx = b.exactCenterX(), cy = b.exactCenterY();
+                oval.set(cx - r, cy - r, cx + r, cy + r);
+                cv.drawArc(oval, -60, 300, false, p);
+                // ponta de seta no fim do arco (−60°), apontando no sentido horário
+                double a = Math.toRadians(-60);
+                float ex = cx + (float) (r * Math.cos(a)), ey = cy + (float) (r * Math.sin(a)), h = sw * 2.2f;
+                head.rewind();
+                head.moveTo(ex - h, ey - h * 0.2f);
+                head.lineTo(ex + h * 0.9f, ey - h * 0.6f);
+                head.lineTo(ex + h * 0.1f, ey + h * 1.1f);
+                head.close();
+                cv.drawPath(head, fill);
+            }
+
+            @Override public void setAlpha(int al) {
+                p.setAlpha(al);
+                fill.setAlpha(al);
+            }
+
+            @Override public void setColorFilter(ColorFilter cf) {
+                p.setColorFilter(cf);
+                fill.setColorFilter(cf);
+            }
+
+            @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+            @Override public int getIntrinsicWidth() { return (int) size; }
+            @Override public int getIntrinsicHeight() { return (int) size; }
+        };
+        d.setBounds(0, 0, (int) size, (int) size);
+        return d;
+    }
+
     static View summaryChip(Context c, CharSequence text, View.OnClickListener open, View.OnClickListener remove) {
         LinearLayout chip = new LinearLayout(c);
         chip.setGravity(Gravity.CENTER_VERTICAL);

@@ -61,8 +61,8 @@ public class PogoFilterTest {
         assertEquals(0, PogoFilter.fromJson(f.stored()).km);
         f.km = 5;
         assertEquals(5, PogoFilter.fromJson(f.stored()).km);
-        assertEquals(1, PogoFilter.fromJson(new JSONObject("{\"km\":3}")).km);
-        assertEquals(1, PogoFilter.fromJson(new JSONObject("{}")).km);
+        assertEquals(0, PogoFilter.fromJson(new JSONObject("{\"km\":3}")).km);
+        assertEquals(0, PogoFilter.fromJson(new JSONObject("{}")).km);
         assertEquals(false, f.toJson().has("km"));
     }
 
@@ -85,7 +85,7 @@ public class PogoFilterTest {
         f.set(new PogoFilter());
         assertEquals(0, f.pokemonIds.size());
         assertNull(f.ivMin);
-        assertEquals(1, f.km);
+        assertEquals(0, f.km);
     }
 
     @Test public void loadKeepsTheNewestWriter() {
@@ -109,5 +109,20 @@ public class PogoFilterTest {
         f.km = 0;
         f.sort = "CP";
         assertEquals(3, f.activeCount());
+    }
+
+    @Test public void worldIsTheDefaultScope() throws Exception {
+        assertEquals(0, new PogoFilter().km);
+        assertEquals(0, new PogoFilter().activeCount());
+        // salvo antes do T30: o 1 km era o padrão, sem escolha
+        assertEquals(0, PogoFilter.fromJson(new JSONObject("{\"sort\":\"IV\",\"km\":1}")).km);
+        // escolha explícita de Perto continua Perto
+        assertEquals(5, PogoFilter.fromJson(new JSONObject("{\"km\":5}")).km);
+        PogoFilter near = new PogoFilter();
+        near.km = 1;
+        near.kmSet = true;
+        assertEquals(1, PogoFilter.fromJson(near.stored()).km);
+        assertEquals(1, near.activeCount());
+        assertEquals(1, near.copy().km);
     }
 }

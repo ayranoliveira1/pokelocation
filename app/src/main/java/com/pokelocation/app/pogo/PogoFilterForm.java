@@ -86,11 +86,9 @@ public final class PogoFilterForm {
         return true;
     }
 
-    /** Volta ao padrão sem mexer no escopo. */
+    /** Volta ao padrão, inclusive o escopo (Mundo inteiro). */
     public void reset() {
-        PogoFilter d = new PogoFilter();
-        d.km = f.km;
-        f.set(d);
+        f.set(new PogoFilter());
         changed();
         render();
     }
@@ -111,6 +109,7 @@ public final class PogoFilterForm {
         where.addView(new PogoChips.Segmented(c, new String[]{c.getString(R.string.pogo_f_near),
                 c.getString(R.string.pogo_panel_world)}, f.km == 0 ? 1 : 0, w -> {
             f.km = w == 1 ? 0 : 1;
+            f.kmSet = true;
             changed();
             body.post(this::render);
         }));
@@ -119,6 +118,7 @@ public final class PogoFilterForm {
             for (int i = 0; i < km.length; i++) km[i] = c.getString(R.string.pogo_panel_km, PogoFilter.KMS[i]);
             where.addView(new PogoChips.Segmented(c, km, indexOf(PogoFilter.KMS, f.km), w -> {
                 f.km = PogoFilter.KMS[w];
+                f.kmSet = true;
                 changed();
             }));
         }

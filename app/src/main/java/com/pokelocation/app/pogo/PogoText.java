@@ -125,6 +125,11 @@ final class PogoText {
         return sb.length() == 0 ? null : sb.toString();
     }
 
+    /** Busca falhou com Pokémon da anterior ainda vivos na tela: eles ficam, e o erro vira um aviso na contagem. */
+    static String stale(Context c, Throwable t) {
+        return c.getString(R.string.pogo_map_stale, error(c, t));
+    }
+
     static String count(Context c, int n, PogoFilter f, boolean world) {
         return c.getString(countRes(n, f, world), n);
     }
@@ -150,14 +155,13 @@ final class PogoText {
         return f;
     }
 
-    /** Só o que restringe o resultado: sort e num_results não contam; liga/rank do PvP só com o PvP ligado. */
+    /** A mesma regra do badge (PogoFilter.activeCount): com o padrão Mundo, o "Perto" também conta. */
     static boolean filtered(PogoFilter f) {
-        return f != null && (!f.pokemonIds.isEmpty() || !f.speciesForms.isEmpty() || f.ivMin != null || f.ivMax != null
-                || f.cpMin != null || f.cpMax != null || f.levelMin != null || f.levelMax != null || f.gender != null
-                || !f.sizes.isEmpty() || f.boosted != null || f.pvpMode || f.shinyOnly || f.backgroundOnly);
+        return f != null && f.activeCount() > 0;
     }
 
     static String error(Context c, Throwable t) {
+        if (Pogo.slow(t)) return c.getString(R.string.pogo_slow);
         if (t instanceof Pogo.Error) {
             Pogo.Error e = (Pogo.Error) t;
             if (e.http == 404 || e.http == 410) return c.getString(R.string.pogo_map_gone);
