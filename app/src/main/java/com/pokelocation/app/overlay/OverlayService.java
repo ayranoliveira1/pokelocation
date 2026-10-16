@@ -484,6 +484,7 @@ public final class OverlayService extends Service
     private void returnFromMap(Intent i) {
         mapOpen = false;
         opts = MapOptions.fromIntent(i, opts);
+        ui.optionsChanged();
         final int action = Intents.getInt(i, Intents.EXTRA_MAP_ACTION, Intents.MAP_NONE);
         final double lat = Intents.getDouble(i, Intents.EXTRA_CUR_LAT, Double.NaN);
         final double lng = Intents.getDouble(i, Intents.EXTRA_CUR_LNG, Double.NaN);

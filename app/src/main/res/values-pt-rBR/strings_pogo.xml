@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pogo_account">PoGo Coordinates</string>
+    <string name="pogo_login">Entrar com Google</string>
+    <string name="pogo_login_summary">Com login: filtros shiny, vínculo de treinador e alertas de Pokémon.</string>
+    <string name="pogo_logging_in">Entrando…</string>
+    <string name="pogo_login_failed">Não foi possível entrar no PoGo Coordinates. Tente de novo.</string>
+    <string name="pogo_logout_confirm">Sair do PoGo Coordinates neste aparelho?</string>
+    <string name="pogo_trainers">Treinador: %s</string>
+    <string name="pogo_no_trainer">Treinador não vinculado: vincule para usar o filtro shiny.</string>
+    <string name="pogo_filters">Filtros do mapa</string>
+    <string name="pogo_filters_summary">Quais Pokémon aparecem no mapa</string>
+    <string name="pogo_any">Qualquer</string>
+    <string name="pogo_f_species">Espécies</string>
+    <string name="pogo_f_any_form">%s (qualquer forma)</string>
+    <string name="pogo_f_search">Nome ou número da Pokédex</string>
+    <string name="pogo_catalog_failed">Não foi possível carregar a lista de Pokémon.</string>
+    <string name="pogo_f_iv">IV %</string>
+    <string name="pogo_f_cp">PC</string>
+    <string name="pogo_f_level">Nível</string>
+    <string name="pogo_f_min">Mínimo</string>
+    <string name="pogo_f_max">Máximo</string>
+    <string name="pogo_f_gender">Gênero</string>
+    <string name="pogo_f_sizes">Tamanho</string>
+    <string name="pogo_f_boosted">Só com clima boost</string>
+    <string name="pogo_f_sort">Ordenar por</string>
+    <string name="pogo_f_results">Resultados por busca</string>
+    <string name="pogo_f_pvp_mode">Filtrar por rank PvP</string>
+    <string name="pogo_f_top_rank">Rank máximo</string>
+    <string name="pogo_f_pvp_min_cp">PC mínimo para o rank</string>
+    <string name="pogo_f_pre_evo">Incluir pré-evoluções</string>
+    <string name="pogo_f_shiny">Shiny</string>
+    <string name="pogo_f_shiny_only">Só shiny</string>
+    <string name="pogo_f_background">Só com background</string>
+    <string name="pogo_f_account">Conta do treinador</string>
+    <string name="pogo_shiny_login">Entre no PoGo Coordinates para usar os filtros shiny.</string>
+    <string-array name="pogo_sorts">
+        <item>IV</item>
+        <item>Tempo restante</item>
+        <item>PC</item>
+        <item>Nível</item>
+    </string-array>
+    <string-array name="pogo_leagues">
+        <item>Grande Liga</item>
+        <item>Ultra Liga</item>
+    </string-array>
+    <string name="pogo_t_link">Vincular treinador</string>
+    <string name="pogo_t_code_hint">Código de treinador (12 dígitos)</string>
+    <string name="pogo_t_code_msg">No Pokémon GO: Amigos › Adicionar amigo › seu código de treinador.</string>
+    <string name="pogo_t_lookup">Consultar</string>
+    <string name="pogo_t_looking_up">Consultando… pode levar até 1 minuto.</string>
+    <string name="pogo_t_bad_code">O código de treinador tem 12 dígitos.</string>
+    <string name="pogo_t_is_you">É você?</string>
+    <string name="pogo_t_who">%1$s · nível %2$d · %3$s</string>
+    <string name="pogo_t_low_level">Nível %1$d; o shiny exige nível %2$d ou mais.</string>
+    <string name="pogo_t_permanent_title">O vínculo é permanente</string>
+    <string name="pogo_t_permanent">Vincular %s? Depois não dá para trocar o código nem a conta.</string>
+    <string name="pogo_t_linking">Vinculando…</string>
+    <string name="pogo_t_linked">Treinador vinculado.</string>
+    <string name="pogo_t_lookup_limit">Limite de consultas desta hora. Tente em %d min.</string>
+    <string name="pogo_t_confirm_limit">Muitas tentativas de vínculo nesta hora.</string>
+    <string name="pogo_t_busy">Serviço ocupado. Tente em 1 minuto; isso não gastou tentativa.</string>
+    <string name="pogo_t_failed">Não foi possível falar com o PoGo Coordinates. Tente de novo.</string>
+    <string name="pogo_t_signed_out">Sua sessão no PoGo Coordinates terminou. Entre de novo.</string>
+    <string name="pogo_login_discord">Entrar com Discord</string>
+    <string name="pogo_open_default_title">Libere os links do pogocoordinates.com</string>
+    <string name="pogo_open_default_msg">Para entrar com Google, o PokeLocation precisa abrir os links do pogocoordinates.com.\n\nNas configurações: Abrir por padrão › Adicionar link › ligue pogocoordinates.com. Depois volte aqui.</string>
+    <string name="pogo_open_settings">Abrir configurações</string>
+    <string name="pogo_f_clear">Limpar</string>
+    <string name="pogo_f_show">Mostrar resultados</string>
+    <string name="pogo_f_where">Onde</string>
+    <string name="pogo_f_near">Perto de mim</string>
+    <string name="pogo_f_quality">Qualidade</string>
+    <string name="pogo_f_look">Aparência</string>
+    <string name="pogo_f_range_error">O mínimo está acima do máximo</string>
+    <plurals name="pogo_f_show_n">
+        <item quantity="one">Mostrar resultados (%d filtro)</item>
+        <item quantity="other">Mostrar resultados (%d filtros)</item>
+    </plurals>
+    <string name="pogo_need_account">Entre na sua conta PokeLocation para vincular o PoGo Coordinates</string>
+    <string name="pogo_alerts_channel">Alertas de Pokémon</string>
+</resources>

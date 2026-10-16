@@ -15,6 +15,7 @@ import com.pokelocation.app.model.Favorite;
 import com.pokelocation.app.model.Folder;
 import com.pokelocation.app.model.MarkerType;
 import com.pokelocation.app.model.Route;
+import com.pokelocation.app.pogo.PogoPanel;
 import com.pokelocation.app.ui.panel.ItemListPanel;
 import com.pokelocation.app.ui.panel.NameFolderPanel;
 import com.pokelocation.app.social.ui.chat.ChatPanel;
@@ -67,6 +68,11 @@ final class OverlayFlows {
         close();
         String title = ctx.getString(R.string.soc_teleport_title);
         ChatPanel.show(ctx, text -> openTeleport(text, title));
+    }
+
+    void openPogo() {
+        close();
+        PogoPanel.show(ctx, ov.engine.lat(), ov.engine.lng(), this::openTeleport);
     }
 
     void openTeleport(String text, String title) {

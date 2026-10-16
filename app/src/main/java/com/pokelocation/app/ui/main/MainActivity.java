@@ -284,6 +284,13 @@ public final class MainActivity extends BaseActivity {
                     .putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_CHATS));
         } else if (id == R.id.main_nav_account) {
             startActivity(AccountActivity.open(this));
+        } else if (id == R.id.main_nav_pogo_list) {
+            Coord t = form == null ? null : form.typedCoord();
+            // por nome (sem const-class): com a camada desligada nada do pacote pogo é carregado; extras = os da PogoListActivity
+            startActivity(new Intent().setClassName(this, "com.pokelocation.app.pogo.PogoListActivity")
+                    .putExtra("pogo_lat", t != null ? t.lat : Double.NaN).putExtra("pogo_lng", t != null ? t.lng : Double.NaN));
+        } else if (id == R.id.main_nav_pogo) {
+            startActivity(new Intent().setClassName(this, "com.pokelocation.app.pogo.PogoActivity"));
         } else if (id == R.id.main_nav_gpx) {
             SelectPanel.show(this, getString(R.string.main_nav_gpx),
                     new CharSequence[]{getString(R.string.main_gpx_import), getString(R.string.main_gpx_export)},

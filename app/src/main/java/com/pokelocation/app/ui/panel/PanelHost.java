@@ -4,6 +4,12 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.SharedPreferences;
+import android.content.res.Configuration;
+import android.graphics.Point;
+import android.graphics.drawable.GradientDrawable;
+import android.hardware.display.DisplayManager;
+import android.view.Display;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
@@ -15,6 +21,7 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 
 import com.pokelocation.app.App;
 import com.pokelocation.app.Io;
@@ -22,6 +29,7 @@ import com.pokelocation.app.R;
 import com.pokelocation.app.data.Db;
 import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.util.Ui;
+import com.pokelocation.app.util.WindowDrag;
 
 import java.util.ArrayList;
 
@@ -37,8 +45,16 @@ public final class PanelHost {
     private WindowManager wm;
     private View window;
     private WindowManager.LayoutParams lp;
-    private Runnable onDismiss;
+    private Runnable onDismiss, coverBack;
+    private View cover;
     private boolean showing;
+    // overGame: janela arrastável do tamanho do card, posição salva por painel (key)
+    private static final String POS_FILE = "overlay_panels";
+    private String key;
+    private Display display;
+    private WindowDrag drag;
+    private final Point scr = new Point();
+    private final View.OnLayoutChangeListener refit = (v, l, t, r, b, ol, ot, or, ob) -> { if (b - t != ob - ot) fit(); };
 
     private PanelHost() {}
 
@@ -92,9 +108,18 @@ public final class PanelHost {
     private FrameLayout buildRoot(Context ctx, View content, boolean handleBack) {
         FrameLayout root = new FrameLayout(ctx) {
             @Override
+            protected void onConfigurationChanged(Configuration c) {
+                super.onConfigurationChanged(c);
+                post(PanelHost.this::fit);   // girou: largura e posição de novo dentro da tela
+            }
+
+            @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
                 if (handleBack && e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-                    if (e.getAction() == KeyEvent.ACTION_UP) dismiss();
+                    if (e.getAction() == KeyEvent.ACTION_UP) {
+                        if (coverBack != null) coverBack.run();
+                        else dismiss();
+                    }
                     return true;
                 }
                 return super.dispatchKeyEvent(e);
@@ -163,10 +188,18 @@ public final class PanelHost {
                 wm.removeView(window);
             } catch (Exception ignored) {
             }
+            // O sistema (IME, ViewRootImpl) às vezes segura a raiz de uma janela de overlay removida: sem filhos,
+            // ela não arrasta o painel, as listas e os bitmaps junto.
+            ((ViewGroup) window).removeAllViews();
         }
+        if (window != null) window.removeOnLayoutChangeListener(refit);
         wm = null;
         window = null;
         lp = null;
+        cover = null;
+        coverBack = null;
+        drag = null;
+        display = null;
         Runnable r = onDismiss;
         onDismiss = null;
         if (r != null) r.run();
@@ -175,18 +208,127 @@ public final class PanelHost {
     public boolean isShowing() { return showing; }
 
     /**
-     * Painel sobre o jogo (só :overlay): janela do tamanho do card, embaixo, sem scrim; o toque fora vai para o jogo,
-     * que mantém o foco até setFocusable(true). FLAG_SECURE: a conversa não sai em print nem gravação.
+     * Painel sobre o jogo (só :overlay): janela do tamanho do card, sem scrim, arrastável pela alça do topo como o
+     * joystick; o toque fora vai para o jogo, que mantém o foco até setFocusable(true). FLAG_SECURE: a conversa não
+     * sai em print nem gravação.
      */
-    public void overGame() {
+    public void overGame() { overGame(true, "chat"); }
+
+    /**
+     * secure false: só o prevent_screenshots do app (já aplicado no show) decide o FLAG_SECURE. key: cada painel guarda
+     * a sua posição (prefs próprio, só o :overlay grava); sem posição salva, abre embaixo e centralizado.
+     */
+    public void overGame(boolean secure, String key) {
         if (wm == null || window == null) return;
-        window.setBackground(null);
-        window.setOnClickListener(null);
-        window.setClickable(false);
+        Context c = window.getContext();
+        this.key = key;
+        display = ((DisplayManager) c.getApplicationContext().getSystemService(Context.DISPLAY_SERVICE)).getDisplay(Display.DEFAULT_DISPLAY);
+        FrameLayout root = (FrameLayout) window;
+        root.setBackground(null);
+        root.setOnClickListener(null);
+        root.setClickable(false);
+        ViewGroup card = (ViewGroup) root.getChildAt(0);
+        FrameLayout.LayoutParams clp = (FrameLayout.LayoutParams) card.getLayoutParams();
+        clp.setMargins(0, 0, 0, 0);
+        clp.gravity = Gravity.TOP | Gravity.START;
+        View content = card.getChildAt(0);
+        card.removeView(content);
+        LinearLayout col = new LinearLayout(c);
+        col.setOrientation(LinearLayout.VERTICAL);
+        View grip = grip(c);
+        col.addView(grip, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(c, 24)));
+        col.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        card.addView(col, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        drag = new WindowDrag(wm, root, lp, display, false, this::savePos);
+        grip.setOnTouchListener(drag);
+        readScreen();
+        SharedPreferences p = c.getSharedPreferences(POS_FILE, Context.MODE_PRIVATE);
+        lp.width = width(c);
         lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
-        lp.gravity = Gravity.BOTTOM;
-        lp.flags |= WindowManager.LayoutParams.FLAG_SECURE | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        lp.gravity = Gravity.TOP | Gravity.START;
+        lp.x = p.getInt(key + "_x", (scr.x - lp.width) / 2);
+        lp.y = p.getInt(key + "_y", scr.y);   // sem posição: embaixo (o fit prende quando a altura é conhecida)
+        lp.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        if (secure) lp.flags |= WindowManager.LayoutParams.FLAG_SECURE;
         lp.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE;
+        root.addOnLayoutChangeListener(refit);
+        update();
+    }
+
+    /** Alça visível de 32×4dp numa faixa de 24dp (o alvo do arraste); o resto do conteúdo rola normalmente. */
+    private static View grip(Context c) {
+        FrameLayout strip = new FrameLayout(c);
+        View bar = new View(c);
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(Ui.dp(c, 2));
+        g.setColor(c.getColor(R.color.outline));
+        bar.setBackground(g);
+        strip.addView(bar, new FrameLayout.LayoutParams(Ui.dp(c, 32), Ui.dp(c, 4), Gravity.CENTER));
+        return strip;
+    }
+
+    private int width(Context c) {
+        return Math.min(Ui.dp(c, 360), scr.x - Ui.dp(c, 16));
+    }
+
+    @SuppressWarnings("deprecation")
+    private void readScreen() {
+        display.getRealSize(scr);
+    }
+
+    private void savePos(int x, int y) {
+        if (window == null || App.process() != App.PROC_OVERLAY) return;
+        window.getContext().getSharedPreferences(POS_FILE, Context.MODE_PRIVATE).edit()
+                .putInt(key + "_x", x).putInt(key + "_y", y).apply();
+    }
+
+    /** Mantém o painel inteiro na tela quando a altura muda (lista carregou, card abriu) ou a tela gira. */
+    private void fit() {
+        if (wm == null || window == null || display == null || cover != null) return;
+        readScreen();
+        int w = width(window.getContext());
+        int x = WindowDrag.clamp(lp.x, 0, Math.max(0, scr.x - w));
+        int y = WindowDrag.clamp(lp.y, 0, Math.max(0, scr.y - window.getHeight()));
+        if (x == lp.x && y == lp.y && w == lp.width) return;
+        lp.x = x;
+        lp.y = y;
+        lp.width = w;
+        update();
+    }
+
+    /**
+     * Folha por cima do painel sobre o jogo (filtros do PogoPanel): com v a janela cobre a tela, o arraste desliga, o
+     * card fica onde estava e o BACK chama onBack; com null a folha sai e a janela volta ao card na posição de antes.
+     * O dismiss também solta tudo.
+     */
+    public void cover(View v, Runnable onBack) {
+        if (wm == null || window == null) return;
+        FrameLayout root = (FrameLayout) window;
+        if (cover != null) root.removeView(cover);
+        boolean was = cover != null;
+        cover = v;
+        coverBack = v != null ? onBack : null;
+        FrameLayout.LayoutParams clp = (FrameLayout.LayoutParams) root.getChildAt(0).getLayoutParams();
+        if (v != null) {
+            root.addView(v, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            if (!was) {
+                clp.width = lp.width;
+                clp.leftMargin = lp.x;
+                clp.topMargin = lp.y;
+                lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+                lp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+                lp.x = lp.y = 0;
+            }
+        } else if (was) {
+            lp.x = clp.leftMargin;
+            lp.y = clp.topMargin;
+            lp.width = clp.width;
+            lp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            clp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            clp.setMargins(0, 0, 0, 0);
+        }
+        if (drag != null) drag.setEnabled(v == null);
+        root.getChildAt(0).setLayoutParams(clp);
         update();
     }
 

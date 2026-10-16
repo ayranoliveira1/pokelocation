@@ -46,15 +46,18 @@ public final class Api {
     private static final char[] B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".toCharArray();
     public static final String REAUTH = "reauth";
 
-    /** code = campo "error" do servidor ("unknown" se não veio o JSON esperado). */
+    /** code = campo "error" do servidor ("unknown" se não veio o JSON esperado); body = o corpo cru (envelope do /v1/pogo). */
     public static final class Error extends IOException {
         public final int http;
-        public final String code;
+        public final String code, body;
 
-        public Error(int http, String code) {
+        public Error(int http, String code) { this(http, code, null); }
+
+        Error(int http, String code, String body) {
             super(http + " " + code);
             this.http = http;
             this.code = code;
+            this.body = body;
         }
 
         public boolean endsSession() { return sessionDead(this) || accountGone(this); }
@@ -564,6 +567,14 @@ public final class Api {
         return authed(token, t -> http(c, method, path, t, body, TIMEOUT_MS, maxBody), t -> renew(c, t), ended);
     }
 
+    /** /v1/pogo/* com o nosso Bearer (renovação entre processos como no resto); o pogo lê o envelope no Error.body. */
+    public static String pogo(Context c, String method, String path, JSONObject body, int maxBody, int timeoutMs)
+            throws IOException {
+        String token = Session.access(c);
+        if (token == null) throw unauthorized(c);
+        return authed(token, t -> http(c, method, path, t, body, timeoutMs, maxBody), t -> renew(c, t), () -> Session.ended(c));
+    }
+
     interface Attempt { String run(String token) throws IOException; }
 
     static String authed(String token, Attempt http, Attempt renew, Runnable clear) throws IOException {
@@ -684,7 +695,7 @@ public final class Api {
             }
             int status = con.getResponseCode();
             String text = read(status < 400 ? con.getInputStream() : con.getErrorStream(), maxBody);
-            if (status >= 400) throw new Error(status, errorCode(text));
+            if (status >= 400) throw new Error(status, errorCode(text), text);
             return text;
         } catch (Error e) {
             throw e;

@@ -215,6 +215,28 @@
             </intent-filter>
         </activity>
 
+        <activity android:hardwareAccelerated="true" android:name=".pogo.PogoActivity" android:exported="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="pogocoordinates.com" android:path="/callback" />
+            </intent-filter>
+        </activity>
+
+        <activity android:hardwareAccelerated="true" android:name=".pogo.PogoDiscordActivity" android:exported="false"
+            android:process=":pogoweb"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden" />
+        <activity android:hardwareAccelerated="true" android:name=".pogo.PogoAlertsActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".pogo.PogoListActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+        <activity android:hardwareAccelerated="true" android:name=".pogo.PogoFiltersActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+
         <activity android:hardwareAccelerated="true" android:name=".ui.settings.SettingsActivity" android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
         <activity android:hardwareAccelerated="true" android:name=".ui.setup.SetupWizardActivity" android:exported="false"
