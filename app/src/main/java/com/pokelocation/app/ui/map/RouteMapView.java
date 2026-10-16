@@ -264,11 +264,13 @@ public class RouteMapView extends FrameLayout {
     // ------------------------------------------------------------------ API pública (§3.11)
 
     public void setCurrentPosition(Coord c) {
+        boolean moved = !c.sameLatLng(current);
         current = c;
         if (mv == null) return;
         syncCurrentMarker();
         rebuildLines();
         updateDistance();
+        if (moved && !moving) MapHelper.reveal(mv, c);   // no Move o ponto segue a câmera
     }
 
     public void setStart(Coord c) {

@@ -12,6 +12,7 @@ import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.geo.Geo;
+import com.pokelocation.app.model.Coord;
 import com.pokelocation.app.model.MarkerType;
 import com.pokelocation.app.util.Ui;
 
@@ -27,6 +28,7 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.tileprovider.tilesource.TileSourcePolicy;
 import org.osmdroid.tileprovider.tilesource.XYTileSource;
 import org.osmdroid.util.BoundingBox;
+import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.CustomZoomButtonsController;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.CopyrightOverlay;
@@ -96,6 +98,13 @@ public final class MapHelper {
                             | TileSourcePolicy.FLAG_USER_AGENT_MEANINGFUL | TileSourcePolicy.FLAG_USER_AGENT_NORMALIZED));
         }
         return sOsmDe;
+    }
+
+    /** Depois do 1º layout, só fora da área visível: não desfaz o enquadramento do usuário. */
+    public static void reveal(MapView mv, Coord c) {
+        GeoPoint p = new GeoPoint(c.lat, c.lng);
+        if (!mv.isLayoutOccurred()) mv.getController().setCenter(p);
+        else if (!mv.getBoundingBox().contains(c.lat, c.lng)) mv.getController().animateTo(p);
     }
 
     public static MapView newMapView(Context c) {

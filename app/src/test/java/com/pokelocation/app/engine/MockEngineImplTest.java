@@ -28,7 +28,7 @@ public class MockEngineImplTest {
     static class TestEngine extends MockEngineImpl implements MockEngine.Listener, MockEngine.SuspendedPublisher {
         long now = 10_000, wall = 1_000_000, scheduled = -1;
         int publishes, saves, progressCalls;
-        double pLat, pLng;
+        double pLat, pLng, sLat, sLng;
         float pBearing;
         boolean pHasSpeed;
         boolean registerOk = true, mockOk = true;
@@ -49,7 +49,11 @@ public class MockEngineImplTest {
         @Override boolean registerProviders() { return registerOk; }
         @Override boolean mockAllowed() { return mockOk; }
         @Override void unregisterProviders() {}
-        @Override void saveLive(double la, double ln, double al) { saves++; }
+        @Override void saveLive(double la, double ln, double al) {
+            saves++;
+            sLat = la;
+            sLng = ln;
+        }
         @Override void publish(double la, double ln, double al, float sp, boolean hs, float acc, float br, boolean hb) {
             publishes++;
             pLat = la;
@@ -215,6 +219,41 @@ public class MockEngineImplTest {
         e.setStick(0, 1f);
         for (int i = 0; i < 12; i++) e.pump();
         assertEquals(3, e.saves);                  // no máx. a cada 5 s
+    }
+
+    @Test public void teleportSavesLiveEvenWithoutSaveLocation() {   // v1.2 item 4
+        TestEngine e = new TestEngine(cfg());
+        e.start(0, 0, NaN);
+        e.pump();
+        assertEquals(0, e.saves);
+        e.teleport(1, 2, NaN);
+        assertEquals(1, e.saves);
+        assertEquals(1, e.sLat, 0);
+        assertEquals(2, e.sLng, 0);
+        e.startRoute(new double[]{3, 4, 0, 5, 6, 0}, MockEngine.ROUTE_STOP, true);
+        assertEquals(2, e.saves);
+        assertEquals(3, e.sLat, 0);
+        assertEquals(4, e.sLng, 0);
+    }
+
+    @Test public void releaseStickAndRouteStopSaveLiveWithoutSaveLocation() {   // v1.2 item 4
+        TestEngine e = new TestEngine(cfg());
+        e.start(0, 0, NaN);
+        e.setStick(0, 1f);
+        for (int i = 0; i < 3; i++) e.pump();
+        assertEquals(0, e.saves);
+        e.setStick(0, 0f);
+        assertEquals(1, e.saves);
+        assertEquals(e.lat(), e.sLat, 0);
+        assertEquals(e.lng(), e.sLng, 0);
+        e.setStick(0, 0f);
+        assertEquals(1, e.saves);                  // já parado: não grava de novo
+        e.startRoute(new double[]{e.lat(), e.lng(), 0, 1, 1, 0}, MockEngine.ROUTE_STOP, false);
+        e.pump();
+        e.setRoutePlaying(false);
+        assertEquals(2, e.saves);
+        e.stopRoute();
+        assertEquals(3, e.saves);
     }
 
     @Test public void registerFailedStopsOnFirstLoop() {   // item 17

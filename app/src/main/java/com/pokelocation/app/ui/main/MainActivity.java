@@ -35,6 +35,7 @@ import com.pokelocation.app.data.RouteDao;
 import com.pokelocation.app.geo.Cooldown;
 import com.pokelocation.app.geo.Geo;
 import com.pokelocation.app.ipc.Intents;
+import com.pokelocation.app.ipc.LiveStatus;
 import com.pokelocation.app.ipc.WidgetPing;
 import com.pokelocation.app.model.Coord;
 import com.pokelocation.app.model.Folder;
@@ -165,7 +166,7 @@ public final class MainActivity extends BaseActivity {
     protected void onStart() {
         super.onStart();
         Prefs.sp(this).registerOnSharedPreferenceChangeListener(prefListener);
-        form.refreshLast();
+        LiveStatus.request(this, this::showLast);
         form.setupHide();
         form.loadRoutes();
         boolean now = Intents.isOverlayRunning(this);
@@ -470,17 +471,19 @@ public final class MainActivity extends BaseActivity {
     private void onSpoofState(boolean active) {
         setRunning(active);
         if (active) return;
-        form.refreshLast();
+        showLast(Prefs.lastPosition(this));
         form.syncRouteRadios();
-        if (map != null) {
-            Coord l = form.last();
-            if (l != null) map.setCurrentPosition(l);
-            map.clearRoute();
-        }
+        if (map != null) map.clearRoute();
         if (restartAfterStop) {   // GpsFixDialog mudou algo com o serviço rodando (F19)
             restartAfterStop = false;
             ui.postDelayed(restart, RESTART_DELAY_MS);
         }
+    }
+
+    private void showLast(Coord l) {
+        if (isDestroyed()) return;
+        form.setLast(l);
+        if (map != null && l != null) map.setCurrentPosition(l);
     }
 
     /** Habilitação do Start + linha de distância imediata. Chamado pelo MainForm. */

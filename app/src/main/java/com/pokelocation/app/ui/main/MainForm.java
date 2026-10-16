@@ -181,8 +181,10 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
 
     // ---------------------------------------------------------------- last / current
 
-    void refreshLast() {
-        last = Prefs.lastPosition(a);
+    void refreshLast() { setLast(Prefs.lastPosition(a)); }
+
+    void setLast(Coord c) {
+        last = c;
         if (last == null) {
             lastLat.setText(R.string.main_no_last);
             lastLng.setVisibility(View.GONE);

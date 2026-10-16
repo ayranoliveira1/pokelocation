@@ -278,6 +278,7 @@ public class MockEngineImpl implements MockEngine {
         route.clear();
         playing = false;
         hasReached = false;
+        saveLive(lat, lng, alt);
         if (listener != null) listener.onRouteStateChanged(false, false);
     }
 
@@ -292,6 +293,7 @@ public class MockEngineImpl implements MockEngine {
         lng = repLng = ln;
         if (!Double.isNaN(al)) alt = al;
         repAlt = alt;
+        saveLive(lat, lng, alt);   // eventos discretos gravam mesmo sem save_location: é por este arquivo que o main vê a posição
         if (cfg.suspended && started) tick();
     }
 
@@ -301,8 +303,10 @@ public class MockEngineImpl implements MockEngine {
     // --- entrada ---
     @Override
     public void setStick(float angleDeg, float magnitude) {
+        boolean wasMoving = mag != 0f;
         angle = angleDeg;
         mag = !(magnitude > 0f) ? 0f : Math.min(magnitude, 1f);
+        if (wasMoving && mag == 0f) saveLive(lat, lng, alt);
     }
 
     @Override public void setSpeedKmh(float kmh) { if (kmh > 0) speedKmh = kmh; }
@@ -350,6 +354,7 @@ public class MockEngineImpl implements MockEngine {
         if (!route.active()) return;
         playing = p;
         notifyState();
+        if (!p) saveLive(lat, lng, alt);
     }
 
     @Override
