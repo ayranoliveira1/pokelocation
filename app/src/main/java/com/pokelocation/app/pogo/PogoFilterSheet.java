@@ -1,7 +1,6 @@
 package com.pokelocation.app.pogo;
 
 import android.content.Context;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
@@ -30,6 +29,7 @@ public final class PogoFilterSheet {
     private final Consumer<Boolean> focusable;
     private boolean closing;
 
+    @SuppressWarnings("deprecation") // getSystemWindowInsetBottom: o Insets.Type é da API 30
     public PogoFilterSheet(Context c, PogoFilter current, Consumer<PogoFilter> onApply, Runnable onClosed,
                            Consumer<Boolean> focusable, Runnable linkTrainer) {
         this.c = c;
@@ -48,7 +48,7 @@ public final class PogoFilterSheet {
         sheet.setClickable(true); // toque na folha não chega ao véu
         sheet.setBackground(shape(R.color.surface, new float[]{dp16, dp16, dp16, dp16, 0, 0, 0, 0}));
         View handle = new View(c);
-        handle.setBackground(shape(R.color.outline, null));
+        handle.setBackground(shape(R.color.pogo_outline, null));
         LinearLayout.LayoutParams hl = new LinearLayout.LayoutParams(Ui.dp(c, 32), Ui.dp(c, 4));
         hl.gravity = Gravity.CENTER_HORIZONTAL;
         hl.topMargin = Ui.dp(c, 8);
@@ -56,10 +56,11 @@ public final class PogoFilterSheet {
 
         LinearLayout head = new LinearLayout(c);
         head.setGravity(Gravity.CENTER_VERTICAL);
-        head.setPadding(dp16, 0, 0, 0);
+        head.setPadding(Ui.dp(c, 20), 0, 0, 0);
         TextView title = text(R.string.pogo_panel_filters, R.color.on_surface);
-        title.setTextSize(18);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextSize(20);
+        title.setTypeface(PogoChips.MEDIUM);
+        title.setGravity(Gravity.CENTER_VERTICAL);
         head.addView(title, new LinearLayout.LayoutParams(0, dp48, 1));
         TextView clear = text(R.string.pogo_f_clear, R.color.primary);
         clear.setPadding(dp16, 0, dp16, 0);
@@ -75,12 +76,22 @@ public final class PogoFilterSheet {
         sheet.addView(form.view(), new LinearLayout.LayoutParams(-1, 0, 1));
 
         apply = text(0, R.color.on_primary);
-        apply.setTypeface(Typeface.DEFAULT_BOLD);
+        apply.setTypeface(PogoChips.MEDIUM);
         apply.setBackground(shape(R.color.primary, null));
         apply.setOnClickListener(v -> { if (!closing) onApply.accept(edit); }); // quem hospeda fecha no onApply
-        LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-1, dp48);
-        al.setMargins(dp16, Ui.dp(c, 8), dp16, dp16);
+        int dp20 = Ui.dp(c, 20);
+        LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-1, Ui.dp(c, 52));
+        al.setMargins(dp20, Ui.dp(c, 8), dp20, dp20);
         sheet.addView(apply, al);
+        // rodapé acima da barra de navegação (no app; no :overlay o inset vem 0)
+        root.setOnApplyWindowInsetsListener((v, in) -> {
+            int bottom = dp20 + in.getSystemWindowInsetBottom();
+            if (al.bottomMargin != bottom) {
+                al.bottomMargin = bottom;
+                apply.setLayoutParams(al);
+            }
+            return in;
+        });
         count();
 
         root.addView(sheet, new FrameLayout.LayoutParams(-1, (int) (c.getResources().getDisplayMetrics().heightPixels * 0.85f),
@@ -141,7 +152,7 @@ public final class PogoFilterSheet {
         GradientDrawable g = new GradientDrawable();
         g.setColor(c.getColor(color));
         if (radii != null) g.setCornerRadii(radii);
-        else g.setCornerRadius(Ui.dp(c, 24));
+        else g.setCornerRadius(Ui.dp(c, 14));
         return g;
     }
 }

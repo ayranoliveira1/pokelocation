@@ -22,7 +22,6 @@ import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.engine.EngineConfig;
 import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.geo.CoordParser;
-import com.pokelocation.app.model.MapOptions;
 import com.pokelocation.app.util.Ui;
 import com.pokelocation.app.util.WindowDrag;
 
@@ -48,7 +47,6 @@ public final class OverlayView implements View.OnClickListener {
         void onRecordDiscard();
         void onRecordOpenMap();
         void onRecordSubmit();
-        MapOptions mapOptions();   // o OverlayService já tem
     }
 
     private static final String TYPE_CLASSIC = "classic";
@@ -255,16 +253,15 @@ public final class OverlayView implements View.OnClickListener {
 
     // ------------------------------------------------------------------ abrir fluxos
 
-    /** Só com login: sem ele nenhuma classe social carrega no :overlay. */
+    /** Só com login: sem ele nenhuma classe social carrega no :overlay. O botão Pokémon segue a mesma conta. */
     public void setChatEnabled(boolean on) {
         chat = on;
         setShown(chatBox, on);
-        if (!on) flows.closeChat();
-    }
-
-    /** Botão Pokémon só com a camada ligada (pogo_layer); o mini-mapa pode mudar isso no meio da sessão. */
-    public void optionsChanged() {
-        setShown(pogo, host.mapOptions().pogoLayer);
+        setShown(pogo, on);
+        if (!on) {
+            flows.closeChat();
+            flows.closePogo();
+        }
     }
 
     public void chatChanged() {
@@ -401,8 +398,8 @@ public final class OverlayView implements View.OnClickListener {
         if (hasRoute && !classic) expand(routePill);
         showRecording(true);
         setShown(chatBox, chat);
+        setShown(pogo, chat);
         setUnread(unread);
-        optionsChanged();
     }
 
     /** Liga cliques e guarda as Views que existirem nesta janela. */

@@ -1,7 +1,7 @@
 package com.pokelocation.app.pogo;
 
 import android.content.Context;
-import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
@@ -63,7 +63,8 @@ public final class PogoFilterForm {
         scroll = new ScrollView(c);
         body = new LinearLayout(c);
         body.setOrientation(LinearLayout.VERTICAL);
-        body.setPadding(pad, 0, pad, pad);
+        int side = Ui.dp(c, 20);
+        body.setPadding(side, 0, side, pad);
         scroll.addView(body);
         root.addView(scroll);
         render();
@@ -100,15 +101,25 @@ public final class PogoFilterForm {
     public void render() {
         body.removeAllViews();
         title(R.string.pogo_f_where);
-        seg(new String[]{c.getString(R.string.pogo_f_near), c.getString(R.string.pogo_panel_world)}, f.km == 0 ? 1 : 0, w -> {
+        // o bloco que lê como uma unidade: seletor e raio no mesmo container; o raio só no "Perto"
+        LinearLayout where = new LinearLayout(c);
+        where.setOrientation(LinearLayout.VERTICAL);
+        where.setBackground(PogoChips.round(c, 16, c.getColor(R.color.pogo_surface_variant), 0));
+        where.addView(new PogoChips.Segmented(c, new String[]{c.getString(R.string.pogo_f_near),
+                c.getString(R.string.pogo_panel_world)}, f.km == 0 ? 1 : 0, w -> {
             f.km = w == 1 ? 0 : 1;
+            changed();
             body.post(this::render);
-        });
+        }));
         if (f.km != 0) {
             String[] km = new String[PogoFilter.KMS.length];
             for (int i = 0; i < km.length; i++) km[i] = c.getString(R.string.pogo_panel_km, PogoFilter.KMS[i]);
-            seg(km, indexOf(PogoFilter.KMS, f.km), w -> f.km = PogoFilter.KMS[w]);
+            where.addView(new PogoChips.Segmented(c, km, indexOf(PogoFilter.KMS, f.km), w -> {
+                f.km = PogoFilter.KMS[w];
+                changed();
+            }));
         }
+        body.addView(where);
         title(R.string.pogo_f_sort);
         seg(c.getResources().getStringArray(R.array.pogo_sorts), PogoFilter.SORTS.indexOf(f.sort), w -> f.sort = PogoFilter.SORTS.get(w));
 
@@ -122,19 +133,14 @@ public final class PogoFilterForm {
             for (int[] sf : f.speciesForms) keys.add(PogoFilter.labelKey(sf[0], sf[1]));
             for (int i = 0; i < Math.min(6, keys.size()); i++) {
                 String k = keys.get(i), l = f.labels.get(k);
-                TextView t = PogoChips.chip(c, (l != null ? l : "#" + k.replace("|-1", "").replace('|', '·')) + "  ×", false);
-                t.setOnClickListener(v -> {
-                    toggle(k, null);
-                    changed();
-                    render();
-                });
-                chips.addView(t);
+                chips.addView(PogoChips.summaryChip(c, l != null ? l : "#" + k.replace("|-1", "").replace('|', '·'),
+                        v -> species(), v -> {
+                            toggle(k, null);
+                            changed();
+                            render();
+                        }));
             }
-            if (keys.size() > 6) {
-                TextView more = PogoChips.chip(c, "+" + (keys.size() - 6), false);
-                more.setOnClickListener(v -> species());
-                chips.addView(more);
-            }
+            if (keys.size() > 6) chips.addView(PogoChips.summaryChip(c, "+" + (keys.size() - 6), v -> species(), null));
             body.addView(chips);
         }
 
@@ -155,18 +161,14 @@ public final class PogoFilterForm {
         seg(new String[]{c.getString(R.string.pogo_any), "♂", "♀", "⚲"}, PogoFilter.GENDERS.indexOf(f.gender) + 1,
                 w -> f.gender = w == 0 ? null : PogoFilter.GENDERS.get(w - 1));
         label(R.string.pogo_f_sizes);
-        PogoChips.Flow sizes = new PogoChips.Flow(c);
-        for (String s : PogoFilter.SIZES) {
-            TextView t = PogoChips.chip(c, s, f.sizes.contains(s));
-            t.setOnClickListener(v -> {
-                PogoChips.select(t, !t.isSelected());
-                f.sizes.remove(s);
-                if (t.isSelected()) f.sizes.add(s);
-                changed();
-            });
-            sizes.addView(t);
-        }
-        body.addView(sizes);
+        String[] all = PogoFilter.SIZES.toArray(new String[0]);
+        boolean[] picked = new boolean[all.length];
+        for (int i = 0; i < all.length; i++) picked[i] = f.sizes.contains(all[i]);
+        body.addView(new PogoChips.ChoiceGrid(c, all, picked, (i, v) -> {
+            f.sizes.remove(all[i]);
+            if (v) f.sizes.add(all[i]);
+            changed();
+        }));
         sw(R.string.pogo_f_boosted, f.boosted != null && f.boosted, on -> f.boosted = on ? Boolean.TRUE : null);
 
         title(R.string.pogo_f_shiny);
@@ -198,7 +200,7 @@ public final class PogoFilterForm {
         link(c.getString(R.string.set_cat_advanced) + (advanced ? "  ▴" : "  ▾"), v -> {
             advanced = !advanced;
             render();
-        }).setTypeface(Typeface.DEFAULT_BOLD);
+        }).setTypeface(PogoChips.MEDIUM);
         if (advanced) {
             sw(R.string.pogo_f_pvp_mode, f.pvpMode, on -> {
                 f.pvpMode = on;
@@ -224,12 +226,13 @@ public final class PogoFilterForm {
 
     private void focus(boolean on) { if (focusable != null) focusable.accept(on); }
 
-    /** Título de seção: 14sp, negrito, cor primária, 16dp acima. */
+    /** Título de seção: 16sp medium, 24dp acima. */
     private void title(int res) {
         TextView t = label(res);
-        t.setTypeface(Typeface.DEFAULT_BOLD);
-        t.setTextColor(c.getColor(R.color.primary));
-        t.setPadding(0, pad, 0, 0);
+        t.setTextSize(16);
+        t.setTypeface(PogoChips.MEDIUM);
+        t.setTextColor(c.getColor(R.color.on_surface));
+        t.setPadding(0, Ui.dp(c, 24), 0, Ui.dp(c, 4));
     }
 
     private TextView label(int res) {
@@ -253,40 +256,34 @@ public final class PogoFilterForm {
         return t;
     }
 
+    /** Linha inteira de 56dp. */
     private TextView link(String s, View.OnClickListener click) {
         TextView t = text(s);
+        t.setMinHeight(Ui.dp(c, 56));
         t.setOnClickListener(click);
         return t;
     }
 
-    /** Segmentado = chips com uma seleção só. */
+    /** Escolha única: largura igual, uma linha (2×2 em tela estreita ou fonte grande, dentro do Segmented). */
     private void seg(String[] labels, int checked, IntConsumer pick) {
-        PogoChips.Flow g = new PogoChips.Flow(c);
-        for (int i = 0; i < labels.length; i++) {
-            TextView t = PogoChips.chip(c, labels[i], i == checked);
-            int w = i;
-            t.setOnClickListener(v -> {
-                for (int k = 0; k < g.getChildCount(); k++) PogoChips.select((TextView) g.getChildAt(k), k == w);
-                pick.accept(w);
-                changed();
-            });
-            g.addView(t);
-        }
-        body.addView(g);
+        body.addView(new PogoChips.Segmented(c, labels, checked, w -> {
+            pick.accept(w);
+            changed();
+        }));
     }
 
     private void sw(int res, boolean on, Consumer<Boolean> set) {
-        Switch s = new Switch(c);
+        Switch s = new Switch(c); // linha inteira de 56dp: texto à esquerda, chave à direita, toda clicável
         s.setText(res);
         s.setTextSize(16);
         s.setTextColor(c.getColor(R.color.on_surface));
-        s.setMinHeight(Ui.dp(c, 48));
+        s.setMinHeight(Ui.dp(c, 56));
         s.setChecked(on);
         s.setOnCheckedChangeListener((x, v) -> {
             set.accept(v);
             changed();
         });
-        body.addView(s);
+        body.addView(s, new LinearLayout.LayoutParams(-1, -2));
     }
 
     private interface Pair { void set(Double min, Double max); }
@@ -308,8 +305,17 @@ public final class PogoFilterForm {
         check.run();
     }
 
-    private void field(LinearLayout r, int hint, boolean decimal, Double v, Consumer<Double> set, Runnable after) {
-        EditText e = edit(hint);
+    /** Coluna de peso 1 (12dp entre as duas): rótulo de 14sp acima e a caixa de 52dp. */
+    private void field(LinearLayout r, int label, boolean decimal, Double v, Consumer<Double> set, Runnable after) {
+        LinearLayout col = new LinearLayout(c);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView l = new TextView(c);
+        l.setText(label);
+        l.setTextSize(14);
+        l.setTextColor(c.getColor(R.color.on_surface_variant));
+        l.setPadding(0, Ui.dp(c, 4), 0, Ui.dp(c, 4));
+        col.addView(l);
+        EditText e = edit(0);
         e.setInputType(decimal ? InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL : InputType.TYPE_CLASS_NUMBER);
         e.setText(value(v));
         watch(e, s -> {
@@ -317,15 +323,24 @@ public final class PogoFilterForm {
             if (after != null) after.run();
             changed();
         });
-        r.addView(e, new LinearLayout.LayoutParams(0, -2, 1));
+        col.addView(e, new LinearLayout.LayoutParams(-1, Ui.dp(c, 52)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1);
+        if (r.getChildCount() > 0) lp.setMarginStart(Ui.dp(c, 12));
+        r.addView(col, lp);
     }
 
     /** A janela do :overlay só fica focável enquanto um campo está em edição. */
     private EditText edit(int hint) {
         EditText e = new EditText(c);
-        e.setHint(hint);
+        if (hint != 0) e.setHint(hint);
         e.setSingleLine(true);
-        e.setMinHeight(Ui.dp(c, 48));
+        e.setTextSize(16);
+        e.setMinHeight(Ui.dp(c, 52));
+        GradientDrawable box = new GradientDrawable();
+        box.setCornerRadius(Ui.dp(c, 12));
+        box.setStroke(Ui.dp(c, 1), c.getColor(R.color.outline)); // controle interativo: ~4,5:1 (o pogo_outline é decorativo)
+        e.setBackground(box);
+        e.setPadding(Ui.dp(c, 12), 0, Ui.dp(c, 12), 0);
         e.setOnTouchListener((v, ev) -> {
             if (ev.getAction() == MotionEvent.ACTION_DOWN) focus(true);
             return false;
@@ -425,7 +440,7 @@ public final class PogoFilterForm {
         TextView back = new TextView(c);
         back.setText("‹  " + c.getString(R.string.pogo_f_species));
         back.setTextSize(16);
-        back.setTypeface(Typeface.DEFAULT_BOLD);
+        back.setTypeface(PogoChips.MEDIUM);
         back.setTextColor(c.getColor(R.color.on_surface));
         back.setMinHeight(Ui.dp(c, 48));
         back.setGravity(Gravity.CENTER_VERTICAL);

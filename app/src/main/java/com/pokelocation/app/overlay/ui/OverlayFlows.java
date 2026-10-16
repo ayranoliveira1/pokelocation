@@ -37,6 +37,7 @@ final class OverlayFlows {
     private final Context ctx;
     private final Context app;            // DAOs no Io: nunca segurar o contexto temático
     private final boolean showDistance;   // display_distance_info
+    private boolean pogoOpened;
 
     OverlayFlows(OverlayView ov, boolean showDistance) {
         this.ov = ov;
@@ -70,8 +71,13 @@ final class OverlayFlows {
         ChatPanel.show(ctx, text -> openTeleport(text, title));
     }
 
+    void closePogo() {
+        if (pogoOpened) PogoPanel.dismissOpen();   // nunca aberto: nem carrega a classe
+    }
+
     void openPogo() {
         close();
+        pogoOpened = true;
         PogoPanel.show(ctx, ov.engine.lat(), ov.engine.lng(), this::openTeleport);
     }
 

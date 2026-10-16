@@ -49,4 +49,6 @@
     <string name="pogo_notif_settings">Abrir configurações</string>
     <string name="pogo_alert_need_trainer">Desligado: vincule seu treinador</string>
     <string name="pogo_alert_bad_account">A conta de treinador escolhida não está ativa</string>
+    <string name="pogo_selected">selecionado</string>
+    <string name="pogo_remove">Remover %s</string>
 </resources>

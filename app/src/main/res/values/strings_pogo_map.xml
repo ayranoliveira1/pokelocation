@@ -49,4 +49,6 @@
     <string name="pogo_notif_settings">Open settings</string>
     <string name="pogo_alert_need_trainer">Off: link your trainer</string>
     <string name="pogo_alert_bad_account">The chosen trainer account is not active</string>
+    <string name="pogo_selected">selected</string>
+    <string name="pogo_remove">Remove %s</string>
 </resources>

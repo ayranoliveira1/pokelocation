@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <item name="pogo_chip_text" type="id" />
     <style name="pogo_card_btn">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">40dp</item>

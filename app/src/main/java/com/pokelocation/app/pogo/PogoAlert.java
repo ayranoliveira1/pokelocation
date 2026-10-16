@@ -25,6 +25,8 @@ public final class PogoAlert {
     /** createNotificationChannel é IPC: 1× por processo. */
     private static boolean sChannel;
     private static final int ID = 0x9090;
+    /** Grupo próprio: com 5+ avisos o Android agrupa sozinho e as linhas do grupo recolhido não abrem. */
+    private static final String GROUP = "pogo_alerts", SUMMARY = "pogo_summary";
 
     private PogoAlert() {}
 
@@ -48,7 +50,7 @@ public final class PogoAlert {
         Pogo.Mon mon = mon(d);
         Bitmap photo = mon != null ? PogoIcons.now(c, mon, 3_000) : null; // sem foto em 3 s: sai sem, nunca atrasada
         if (photo != null) b.setLargeIcon(photo);
-        b.setSmallIcon(R.drawable.ic_notification)
+        b.setGroup(GROUP).setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title(d.get("n"), d.get("iv"), d.get("cp"), despawn, System.currentTimeMillis(),
                         "1".equals(d.get("s"))))
                 .setContentText(d.get("r"))
@@ -60,9 +62,24 @@ public final class PogoAlert {
         if (Build.VERSION.SDK_INT >= 26 && left > 0) b.setTimeoutAfter(left); // some quando o spawn acaba
         try {
             nm.notify(tag, ID, b.build());
+            nm.notify(SUMMARY, ID, summary(c));
         } catch (RuntimeException ignored) {
             // sem POST_NOTIFICATIONS
         }
+    }
+
+    /** Resumo do grupo: o toque abre a lista; não toca sozinho (quem avisa é cada alerta). */
+    @SuppressWarnings("deprecation")
+    private static Notification summary(Context c) {
+        // < 26 sem GROUP_ALERT_CHILDREN: sem os defaults do legacy, senão cada alerta soaria 2×
+        Notification.Builder s = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CHANNEL) : new Notification.Builder(c);
+        if (Build.VERSION.SDK_INT >= 26) s.setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN);
+        return s.setOnlyAlertOnce(true).setGroup(GROUP).setGroupSummary(true).setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(c.getString(R.string.pogo_alerts_channel)).setAutoCancel(true)
+                .setContentIntent(TaskStackBuilder.create(c).addNextIntent(Intents.main(c))
+                        .addNextIntent(PogoListActivity.intent(c, Double.NaN, Double.NaN))
+                        .getPendingIntent(SUMMARY.hashCode(), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
+                .build();
     }
 
     /** Só o que o ícone usa: id, nome, forma, costume e shiny. null sem id (servidor antigo, sem foto). */

@@ -1,7 +1,12 @@
 package com.pokelocation.app.pogo;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +20,9 @@ import com.pokelocation.app.ipc.Intents;
 import com.pokelocation.app.model.Coord;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.main.MainActivity;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /** A lista de Pokémon no app (o mesmo PogoPanel do joystick); "Definir destino" só preenche o local da tela inicial. */
 public final class PogoListActivity extends BaseActivity {
@@ -80,19 +88,24 @@ public final class PogoListActivity extends BaseActivity {
 
     private static Pogo.Mon alert(Intent i) {
         Bundle b = i.getBundleExtra(PogoAlert.EXTRA);
-        return b == null || b.getString("rc") == null ? null
-                : alertMon(b.getString("rc"), b.getString("n"), b.getString("iv"), b.getString("cp"), b.getString("d"), b.getString("s"));
+        if (b == null || b.getString("rc") == null) return null;
+        Map<String, String> d = new HashMap<>();
+        for (String k : b.keySet()) d.put(k, b.getString(k));
+        return alertMon(d);
     }
 
-    /** Os dados do FCM vêm como texto; vazio ou inválido = desconhecido. */
-    static Pogo.Mon alertMon(String rc, String n, String iv, String cp, String d, String s) {
-        Pogo.Mon m = new Pogo.Mon();
-        m.reveal = rc;
-        m.name = n;
-        m.iv = num(iv, -1);
-        m.cp = (int) num(cp, 0);
-        m.despawnMs = (long) num(d, 0);
-        m.shiny = "1".equals(s);
+    /** O PogoAlert.mon lê o que a foto precisa (id, forma, costume, shiny); aqui entra o resto do push (texto). */
+    static Pogo.Mon alertMon(Map<String, String> d) {
+        Pogo.Mon m = PogoAlert.mon(d);
+        if (m == null) {   // sem id: sem foto, mas o card abre com o resto
+            m = new Pogo.Mon();
+            m.name = d.get("n");
+            m.shiny = "1".equals(d.get("s"));
+        }
+        m.reveal = d.get("rc");
+        m.iv = num(d.get("iv"), -1);
+        m.cp = (int) num(d.get("cp"), 0);
+        m.despawnMs = (long) num(d.get("d"), 0);
         m.verified = true;
         m.lat = m.lng = Double.NaN;
         return m;
@@ -120,7 +133,8 @@ public final class PogoListActivity extends BaseActivity {
 
     /**
      * Centro do "Perto de": a posição do joystick se ele estiver rodando; senão o local do formulário (vindo da tela
-     * inicial ou o último salvo); senão a última posição conhecida, que é onde o mapa da tela inicial abre.
+     * inicial ou o último salvo); senão a última posição conhecida, que é onde o mapa da tela inicial abre; senão a
+     * última localização do aparelho.
      */
     static double[] center(Context c, double formLat, double formLng) {
         Coord last = Prefs.lastPosition(c);
@@ -128,6 +142,26 @@ public final class PogoListActivity extends BaseActivity {
         if (Intents.validLatLng(formLat, formLng)) return new double[]{formLat, formLng};
         double lat = Prefs.getDouble(c, Prefs.LATITUDE_TEXT), lng = Prefs.getDouble(c, Prefs.LONGITUDE_TEXT);
         if (Intents.validLatLng(lat, lng)) return new double[]{lat, lng};
-        return last != null ? new double[]{last.lat, last.lng} : new double[]{Double.NaN, Double.NaN};
+        if (last != null) return new double[]{last.lat, last.lng};
+        double[] dev = device(c);   // instalação nova (nunca deu Start): onde o aparelho está
+        return dev != null ? dev : new double[]{Double.NaN, Double.NaN};
+    }
+
+    /** O fix mais recente entre os providers ativos (o do mock vale: é a posição simulada), só com a permissão que o app já tem. */
+    @SuppressLint("MissingPermission")
+    private static double[] device(Context c) {
+        if (c.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && c.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) return null;
+        LocationManager lm = c.getSystemService(LocationManager.class);
+        if (lm == null) return null;
+        Location best = null;
+        for (String p : lm.getProviders(true)) {
+            try {
+                Location l = lm.getLastKnownLocation(p);
+                if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
+            } catch (RuntimeException ignored) {   // provider sumiu/permissão revogada no meio
+            }
+        }
+        return best == null ? null : new double[]{best.getLatitude(), best.getLongitude()};
     }
 }
