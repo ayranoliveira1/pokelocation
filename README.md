@@ -15,11 +15,24 @@ bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
 
 ## Versões
 
+### v1.2: integração com o PoGo Coordinates (com login)
+
+- **Camada PoGo** no mapa principal e no mini-mapa, com card de detalhe e foto do Pokémon.
+- **Lista no joystick** com filtros (espécies com fotos, IV, shiny, Mundo ou perto), lista mantida entre aberturas,
+  botão **Atualizar** e atualização sozinha a cada 5 min.
+- **Login do PoGo** pelo servidor e **alertas por push** com foto. Busca e alertas sem shiny funcionam sem vincular
+  conta do PoGo; alerta de shiny só com treinador vinculado.
+- **PoGo lento:** aviso próprio quando o PoGo Coordinates demora a responder.
+- **Voltar nos painéis do joystick:** o primeiro fecha o teclado, o segundo fecha o painel; tocar no jogo devolve o
+  foco.
+
+Precisa do servidor v1.1. Tudo das versões anteriores continua igual.
+
 ### v1.1: amigos e chat (opcional, com login)
 
 Tudo da v1.0 continua igual e funciona sem conta. Quem entrar (e-mail e senha ou Google) ganha:
 
-- **Amigos:** adicione por **@nome** único ou por código; abas de amigos e pedidos.
+- **Amigos:** adicione por **@nome** único ou por código; abas de amigos, pedidos e bloqueados (com desbloquear).
 - **Amigos no mapa:** veja a posição **simulada** dos amigos enquanto o joystick deles roda. Dá para desligar em
   **Conta → Compartilhar minha localização**.
 - **Chat com criptografia ponta a ponta** (protocolo Signal), 1:1 e em grupos: texto, **localização atual** e
@@ -65,10 +78,10 @@ configuração e os modos avançados de injeção. Os detalhes estão em [Como u
 ## Instalação
 
 **[⬇️ Baixar o APK mais recente](https://github.com/ayranoliveira1/pokelocation/releases/latest)** (também em
-[`apks/`](apks/pokelocation-v1.1-release.apk)).
+[`apks/`](apks/pokelocation-v1.2-release.apk)).
 
 ```bash
-adb install -r apks/pokelocation-v1.1-release.apk
+adb install -r apks/pokelocation-v1.2-release.apk
 ```
 
 Ou copie o APK para o aparelho e abra pelo gerenciador de arquivos (permita "instalar apps desconhecidos").
