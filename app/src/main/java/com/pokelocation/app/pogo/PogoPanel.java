@@ -159,12 +159,14 @@ public final class PogoPanel {
         }
     };
     private boolean destroyed, loaded;
+    /** Lista dada (as notificações): sem busca, e o que despawnou fica, marcado como expirado. */
+    private boolean fixed;
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             long now = System.currentTimeMillis();
             // despawnados saem a cada segundo, também com uma busca em curso ou depois de uma que falhou (T29)
-            if (mons.removeIf(m -> gone(m, now)) && task == null)
+            if (!fixed && mons.removeIf(m -> gone(m, now)) && task == null)
                 showStatus(stale != null && !mons.isEmpty() ? stale : PogoText.count(app, mons.size(), filter, km == WORLD));
             adapter.notifyDataSetChanged();
             Io.main().postDelayed(this, 1000);
@@ -193,7 +195,7 @@ public final class PogoPanel {
 
             @Override public void cover(View v, Runnable onBack) { h[0].cover(v, onBack); }
         });
-        p.start(null);
+        p.start();
         h[0] = sHost = PanelHost.show(c, p.view, true);
         h[0].overGame(false, "pogo");
         h[0].setOnDismiss(() -> {
@@ -234,7 +236,7 @@ public final class PogoPanel {
                 Pogo.Mon m = mons.get(i);
                 Row r = rows.get(m);
                 if (r == null) {
-                    r = new Row(PogoText.title(m), PogoText.cpLevel(ctx, m), km == WORLD ? null : distance(m),
+                    r = new Row(PogoText.title(m), PogoText.cpLevel(ctx, m), distance(m),
                             m.iv >= 0 ? (int) m.iv + "%" : null);
                     rows.put(m, r);
                 }
@@ -258,7 +260,9 @@ public final class PogoPanel {
                 s.setLength(0);
                 long left = m.despawnMs - System.currentTimeMillis();
                 if (m.despawnMs > 0 && left > 0) PogoText.clock(s.append(r.stats.isEmpty() ? "" : " · "), left);
+                else if (fixed && m.despawnMs > 0) s.append(r.stats.isEmpty() ? "" : " · ").append(ctx.getString(R.string.pogo_notified_expired));
                 h.time.setText(s);
+                row.setAlpha(fixed && m.despawnMs > 0 && left <= 0 ? 0.5f : 1f);
                 boolean warn = left > 0 && left < 3 * 60_000;
                 if (warn != h.warn) {
                     h.warn = warn;
@@ -274,7 +278,11 @@ public final class PogoPanel {
         list.setAdapter(adapter);
         onIcon = b -> { if (b != null && !destroyed) adapter.notifyDataSetChanged(); };
         onPlace = () -> { if (!destroyed) adapter.notifyDataSetChanged(); };
-        list.setOnItemClickListener((parent, row, pos, id) -> openDetail(mons.get(pos)));
+        list.setOnItemClickListener((parent, row, pos, id) -> {
+            Pogo.Mon m = mons.get(pos);
+            if (fixed && PogoText.gone(m.despawnMs, System.currentTimeMillis())) Ui.toast(ctx, R.string.pogo_notified_gone);
+            else openDetail(m);
+        });
 
         HorizontalScrollView strip = new HorizontalScrollView(c);
         strip.setHorizontalScrollBarEnabled(false);
@@ -351,15 +359,8 @@ public final class PogoPanel {
         });
     }
 
-    /**
-     * alert: o card do push por cima e a lista só carrega quando ele fecha (sem gastar o /search à toa). Sem alert: o
-     * último resultado do processo aparece na hora se for da mesma busca e tiver < 30 min; com > 5 min, busca também.
-     */
-    public void start(Pogo.Mon alert) {
-        if (alert != null) {
-            showMon(alert);
-            return;
-        }
+    /** O último resultado do processo aparece na hora se for da mesma busca e tiver < 30 min; com > 5 min, busca também. */
+    public void start() {
         PogoFilter raw = PogoFilter.load(app), f = PogoText.asSent(app, raw.copy());
         int k = Double.isNaN(lat) ? WORLD : f.km;
         long now = System.currentTimeMillis(), age = now - sAt;
@@ -378,6 +379,25 @@ public final class PogoPanel {
         showStatus(PogoText.count(app, mons.size(), filter, km == WORLD));
         if (age >= FRESH_MS) load(false);
         else running();
+    }
+
+    public void showFixed(List<Pogo.Mon> l, String empty) {
+        fixed = loaded = true;
+        view.findViewById(R.id.pogo_chips).setVisibility(View.GONE);
+        mons.clear();
+        rows.clear();
+        mons.addAll(l);
+        adapter.notifyDataSetChanged();
+        showStatus(l.isEmpty() ? empty : "");
+        status.setVisibility(l.isEmpty() ? View.VISIBLE : View.GONE);
+        running();
+    }
+
+    /** true = o BACK fechou o card. */
+    public boolean back() {
+        if (detail.getVisibility() != View.VISIBLE) return false;
+        closeDetail();
+        return true;
     }
 
     /** Lista do app: visível entre onResume e onPause (o painel do joystick usa só o attach). */
@@ -404,7 +424,7 @@ public final class PogoPanel {
         spin();
         if (destroyed || !attached || paused) return;
         Io.main().postDelayed(tick, 1000);
-        if (task == null && loaded) Io.main().postDelayed(auto, Math.max(0, lastAt + FRESH_MS - System.currentTimeMillis()));
+        if (task == null && loaded && !fixed) Io.main().postDelayed(auto, Math.max(0, lastAt + FRESH_MS - System.currentTimeMillis()));
     }
 
     private void busy(boolean on) {
@@ -614,21 +634,17 @@ public final class PogoPanel {
         return d == Math.floor(d) ? String.valueOf((long) d) : String.valueOf(d);
     }
 
-    /** O card de um Pokémon de fora da lista (push de alerta): sem distância; fechar volta à lista. */
+    /** O card de um Pokémon de fora da lista (push de alerta); fechar volta à lista. */
     public void showMon(Pogo.Mon m) {
-        openDetail(m, null);
+        openDetail(m);
     }
 
     private void openDetail(Pogo.Mon m) {
-        openDetail(m, km == WORLD ? null : distance(m));
-    }
-
-    private void openDetail(Pogo.Mon m, String where) {
         if (card == null) {
             card = new PogoCard(ctx, goLabel, host::go, this::closeDetail);
             detail.addView(card.view);
         }
-        card.bind(m, where);
+        card.bind(m, distance(m));
         list.setVisibility(View.GONE);
         detail.setVisibility(View.VISIBLE);
         close.setText(R.string.cancel);
@@ -638,7 +654,7 @@ public final class PogoPanel {
         detail.setVisibility(View.GONE);
         list.setVisibility(View.VISIBLE);
         close.setText(R.string.close);
-        if (!loaded && !destroyed) start(null);
+        if (!loaded && !destroyed) start();
     }
 
     /** A foto do bloco, guardada no memo; sem ela (ainda não veio ou o LRU expulsou), pede e redesenha ao chegar. */
@@ -708,7 +724,9 @@ public final class PogoPanel {
         return t;
     }
 
+    /** null no mundo inteiro e no push sem coordenada. */
     private String distance(Pogo.Mon m) {
+        if ((km == WORLD && !fixed) || Double.isNaN(lat) || Double.isNaN(m.lat)) return null;
         return Cooldown.formatDistance(Geo.distance(lat, lng, m.lat, m.lng));
     }
 

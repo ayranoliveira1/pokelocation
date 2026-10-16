@@ -53,4 +53,9 @@
     <string name="pogo_remove">Remove %s</string>
     <string name="pogo_map_stale">Showing the last search · %s</string>
     <string name="pogo_refresh">Refresh</string>
+    <string name="pogo_tab_notified">Notifications</string>
+    <string name="pogo_tab_rules">My alerts</string>
+    <string name="pogo_notified_none">No Pokémon notified yet. Create an alert in My alerts.</string>
+    <string name="pogo_notified_expired">Expired</string>
+    <string name="pogo_notified_gone">This Pokémon is already gone</string>
 </resources>

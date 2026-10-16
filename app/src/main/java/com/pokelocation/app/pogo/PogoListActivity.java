@@ -2,6 +2,7 @@ package com.pokelocation.app.pogo;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -20,9 +21,6 @@ import com.pokelocation.app.ipc.Intents;
 import com.pokelocation.app.model.Coord;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.main.MainActivity;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /** A lista de Pokémon no app (o mesmo PogoPanel do joystick); "Definir destino" só preenche o local da tela inicial. */
 public final class PogoListActivity extends BaseActivity {
@@ -48,12 +46,7 @@ public final class PogoListActivity extends BaseActivity {
         root.setOrientation(LinearLayout.VERTICAL);
         getLayoutInflater().inflate(R.layout.base_toolbar, root, true);
         panel = new PogoPanel(this, c[0], c[1], R.string.pogo_card_set_dest, true, new PogoPanel.Host() {
-            @Override public void go(double lat, double lng, String title) {
-                startActivity(Intents.auth(PogoListActivity.this, new Intent(Intents.INT_FILL_LOCATION)
-                        .setClass(PogoListActivity.this, MainActivity.class)
-                        .putExtra(Intents.EXTRA_LAT, lat).putExtra(Intents.EXTRA_LNG, lng)));
-                finish();
-            }
+            @Override public void go(double lat, double lng, String title) { fill(PogoListActivity.this, lat, lng); }
 
             @Override public void close() { finish(); }
 
@@ -71,52 +64,13 @@ public final class PogoListActivity extends BaseActivity {
         setContentView(root);
         setupToolbar(getString(R.string.pogo_map_layer), true);
         applyInsets(root);
-        panel.start(alert(i));
+        panel.start();
     }
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        showAlert(intent);
-    }
-
-    /** Toque no push de alerta: o card do Pokémon por cima da lista (a coordenada vem pelo "Ver coordenadas"). */
-    private void showAlert(Intent i) {
-        Pogo.Mon m = alert(i);
-        if (m != null) panel.showMon(m);
-    }
-
-    private static Pogo.Mon alert(Intent i) {
-        Bundle b = i.getBundleExtra(PogoAlert.EXTRA);
-        if (b == null || b.getString("rc") == null) return null;
-        Map<String, String> d = new HashMap<>();
-        for (String k : b.keySet()) d.put(k, b.getString(k));
-        return alertMon(d);
-    }
-
-    /** O PogoAlert.mon lê o que a foto precisa (id, forma, costume, shiny); aqui entra o resto do push (texto). */
-    static Pogo.Mon alertMon(Map<String, String> d) {
-        Pogo.Mon m = PogoAlert.mon(d);
-        if (m == null) {   // sem id: sem foto, mas o card abre com o resto
-            m = new Pogo.Mon();
-            m.name = d.get("n");
-            m.shiny = "1".equals(d.get("s"));
-        }
-        m.reveal = d.get("rc");
-        m.iv = num(d.get("iv"), -1);
-        m.cp = (int) num(d.get("cp"), 0);
-        m.despawnMs = (long) num(d.get("d"), 0);
-        m.verified = true;
-        m.lat = m.lng = Double.NaN;
-        return m;
-    }
-
-    private static double num(String s, double def) {
-        try {
-            return s == null || s.isEmpty() ? def : Double.parseDouble(s);
-        } catch (NumberFormatException e) {
-            return def;
-        }
+    static void fill(Activity a, double lat, double lng) {
+        a.startActivity(Intents.auth(a, new Intent(Intents.INT_FILL_LOCATION).setClass(a, MainActivity.class)
+                .putExtra(Intents.EXTRA_LAT, lat).putExtra(Intents.EXTRA_LNG, lng)));
+        a.finish();
     }
 
     @Override

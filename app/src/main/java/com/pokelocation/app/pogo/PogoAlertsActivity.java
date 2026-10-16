@@ -31,6 +31,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.tabs.TabLayout;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.geo.CoordParser;
@@ -39,11 +40,14 @@ import com.pokelocation.app.util.Perms;
 import com.pokelocation.app.util.Ui;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Alertas de Pokémon (regras de notificação no nosso servidor, que manda o push): lista com liga/desliga e excluir;
- * "Novo alerta" troca a lista pelo PogoFilterForm (a "Área" dele é o escopo) + nome. Sem edição: excluir e criar outro.
+ * Alertas de Pokémon em duas abas. Notificações: os Pokémon já avisados (PogoAlert), no PogoPanel com lista fixa.
+ * Meus alertas: as regras do nosso servidor, que manda o push, com liga/desliga e excluir; "Novo alerta" troca a lista
+ * pelo PogoFilterForm (a "Área" dele é o escopo) + nome. Sem edição: excluir e criar outro.
  */
 public final class PogoAlertsActivity extends BaseActivity {
     private final List<Pogo.Rule> rules = new ArrayList<>();
@@ -60,14 +64,25 @@ public final class PogoAlertsActivity extends BaseActivity {
     private boolean busy, deniedForever;
     private LinearLayout banner;
     private Button bannerAction;
+    private TabLayout tabs;
+    private PogoPanel panel;
+    private boolean resumed;
+    private Map<String, String> pushed;
     private final ActivityResultLauncher<String> notifPerm = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
                 if (!granted && Build.VERSION.SDK_INT >= 33
                         && !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) deniedForever = true;
                 checkNotifications(false);
             });
-    private final OnBackPressedCallback back = new OnBackPressedCallback(false) {
-        @Override public void handleOnBackPressed() { if (form != null && !form.back()) closeEditor(); }
+    private final OnBackPressedCallback back = new OnBackPressedCallback(true) {
+        @Override public void handleOnBackPressed() {
+            boolean rulesTab = tabs.getSelectedTabPosition() == 1;
+            if (rulesTab && form != null) {
+                if (!form.back()) closeEditor();
+            } else if (rulesTab || !panel.back()) {
+                finish();
+            }
+        }
     };
 
     public static Intent intent(Context c) {
@@ -97,6 +112,10 @@ public final class PogoAlertsActivity extends BaseActivity {
         banner.addView(bannerAction);
         banner.setVisibility(View.GONE);
         root.addView(banner);
+        tabs = new TabLayout(this);
+        tabs.addTab(tabs.newTab().setText(R.string.pogo_tab_notified));
+        tabs.addTab(tabs.newTab().setText(R.string.pogo_tab_rules));
+        root.addView(tabs);
 
         LinearLayout lb = new LinearLayout(this);
         lb.setOrientation(LinearLayout.VERTICAL);
@@ -139,7 +158,13 @@ public final class PogoAlertsActivity extends BaseActivity {
         ed.addView(buttons);
         editor = ed;
 
+        panel = new PogoPanel(this, lat, lng, R.string.pogo_card_set_dest, true, new PogoPanel.Host() {
+            @Override public void go(double la, double ln, String title) { PogoListActivity.fill(PogoAlertsActivity.this, la, ln); }
+
+            @Override public void close() { finish(); }
+        });
         FrameLayout content = new FrameLayout(this);
+        content.addView(panel.view);
         content.addView(listBox);
         content.addView(editor);
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -155,22 +180,66 @@ public final class PogoAlertsActivity extends BaseActivity {
             @Override public View getView(int i, View row, ViewGroup parent) { return row(rules.get(i)); }
         };
         list.setAdapter(adapter);
+        tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override public void onTabSelected(TabLayout.Tab tab) { showTab(); }
+            @Override public void onTabUnselected(TabLayout.Tab tab) {}
+            @Override public void onTabReselected(TabLayout.Tab tab) {}
+        });
+        showTab();
         load();
+        Bundle b = getIntent().getBundleExtra(PogoAlert.EXTRA);
+        if (b != null) {
+            pushed = new HashMap<>();
+            for (String k : b.keySet()) pushed.put(k, b.getString(k));
+        }
         checkNotifications(true);
+    }
+
+    /** Volta do jogo com a tela no topo: os pushes que chegaram no meio entram na lista. */
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Context app = getApplicationContext();
+        Io.run(() -> PogoAlert.load(app), new Io.Callback<List<Pogo.Mon>>() {
+            @Override public void onResult(List<Pogo.Mon> l) {
+                if (isDestroyed()) return;
+                panel.showFixed(l, getString(R.string.pogo_notified_none));
+                if (pushed != null && pushed.get("rc") != null) panel.showMon(PogoAlert.mon(pushed));   // toque no push
+                pushed = null;
+            }
+        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        resumed = true;
         if (form != null) form.render();   // volta do "Vincular treinador"
         checkNotifications(false);         // volta das configurações
+        showTab();
+    }
+
+    @Override
+    protected void onPause() {
+        resumed = false;
+        panel.setPaused(true);
+        super.onPause();
     }
 
     @Override
     protected void onDestroy() {
         if (form != null) form.destroy();
         form = null;
+        panel.destroy();
         super.onDestroy();
+    }
+
+    private void showTab() {
+        boolean notified = tabs.getSelectedTabPosition() == 0;
+        panel.view.setVisibility(notified ? View.VISIBLE : View.GONE);
+        listBox.setVisibility(notified || form != null ? View.GONE : View.VISIBLE);
+        editor.setVisibility(!notified && form != null ? View.VISIBLE : View.GONE);
+        panel.setPaused(!notified || !resumed);   // o tick de 1 s só com a aba à vista
     }
 
     private void load() {
@@ -293,7 +362,6 @@ public final class PogoAlertsActivity extends BaseActivity {
         center.setText(Double.isNaN(lat) ? "" : getString(R.string.pogo_alert_center, CoordParser.text(lat, lng)));
         listBox.setVisibility(View.GONE);
         editor.setVisibility(View.VISIBLE);
-        back.setEnabled(true);
     }
 
     private void closeEditor() {
@@ -303,7 +371,6 @@ public final class PogoAlertsActivity extends BaseActivity {
         formBox.removeAllViews();
         editor.setVisibility(View.GONE);
         listBox.setVisibility(View.VISIBLE);
-        back.setEnabled(false);
         ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(name.getWindowToken(), 0);
     }
 
