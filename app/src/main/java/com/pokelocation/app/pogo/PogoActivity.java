@@ -29,6 +29,7 @@ import org.json.JSONArray;
 
 /** Conta PoGo Coordinates e destino do redirect https do login (singleTask: o Custom Tab acima dela é fechado). */
 public final class PogoActivity extends BaseActivity {
+    static final int NEED_ACCOUNT = 0, SIGN_IN = 1, BUSY = 2, LINKED = 3;
     private LinearLayout list;
     private Io.Task task;
     private boolean busy, toSettings;
@@ -52,7 +53,6 @@ public final class PogoActivity extends BaseActivity {
         Context app = getApplicationContext();
         Io.run(() -> Pogo.wipeWebData(app)); // o :pogoweb pode ter morrido antes da limpeza anterior
         handle(getIntent());
-        render();
     }
 
     @Override
@@ -66,6 +66,7 @@ public final class PogoActivity extends BaseActivity {
     protected void onStart() {
         super.onStart();
         if (task == null && Pogo.loggedIn(this)) run(null, null);
+        render(); // volta do Login (RETURN_BACK) ou logout do social em outra tela
     }
 
     @Override
@@ -116,14 +117,21 @@ public final class PogoActivity extends BaseActivity {
         });
     }
 
+    static int screen(boolean busy, boolean social, boolean pogo) {
+        if (busy) return BUSY;
+        if (!social) return NEED_ACCOUNT;
+        return pogo ? LINKED : SIGN_IN;
+    }
+
     private void render() {
         list.removeAllViews();
-        if (busy) {
+        int screen = screen(busy, Session.loggedIn(this), Pogo.loggedIn(this));
+        if (screen == BUSY) {
             row(getString(R.string.pogo_logging_in), null, null);
-        } else if (!Session.loggedIn(this)) {
+        } else if (screen == NEED_ACCOUNT) {
             // o vínculo fica no nosso servidor, preso ao users.id
             row(getString(R.string.pogo_need_account), null, v -> startActivity(AccountActivity.open(this)));
-        } else if (!Pogo.loggedIn(this)) {
+        } else if (screen == SIGN_IN) {
             row(getString(R.string.pogo_login), getString(R.string.pogo_login_summary), v -> login());
             row(getString(R.string.pogo_login_discord), null, v -> discord.launch(new Intent(this, PogoDiscordActivity.class)));
         } else {
