@@ -163,7 +163,8 @@ public final class PogoPanel {
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             long now = System.currentTimeMillis();
-            if (task == null && mons.removeIf(m -> gone(m, now)))
+            // despawnados saem a cada segundo, também com uma busca em curso ou depois de uma que falhou (T29)
+            if (mons.removeIf(m -> gone(m, now)) && task == null)
                 showStatus(stale != null && !mons.isEmpty() ? stale : PogoText.count(app, mons.size(), filter, km == WORLD));
             adapter.notifyDataSetChanged();
             Io.main().postDelayed(this, 1000);

@@ -16,6 +16,7 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.inputmethod.InputMethodManager;
@@ -51,7 +52,7 @@ public final class PanelHost {
     private WindowManager.LayoutParams lp;
     private Runnable onDismiss, coverBack;
     private View cover;
-    private boolean showing, backWithIme, backDown, imeVisible;
+    private boolean showing, backWithIme, backDown, imeVisible, imeHiddenByUs;
     private long imeHiddenAt = Long.MIN_VALUE / 2;
     private static final long IME_BACK_MS = 300;
     // overGame: janela arrastável do tamanho do card, posição salva por painel (key)
@@ -120,6 +121,22 @@ public final class PanelHost {
             }
 
             @Override
+            public boolean dispatchTouchEvent(MotionEvent e) {
+                // toque no jogo com o painel focável (digitando): o foco volta ao jogo, o painel fica aberto
+                if (e.getActionMasked() == MotionEvent.ACTION_OUTSIDE) {
+                    if (lp != null && (lp.flags & WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) == 0) {
+                        hideIme();
+                        setFocusable(false);
+                    }
+                    return false;
+                }
+                boolean r = super.dispatchTouchEvent(e);
+                // tocou num campo (o foco vai para ele no UP): o teclado vai abrir, os insets voltam a valer
+                if (imeHiddenByUs && e.getActionMasked() == MotionEvent.ACTION_UP && findFocus() instanceof EditText) imeHiddenByUs = false;
+                return r;
+            }
+
+            @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
                 if (handleBack && e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
                     if (e.getAction() == KeyEvent.ACTION_DOWN) {
@@ -166,7 +183,7 @@ public final class PanelHost {
                 l = i.left; t = i.top; r = i.right; b = i.bottom;
                 boolean ime = in.isVisible(WindowInsets.Type.ime());
                 if (imeVisible && !ime) imeHiddenAt = SystemClock.uptimeMillis();   // ver imeBack
-                imeVisible = ime;
+                imeVisible = ime && !imeHiddenByUs;   // um inset velho redespachado não "reabre" o teclado
             } else {
                 l = in.getSystemWindowInsetLeft(); t = in.getSystemWindowInsetTop();
                 r = in.getSystemWindowInsetRight(); b = in.getSystemWindowInsetBottom();
@@ -354,8 +371,14 @@ public final class PanelHost {
     public void setFocusable(boolean focusable) {
         if (wm == null || window == null) return;
         boolean was = (lp.flags & WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) == 0;
-        if (focusable) lp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-        else lp.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+        // WATCH_OUTSIDE só enquanto focável (digitando): sem ele, os toques no jogo não acordam o :overlay
+        if (focusable) {
+            lp.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+            lp.flags |= WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
+        } else {
+            lp.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+            lp.flags &= ~WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
+        }
         update();
         if (focusable && !was) {
             ViewTreeObserver vto = window.getViewTreeObserver();
@@ -375,7 +398,10 @@ public final class PanelHost {
             w.getViewTreeObserver().removeOnWindowFocusChangeListener(this);
             w.post(() -> {
                 View f = w.findFocus();
-                if (f instanceof EditText) imm(w).showSoftInput(f, 0);
+                if (f instanceof EditText) {
+                    imeHiddenByUs = false;
+                    imm(w).showSoftInput(f, 0);
+                }
             });
         }
     };
@@ -395,6 +421,7 @@ public final class PanelHost {
 
     private boolean imeShown() {
         if (window == null) return false;
+        if (imeHiddenByUs) return false;   // os insets da janela podem estar velhos (ver hideIme)
         if (Build.VERSION.SDK_INT >= 30) {
             if (imeVisible) return true;
             WindowInsets in = window.getRootWindowInsets();
@@ -403,11 +430,19 @@ public final class PanelHost {
         return (lp.flags & WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) == 0 && window.findFocus() instanceof EditText;
     }
 
+    /**
+     * Esconde o teclado e marca isso aqui mesmo: escondida pelo app, a janela de overlay deixa de ser alvo do IME e
+     * pode não receber os insets finais (teclado fechado) — o imeVisible ficava preso em true e todo BACK seguinte era
+     * tratado como "do teclado" (o 2º BACK não fechava nada). Vale até o teclado abrir de novo.
+     */
     private void hideIme() {
         if (window == null) return;
         imm(window).hideSoftInputFromWindow(window.getWindowToken(), 0);
         View f = window.findFocus();
         if (f != null) f.clearFocus();
+        imeVisible = false;
+        imeHiddenByUs = true;
+        imeHiddenAt = SystemClock.uptimeMillis();
     }
 
     private void update() {
