@@ -6,17 +6,23 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.verify.domain.DomainVerificationManager;
 import android.content.pm.verify.domain.DomainVerificationUserState;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
@@ -26,11 +32,19 @@ import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.util.Ui;
 
 import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.Locale;
 
 /** Conta PoGo Coordinates e destino do redirect https do login (singleTask: o Custom Tab acima dela é fechado). */
 public final class PogoActivity extends BaseActivity {
     static final int NEED_ACCOUNT = 0, SIGN_IN = 1, BUSY = 2, LINKED = 3;
-    private LinearLayout list;
+    private LinearLayout list, trainers;
+    private ImageView icon;
+    private TextView avatar, title, sub, trainerLabel;
+    private View progress, signIn, logout;
+    private Button action;
+    private BottomSheetDialog sheet;
     private Io.Task task;
     private boolean busy, toSettings;
     private final ActivityResultLauncher<Intent> discord = registerForActivityResult(
@@ -46,10 +60,25 @@ public final class PogoActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.soc_account);
+        setContentView(R.layout.pogo_account);
         setupToolbar(getString(R.string.pogo_account), true);
-        applyInsets(findViewById(R.id.soc_account_root));
-        list = findViewById(R.id.soc_account_list);
+        applyInsets(findViewById(R.id.pogo_acc_root));
+        list = findViewById(R.id.pogo_acc_list);
+        trainers = findViewById(R.id.pogo_acc_trainers);
+        trainerLabel = findViewById(R.id.pogo_acc_trainer_label);
+        icon = findViewById(R.id.pogo_acc_icon);
+        avatar = findViewById(R.id.pogo_acc_avatar);
+        avatar.setBackgroundTintList(ColorStateList.valueOf(
+                MaterialColors.getColor(avatar, com.google.android.material.R.attr.colorPrimaryContainer)));
+        avatar.setTextColor(MaterialColors.getColor(avatar, com.google.android.material.R.attr.colorOnPrimaryContainer));
+        title = findViewById(R.id.pogo_acc_title);
+        sub = findViewById(R.id.pogo_acc_sub);
+        progress = findViewById(R.id.pogo_acc_progress);
+        action = findViewById(R.id.pogo_acc_action);
+        signIn = findViewById(R.id.pogo_acc_sign_in);
+        signIn.setOnClickListener(v -> chooseLogin());
+        logout = findViewById(R.id.pogo_acc_logout);
+        logout.setOnClickListener(v -> confirmLogout());
         Context app = getApplicationContext();
         Io.run(() -> Pogo.wipeWebData(app)); // o :pogoweb pode ter morrido antes da limpeza anterior
         handle(getIntent());
@@ -79,6 +108,7 @@ public final class PogoActivity extends BaseActivity {
 
     @Override
     protected void onDestroy() {
+        if (sheet != null) sheet.dismiss();
         if (task != null && !busy) task.cancel(); // a troca do code segue: o pending já foi consumido e o code é de uso único
         super.onDestroy();
     }
@@ -124,41 +154,82 @@ public final class PogoActivity extends BaseActivity {
     }
 
     private void render() {
-        list.removeAllViews();
         int screen = screen(busy, Session.loggedIn(this), Pogo.loggedIn(this));
+        boolean linked = screen == LINKED;
+        icon.setVisibility(linked ? View.GONE : View.VISIBLE);
+        avatar.setVisibility(linked ? View.VISIBLE : View.GONE);
+        progress.setVisibility(screen == BUSY ? View.VISIBLE : View.GONE);
+        signIn.setVisibility(screen == SIGN_IN ? View.VISIBLE : View.GONE);
+        logout.setVisibility(linked ? View.VISIBLE : View.GONE);
+        trainers.setVisibility(linked ? View.VISIBLE : View.GONE);
+        action.setVisibility(View.GONE);
+        sub.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
         if (screen == BUSY) {
-            row(getString(R.string.pogo_logging_in), null, null);
+            title.setText(R.string.pogo_logging_in);
+            sub.setText(null);
         } else if (screen == NEED_ACCOUNT) {
             // o vínculo fica no nosso servidor, preso ao users.id
-            row(getString(R.string.pogo_need_account), null, v -> startActivity(AccountActivity.open(this)));
+            title.setText(R.string.pogo_account);
+            sub.setText(R.string.pogo_need_account);
+            action(R.string.pogo_enter_account, v -> startActivity(AccountActivity.open(this)));
         } else if (screen == SIGN_IN) {
-            row(getString(R.string.pogo_login), getString(R.string.pogo_login_summary), v -> login());
-            row(getString(R.string.pogo_login_discord), null, v -> discord.launch(new Intent(this, PogoDiscordActivity.class)));
+            title.setText(R.string.pogo_not_connected);
+            sub.setText(R.string.pogo_login_summary);
         } else {
-            String name = Pogo.name(this);
-            View who = row(name != null ? name : getString(R.string.pogo_account), trainers(), null);
-            who.setClickable(false);
-            if (Pogo.trainers(this).length() == 0)
-                row(getString(R.string.pogo_t_link), getString(R.string.pogo_no_trainer), v -> TrainerLink.start(this, this::render));
+            renderAccount();
         }
+        sub.setVisibility(sub.length() > 0 ? View.VISIBLE : View.GONE);
+        list.removeAllViews();
         row(getString(R.string.pogo_map_layer), null,
                 v -> startActivity(PogoListActivity.intent(this, Double.NaN, Double.NaN)));
-        if (!busy && Pogo.canAlert(this)) row(getString(R.string.pogo_alerts), null, v -> startActivity(PogoAlertsActivity.intent(this)));
+        if (linked && Pogo.canAlert(this)) row(getString(R.string.pogo_alerts), null, v -> startActivity(PogoAlertsActivity.intent(this)));
         row(getString(R.string.pogo_filters), getString(R.string.pogo_filters_summary),
                 v -> startActivity(new Intent(this, PogoFiltersActivity.class)));
-        if (!busy && Pogo.loggedIn(this)) row(getString(R.string.soc_logout), null, v -> confirmLogout());
     }
 
-    private String trainers() {
+    private void renderAccount() {
+        String name = Pogo.name(this);
+        title.setText(name != null ? name : getString(R.string.pogo_account));
+        avatar.setText(name != null && !name.isEmpty() ? name.substring(0, 1).toUpperCase(Locale.ROOT) : "?");
+        String p = Pogo.provider(this);
+        boolean discord = "discord".equals(p);
+        sub.setText(p == null ? null : getString(R.string.pogo_via, discord ? "Discord" : "Google"));
+        if (p != null) sub.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                discord ? R.drawable.pogo_ic_discord : R.drawable.soc_ic_google, 0, 0, 0);
+        trainers.removeViews(2, trainers.getChildCount() - 2); // ficam o divisor e o rótulo
         JSONArray t = Pogo.trainers(this);
-        if (t.length() == 0) return null;
-        StringBuilder b = new StringBuilder();
-        for (int i = 0; i < t.length(); i++) {
-            if (i > 0) b.append(", ");
-            String n = Pogo.str(t.optJSONObject(i), "trainer_name");
-            b.append(n != null ? n : Pogo.str(t.optJSONObject(i), "trainer_code"));
+        trainerLabel.setText(t.length() == 0 ? R.string.pogo_no_trainer : R.string.pogo_trainer_linked);
+        if (t.length() == 0) action(R.string.pogo_t_link, v -> TrainerLink.start(this, this::render));
+        for (int i = 0; i < t.length(); i++) trainer(t.optJSONObject(i));
+    }
+
+    private void trainer(JSONObject t) {
+        View v = getLayoutInflater().inflate(R.layout.pogo_trainer_row, trainers, false);
+        String n = Pogo.str(t, "trainer_name");
+        ((TextView) v.findViewById(R.id.pogo_tr_name)).setText(n != null ? n : Pogo.str(t, "trainer_code"));
+        ((ImageView) v.findViewById(R.id.pogo_tr_team)).setImageTintList(ColorStateList.valueOf(teamColor(v, t.optInt("team"))));
+        int level = t.optInt("level");
+        String team = Pogo.str(t, "team_name");
+        String info = level > 0 ? getString(R.string.pogo_level, level) : null;
+        if (team != null) info = info == null ? team : info + " · " + team;
+        if (info != null) ((TextView) v.findViewById(R.id.pogo_tr_info)).setText(info);
+        else v.findViewById(R.id.pogo_tr_info_row).setVisibility(View.GONE);
+        trainers.addView(v);
+    }
+
+    private int teamColor(View v, int team) {
+        switch (team) {
+            case 1: return getColor(R.color.pogo_team_mystic);
+            case 2: return getColor(R.color.pogo_team_valor);
+            case 3: return getColor(R.color.pogo_team_instinct);
+            default: return MaterialColors.getColor(v, com.google.android.material.R.attr.colorOutline);
         }
-        return getString(R.string.pogo_trainers, b);
+    }
+
+    private void action(int text, View.OnClickListener click) {
+        action.setText(text);
+        action.setOnClickListener(click);
+        action.setVisibility(View.VISIBLE);
     }
 
     private View row(String title, String summary, View.OnClickListener click) {
@@ -170,6 +241,24 @@ public final class PogoActivity extends BaseActivity {
         if (click != null) v.setOnClickListener(click);
         list.addView(v);
         return v;
+    }
+
+    private void chooseLogin() {
+        View root = getLayoutInflater().inflate(R.layout.pogo_login_sheet, null);
+        ((TextView) root.findViewById(R.id.pogo_sheet_google_hint))
+                .setText(linkAllowed() ? R.string.pogo_google_hint_ok : R.string.pogo_google_hint);
+        root.findViewById(R.id.pogo_sheet_google).setOnClickListener(v -> {
+            sheet.dismiss();
+            login();
+        });
+        root.findViewById(R.id.pogo_sheet_discord).setOnClickListener(v -> {
+            sheet.dismiss();
+            discord.launch(new Intent(this, PogoDiscordActivity.class));
+        });
+        sheet = new BottomSheetDialog(this);
+        sheet.setContentView(root);
+        sheet.getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+        sheet.show();
     }
 
     /** Custom Tab sem androidx.browser: o extra SESSION (mesmo null) é o que o Chrome lê para abrir como tab. */

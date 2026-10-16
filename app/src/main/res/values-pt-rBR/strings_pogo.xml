@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="pogo_account">PoGo Coordinates</string>
-    <string name="pogo_login">Entrar com Google</string>
     <string name="pogo_login_summary">Com login: filtros shiny, vínculo de treinador e alertas de Pokémon.</string>
     <string name="pogo_logging_in">Entrando…</string>
     <string name="pogo_login_failed">Não foi possível entrar no PoGo Coordinates. Tente de novo.</string>
     <string name="pogo_logout_confirm">Sair do PoGo Coordinates neste aparelho?</string>
-    <string name="pogo_trainers">Treinador: %s</string>
     <string name="pogo_no_trainer">Treinador não vinculado: vincule para usar o filtro shiny.</string>
     <string name="pogo_filters">Filtros do mapa</string>
     <string name="pogo_filters_summary">Quais Pokémon aparecem no mapa</string>
@@ -62,7 +60,6 @@
     <string name="pogo_t_busy">Serviço ocupado. Tente em 1 minuto; isso não gastou tentativa.</string>
     <string name="pogo_t_failed">Não foi possível falar com o PoGo Coordinates. Tente de novo.</string>
     <string name="pogo_t_signed_out">Sua sessão no PoGo Coordinates terminou. Entre de novo.</string>
-    <string name="pogo_login_discord">Entrar com Discord</string>
     <string name="pogo_open_default_title">Libere os links do pogocoordinates.com</string>
     <string name="pogo_open_default_msg">Para entrar com Google, o PokeLocation precisa abrir os links do pogocoordinates.com.\n\nNas configurações: Abrir por padrão › Adicionar link › ligue pogocoordinates.com. Depois volte aqui.</string>
     <string name="pogo_open_settings">Abrir configurações</string>
@@ -80,4 +77,16 @@
     <string name="pogo_need_account">Entre na sua conta PokeLocation para vincular o PoGo Coordinates</string>
     <string name="pogo_alerts_channel">Alertas de Pokémon</string>
     <string name="pogo_slow">O PoGo Coordinates está demorando para responder. Tentando de novo…</string>
+    <string name="pogo_not_connected">Não conectado</string>
+    <string name="pogo_enter_account">Entrar na conta</string>
+    <string name="pogo_sign_in">Fazer login</string>
+    <string name="pogo_sheet_title">Entrar no PoGo Coordinates</string>
+    <string name="pogo_continue_discord">Continuar com o Discord</string>
+    <string name="pogo_google_hint">Abre no navegador e volta sozinho. Na primeira vez, o Android pede para liberar os links do pogocoordinates.com neste app (Abrir por padrão); sem isso o login fica no site. É só uma vez.</string>
+    <string name="pogo_google_hint_ok">Abre no navegador e volta sozinho para cá.</string>
+    <string name="pogo_discord_hint">Abre aqui mesmo, dentro do app.</string>
+    <string name="pogo_via">via %s</string>
+    <string name="pogo_trainer_linked">Treinador vinculado</string>
+    <string name="pogo_level">Nv. %d</string>
+    <string name="pogo_logout">Sair do PoGo</string>
 </resources>

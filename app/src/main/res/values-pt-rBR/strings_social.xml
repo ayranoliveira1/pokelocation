@@ -72,4 +72,6 @@
     <string name="soc_delete_wrong_password">Senha incorreta.</string>
     <string name="soc_delete_other_google">É outra conta Google. Use a que está ligada ao PokeLocation.</string>
     <string name="soc_delete_reauth_required">Confirme de novo com o Google para excluir a conta.</string>
+    <string name="soc_account_google">Conectado com Google</string>
+    <string name="soc_account_email">Entrou com e-mail</string>
 </resources>

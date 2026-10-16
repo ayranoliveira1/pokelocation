@@ -5,4 +5,9 @@
     <color name="pogo_outline">#C4C6D0</color>
     <color name="pogo_tile">#F3F6FB</color>
     <color name="pogo_warn">#E65100</color>
+    <!-- marca e times: iguais nos dois temas -->
+    <color name="pogo_discord">#5865F2</color>
+    <color name="pogo_team_mystic">#1E88E5</color>
+    <color name="pogo_team_valor">#E53935</color>
+    <color name="pogo_team_instinct">#FDD835</color>
 </resources>

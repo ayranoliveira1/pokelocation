@@ -50,7 +50,8 @@ import java.util.regex.Pattern;
  */
 public final class Pogo {
     static final String API = "https://coordinates-api.pokemongopro.com";
-    static final String K_LINKED = "pogo_linked", K_NAME = "name", K_TRAINERS = "trainers", K_PENDING = "pending_at";
+    static final String K_LINKED = "pogo_linked", K_NAME = "name", K_TRAINERS = "trainers", K_PENDING = "pending_at",
+            K_PROVIDER = "provider";
     public static final int MAX_RULES = 10;
     /** Spec §2.1: o client_id e o redirect são os do site; o app intercepta o redirect https (§18). */
     static final String LOGIN_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -311,14 +312,16 @@ public final class Pogo {
         JSONObject o = new JSONObject(text);
         if (!writer(App.process())) return;
         SharedPreferences.Editor e = prefs(c).edit().putString(K_NAME, str(o, "display_name"))
-                .putString(K_TRAINERS, activeTrainers(o).toString());
+                .putString(K_PROVIDER, str(o, "provider")).putString(K_TRAINERS, activeTrainers(o).toString());
         if (link) e.putLong(K_LINKED, System.currentTimeMillis());
         e.apply();
     }
 
     static String name(Context c) { return prefs(c).getString(K_NAME, null); }
 
-    /** [{trainer_code, trainer_name}] dos ativos, do último /users/me. */
+    static String provider(Context c) { return prefs(c).getString(K_PROVIDER, null); }
+
+    /** [{trainer_code, trainer_name, team, team_name, level}] dos ativos, do último /users/me. */
     static JSONArray trainers(Context c) {
         try {
             return new JSONArray(prefs(c).getString(K_TRAINERS, "[]"));
@@ -335,7 +338,11 @@ public final class Pogo {
         for (int i = 0; i < all.length(); i++) {
             JSONObject t = all.optJSONObject(i);
             if (t == null || str(t, "trainer_code") == null || Boolean.FALSE.equals(t.opt("active"))) continue;
-            out.put(new JSONObject().put("trainer_code", str(t, "trainer_code")).putOpt("trainer_name", str(t, "trainer_name")));
+            JSONObject o = new JSONObject().put("trainer_code", str(t, "trainer_code")).putOpt("trainer_name", str(t, "trainer_name"))
+                    .putOpt("team_name", str(t, "team_name"));
+            if (t.optInt("team") > 0) o.put("team", t.optInt("team"));
+            if (t.optInt("level") > 0) o.put("level", t.optInt("level"));
+            out.put(o);
         }
         return out;
     }
@@ -465,7 +472,7 @@ public final class Pogo {
     }
 
     private static void unlink(Context c) {
-        prefs(c).edit().remove(K_LINKED).remove(K_NAME).remove(K_TRAINERS).apply();
+        prefs(c).edit().remove(K_LINKED).remove(K_NAME).remove(K_PROVIDER).remove(K_TRAINERS).apply();
     }
 
     public static boolean relogin(Throwable t) { return code(t, "pogo_relogin"); }

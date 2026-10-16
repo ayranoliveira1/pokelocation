@@ -88,6 +88,15 @@ public class PogoTest {
         assertEquals("[]", Pogo.activeTrainers(new JSONObject("{\"trainers\":null,\"trainer\":null}")).toString());
     }
 
+    @Test public void activeTrainersKeepLevelAndTeam() throws Exception {
+        JSONObject t = Pogo.activeTrainers(new JSONObject("{\"trainers\":[{\"trainer_code\":\"1\",\"trainer_name\":\"A\","
+                + "\"team\":2,\"team_name\":\"Valor\",\"level\":39,\"linked_at\":\"x\",\"active\":true}]}")).getJSONObject(0);
+        assertEquals(2, t.getInt("team"));
+        assertEquals("Valor", t.getString("team_name"));
+        assertEquals(39, t.getInt("level"));
+        assertFalse(t.has("linked_at"));
+    }
+
     @Test public void callbackNeedsExactUrlAndLoginState() {
         assertTrue(Pogo.isCallback("https", "pogocoordinates.com", "/callback", "login:google", "google"));
         assertFalse(Pogo.isCallback("http", "pogocoordinates.com", "/callback", "login:google", "google"));
