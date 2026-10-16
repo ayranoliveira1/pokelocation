@@ -91,6 +91,26 @@ public final class PogoIcons {
     }
 
     /**
+     * Para o push de alerta: memória, senão disco/rede no executor, no máximo timeoutMs. Não entra no LRU (a notificação
+     * copia o bitmap e nada fica retido); estourou o prazo = null, e o download segue e fica no disco para a próxima.
+     */
+    static Bitmap now(Context c, Pogo.Mon m, long timeoutMs) {
+        String key = key(m);
+        synchronized (LOCK) {
+            Bitmap b = sMem == null ? null : sMem.get(key);
+            Long retry = FAILED.get(key);
+            if (b != null || retry != null && retry > System.currentTimeMillis()) return b;
+        }
+        Context app = c.getApplicationContext();
+        List<String> chain = urls(m.id, m.name, m.form, m.costume, m.shiny);
+        try {
+            return exec().submit(() -> fetch(app, chain, key)).get(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
      * Ao desligar a camada e ao fechar o painel no :overlay; pouca memória já chama sozinho. Só solta as referências
      * (sem recycle: um bitmap ainda numa view derrubaria o processo); o GC devolve os pixels.
      */
@@ -105,7 +125,7 @@ public final class PogoIcons {
     /** Ordem do site: costume shiny, costume, forma shiny, forma (ou sem forma), UICONS. */
     static List<String> urls(int id, String name, String form, String costume, boolean shiny) {
         List<String> out = new ArrayList<>(5);
-        if (costume != null && !costume.isEmpty()) {
+        if (costume != null && !costume.isEmpty() && !digits(costume)) { // id numérico do lookup/push: não é o enum do arquivo
             // o site não tira o _NOEVOLVE e cai no 404 (icones.md §1)
             String base = "pm" + id + ".c" + costume.replace("_NOEVOLVE", "");
             if (shiny) out.add(PM + base + ".s.icon.png");
@@ -122,12 +142,17 @@ public final class PogoIcons {
     /** O lookup traz o rótulo ("Copy 2019"); o arquivo usa o sufixo (COPY_2019). */
     static String formSuffix(int id, String name, String form) {
         String f = form == null ? "" : form.trim().toUpperCase(Locale.ROOT).replace(' ', '_');
-        if (f.equals("NORMAL") || f.equals("FORM_UNSET")) f = "";
+        if (f.equals("NORMAL") || f.equals("FORM_UNSET") || digits(f)) f = "";
         if (id == 664 || id == 665 || f.equals("S") || f.equals("ULTRA")) return null;
         if (f.isEmpty()) return id == 646 || id == 649 ? "NORMAL" : null;
         if ((id == 201 || id == 412 || id == 413) && name != null)
             return name.trim().toUpperCase(Locale.ROOT).replace(' ', '_') + "_" + f;
         return f;
+    }
+
+    private static boolean digits(String s) {
+        for (int i = 0; i < s.length(); i++) if (s.charAt(i) < '0' || s.charAt(i) > '9') return false;
+        return !s.isEmpty();
     }
 
     /** Maior potência de 2 que ainda deixa o menor lado ≥ alvo. */

@@ -58,4 +58,10 @@ public class PogoIconsTest {
         assertEquals("pm25.icon.png", PogoIcons.fileName(PM + "pm25.icon.png"));
         assertEquals("u25.png", PogoIcons.fileName(U + "25.png"));
     }
+
+    @Test public void zeroMeansNoFormNorCostume() {
+        assertEquals(Arrays.asList(PM + "pm25.icon.png", U + "25.png"), PogoIcons.urls(25, "Pikachu", "0", "0", false));
+        assertEquals(Arrays.asList(PM + "pm19.icon.png", U + "19.png"), PogoIcons.urls(19, "Rattata", "46", "12", false));
+        assertEquals(PM + "pm646.fNORMAL.icon.png", PogoIcons.urls(646, "Kyurem", "0", null, false).get(0));
+    }
 }

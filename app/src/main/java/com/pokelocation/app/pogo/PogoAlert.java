@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 
@@ -44,6 +45,9 @@ public final class PogoAlert {
         String tag = d.get("e") != null ? d.get("e") : d.get("rc"); // um aviso por spawn, sem sobrescrever outro
         Bundle data = new Bundle();
         for (Map.Entry<String, String> x : d.entrySet()) data.putString(x.getKey(), x.getValue());
+        Pogo.Mon mon = mon(d);
+        Bitmap photo = mon != null ? PogoIcons.now(c, mon, 3_000) : null; // sem foto em 3 s: sai sem, nunca atrasada
+        if (photo != null) b.setLargeIcon(photo);
         b.setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title(d.get("n"), d.get("iv"), d.get("cp"), despawn, System.currentTimeMillis(),
                         "1".equals(d.get("s"))))
@@ -60,6 +64,24 @@ public final class PogoAlert {
             // sem POST_NOTIFICATIONS
         }
     }
+
+    /** Só o que o ícone usa: id, nome, forma, costume e shiny. null sem id (servidor antigo, sem foto). */
+    static Pogo.Mon mon(Map<String, String> d) {
+        Pogo.Mon m = new Pogo.Mon();
+        try {
+            m.id = Integer.parseInt(d.get("id"));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        if (m.id <= 0) return null;
+        m.name = d.get("n");
+        m.form = blank(d.get("f"));
+        m.costume = blank(d.get("c"));
+        m.shiny = "1".equals(d.get("s"));
+        return m;
+    }
+
+    private static String blank(String s) { return s == null || s.isEmpty() ? null : s; }
 
     @SuppressWarnings("deprecation")
     private static Notification.Builder legacy(Context c) {
