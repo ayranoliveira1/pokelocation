@@ -27,6 +27,7 @@ import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.window.OnBackInvokedDispatcher;
 
 import com.pokelocation.app.App;
 import com.pokelocation.app.Io;
@@ -106,6 +107,12 @@ public final class PanelHost {
             h.lp = lp;
             root.setFocusableInTouchMode(true);
             root.requestFocus();
+            // Android 16 (target 36): o sistema tira o BACK do KeyEvent (o UP chega cancelado) e chama o callback da
+            // janela focada. Com o teclado aberto o callback do IME fica por cima e fecha só ele.
+            if (Build.VERSION.SDK_INT >= 33) {
+                OnBackInvokedDispatcher d = root.findOnBackInvokedDispatcher();
+                if (d != null) d.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, h::back);
+            }
         }
         h.showing = true;
         sOpen.add(h);
@@ -126,7 +133,7 @@ public final class PanelHost {
                 if (e.getActionMasked() == MotionEvent.ACTION_OUTSIDE) {
                     if (lp != null && (lp.flags & WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) == 0) {
                         hideIme();
-                        setFocusable(false);
+                        PanelHost.this.setFocusable(false);   // sem o PanelHost.this cai no View.setFocusable da raiz
                     }
                     return false;
                 }
@@ -147,8 +154,7 @@ public final class PanelHost {
                         backDown = false;
                         if (e.isCanceled()) return true;
                         if (imeBack(ours, backWithIme, e.getEventTime(), imeHiddenAt)) hideIme();   // 1º BACK: só o teclado
-                        else if (coverBack != null) coverBack.run();
-                        else dismiss();
+                        else back();
                     }
                     return true;
                 }
@@ -239,6 +245,11 @@ public final class PanelHost {
         Runnable r = onDismiss;
         onDismiss = null;
         if (r != null) r.run();
+    }
+
+    private void back() {
+        if (coverBack != null) coverBack.run();
+        else dismiss();
     }
 
     public boolean isShowing() { return showing; }
