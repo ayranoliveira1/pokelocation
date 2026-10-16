@@ -13,6 +13,7 @@ import android.view.Display;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
+import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -50,7 +51,9 @@ public final class PanelHost {
     private WindowManager.LayoutParams lp;
     private Runnable onDismiss, coverBack;
     private View cover;
-    private boolean showing, backWithIme;
+    private boolean showing, backWithIme, backDown, imeVisible;
+    private long imeHiddenAt = Long.MIN_VALUE / 2;
+    private static final long IME_BACK_MS = 300;
     // overGame: janela arrastável do tamanho do card, posição salva por painel (key)
     private static final String POS_FILE = "overlay_panels";
     private String key;
@@ -119,10 +122,14 @@ public final class PanelHost {
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
                 if (handleBack && e.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-                    // o sistema pode esconder o teclado já no DOWN: o estado vale de quando o BACK começou
-                    if (e.getAction() == KeyEvent.ACTION_DOWN) backWithIme = imeShown();
-                    else if (e.getAction() == KeyEvent.ACTION_UP) {
-                        if (backWithIme) hideIme();   // 1º BACK só fecha o teclado; o 2º fecha o painel
+                    if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                        backDown = true;
+                        backWithIme = imeShown();
+                    } else if (e.getAction() == KeyEvent.ACTION_UP) {
+                        boolean ours = backDown;
+                        backDown = false;
+                        if (e.isCanceled()) return true;
+                        if (imeBack(ours, backWithIme, e.getEventTime(), imeHiddenAt)) hideIme();   // 1º BACK: só o teclado
                         else if (coverBack != null) coverBack.run();
                         else dismiss();
                     }
@@ -157,6 +164,9 @@ public final class PanelHost {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets i = in.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
                 l = i.left; t = i.top; r = i.right; b = i.bottom;
+                boolean ime = in.isVisible(WindowInsets.Type.ime());
+                if (imeVisible && !ime) imeHiddenAt = SystemClock.uptimeMillis();   // ver imeBack
+                imeVisible = ime;
             } else {
                 l = in.getSystemWindowInsetLeft(); t = in.getSystemWindowInsetTop();
                 r = in.getSystemWindowInsetRight(); b = in.getSystemWindowInsetBottom();
@@ -374,9 +384,19 @@ public final class PanelHost {
         return (InputMethodManager) v.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
     }
 
+    /**
+     * O BACK que só fecha o teclado. Com o teclado aberto, o IME pode ficar com o DOWN (e se fechar) e só o UP chegar
+     * aqui — por isso o reteste fechava teclado e painel juntos. É do teclado se: o DOWN não passou por nós, o teclado
+     * estava aberto no DOWN, ou ele fechou há menos de IME_BACK_MS (o UP chega depois da animação).
+     */
+    static boolean imeBack(boolean ourDown, boolean imeAtDown, long upTime, long imeHiddenAt) {
+        return !ourDown || imeAtDown || upTime - imeHiddenAt < IME_BACK_MS;
+    }
+
     private boolean imeShown() {
         if (window == null) return false;
         if (Build.VERSION.SDK_INT >= 30) {
+            if (imeVisible) return true;
             WindowInsets in = window.getRootWindowInsets();
             return in != null && in.isVisible(WindowInsets.Type.ime());
         }
