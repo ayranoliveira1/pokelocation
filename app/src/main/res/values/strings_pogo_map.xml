@@ -58,4 +58,6 @@
     <string name="pogo_notified_none">No Pokémon notified yet. Create an alert in My alerts.</string>
     <string name="pogo_notified_expired">Expired</string>
     <string name="pogo_notified_gone">This Pokémon is already gone</string>
+    <string name="pogo_bubbles_logo">Pokémon list</string>
+    <string name="pogo_bubbles_count">Pokémon shown: %d</string>
 </resources>

@@ -31,9 +31,7 @@ import com.pokelocation.app.App;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.geo.Cooldown;
-import com.pokelocation.app.geo.CoordParser;
 import com.pokelocation.app.geo.Geo;
-import com.pokelocation.app.ui.panel.PanelHost;
 import com.pokelocation.app.util.Ui;
 
 import java.util.ArrayList;
@@ -43,28 +41,26 @@ import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
  * Lista de Pokémon: perto do centro (lookup numa caixa, recortado no raio e ordenado por distância) ou o mundo inteiro
  * (/search, sem coordenada), pelo escopo do filtro. Toque → PogoCard; "Filtros" troca a lista pelo PogoFilterForm na
- * mesma janela. Só framework: é o painel sobre o jogo (show) e o conteúdo da PogoListActivity.
+ * mesma janela. Só framework: o conteúdo da PogoListActivity e da aba Notificações (sobre o jogo, a coluna é o PogoBubbles).
  */
 public final class PogoPanel {
     public interface Host {
         void go(double lat, double lng, String title);
         void close();
-        default void focusable(boolean on) {}
         /** A folha de filtros por cima de tudo (v null = some); onBack = o BACK enquanto ela está aberta. */
         default void cover(View v, Runnable onBack) {}
     }
 
     private static final String TAG = "PogoPanel";
-    private static final int WORLD = 0;
+    static final int WORLD = 0;
     private static final double M_PER_DEG = 111_320;
     /** Rede do painel fora do Io (single-thread do app); morre ociosa. */
-    private static final ThreadPoolExecutor NET = new ThreadPoolExecutor(1, 1, 6, TimeUnit.SECONDS,
+    static final ThreadPoolExecutor NET = new ThreadPoolExecutor(1, 1, 6, TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(), r -> new Thread(() -> {
                 Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
                 r.run();
@@ -78,7 +74,6 @@ public final class PogoPanel {
     private final Context ctx, app;
     private final double lat, lng;
     private final int goLabel;
-    private final boolean fullScreen;
     private final Host host;
     private final List<Pogo.Mon> mons = new ArrayList<>();
     private final ListView list;
@@ -135,7 +130,7 @@ public final class PogoPanel {
     private final ObjectAnimator spin;
     private boolean attached, paused;
     private long lastAt;
-    private static final long FRESH_MS = 5 * 60_000, MAX_AGE_MS = 30 * 60_000;
+    static final long FRESH_MS = 5 * 60_000, MAX_AGE_MS = 30 * 60_000;
     private static String sKey;
     private static List<Pogo.Mon> sMons;
     private static long sAt;
@@ -150,7 +145,7 @@ public final class PogoPanel {
     };
     private String stale;   // aviso "Mostrando a última busca · …" enquanto a nova não dá certo
     private int km;
-    private static final long RETRY_MS = 30_000;
+    static final long RETRY_MS = 30_000;
     /** PoGo lento: tenta de novo sozinho (o mapa já tem o tick de 60 s); com o card aberto, espera ele fechar. */
     private final Runnable retry = new Runnable() {
         @Override public void run() {
@@ -173,46 +168,13 @@ public final class PogoPanel {
         }
     };
 
-    private static PanelHost sHost;   // o painel aberto sobre o jogo (só um por vez)
-
-    /** Logout com o painel aberto: o botão segue a conta PokeLocation, o painel também. */
-    public static void dismissOpen() {
-        if (sHost != null) sHost.dismiss();
-    }
-
-    /** Sobre o jogo (:overlay); onTeleport(texto "lat, lng", título) abre o TeleportPanel. */
-    public static void show(Context c, double lat, double lng, BiConsumer<String, String> onTeleport) {
-        PanelHost[] h = new PanelHost[1];
-        PogoPanel p = new PogoPanel(c, lat, lng, R.string.teleport, false, new Host() {
-            @Override public void go(double la, double ln, String title) {
-                h[0].dismiss();
-                onTeleport.accept(CoordParser.text(la, ln), title);
-            }
-
-            @Override public void close() { h[0].dismiss(); }
-
-            @Override public void focusable(boolean on) { h[0].setFocusable(on); }
-
-            @Override public void cover(View v, Runnable onBack) { h[0].cover(v, onBack); }
-        });
-        p.start();
-        h[0] = sHost = PanelHost.show(c, p.view, true);
-        h[0].overGame(false, "pogo");
-        h[0].setOnDismiss(() -> {
-            if (sHost == h[0]) sHost = null;
-            p.destroy();
-            PogoIcons.trim();
-        });
-    }
-
-    /** lat/lng NaN = sem centro: busca o mundo inteiro. fullScreen: a lista ocupa a Activity. */
-    public PogoPanel(Context c, double lat, double lng, int goLabel, boolean fullScreen, Host host) {
+    /** lat/lng NaN = sem centro: busca o mundo inteiro. */
+    public PogoPanel(Context c, double lat, double lng, int goLabel, Host host) {
         ctx = c;
         app = c.getApplicationContext();
         this.lat = lat;
         this.lng = lng;
         this.goLabel = goLabel;
-        this.fullScreen = fullScreen;
         this.host = host;
         view = LayoutInflater.from(c).inflate(R.layout.pogo_panel, null);
         list = view.findViewById(R.id.pogo_list);
@@ -220,10 +182,7 @@ public final class PogoPanel {
         frame = view.findViewById(R.id.pogo_frame);
         status = view.findViewById(R.id.pogo_status);
         close = view.findViewById(R.id.pogo_close);
-        if (fullScreen) {
-            view.findViewById(R.id.pogo_title).setVisibility(View.GONE);   // a toolbar já diz
-            frame.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        }
+        frame.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         adapter = new BaseAdapter() {
             @Override public int getCount() { return mons.size(); }
             @Override public Object getItem(int i) { return mons.get(i); }
@@ -400,7 +359,7 @@ public final class PogoPanel {
         return true;
     }
 
-    /** Lista do app: visível entre onResume e onPause (o painel do joystick usa só o attach). */
+    /** Visível entre onResume e onPause. */
     public void setPaused(boolean on) {
         paused = on;
         running();
@@ -486,12 +445,7 @@ public final class PogoPanel {
             PogoFilter raw = PogoFilter.load(app), f = PogoText.asSent(app, raw.copy());
             int k = Double.isNaN(lat) ? WORLD : f.km;
             try {
-                if (k == WORLD) {
-                    got = Pogo.search(app, f);
-                } else {
-                    double[] b = around(lat, lng, k * 1000.0);
-                    got = near(Pogo.lookup(app, b[0], b[1], b[2], b[3], f), lat, lng, k * 1000.0);
-                }
+                got = fetch(app, f, k, lat, lng);
             } catch (Exception e) {
                 err = e;
                 Log.w(TAG, "load: " + (e instanceof Pogo.Error ? ((Pogo.Error) e).http : e.getClass().getSimpleName()));
@@ -568,9 +522,8 @@ public final class PogoPanel {
             load(true);
         }, () -> {
             host.cover(null, null);
-            host.focusable(false);
             sheet = null;
-        }, host::focusable, link);
+        }, null, link);
         host.cover(sheet.view(), () -> { if (sheet != null) sheet.back(); });
     }
 
@@ -746,6 +699,13 @@ public final class PogoPanel {
     }
 
     private static void cancel(Io.Task t) { if (t != null) t.cancel(); }
+
+    /** k km em volta do centro (lookup na caixa, recortado no raio, do mais perto ao mais longe); k WORLD: /search. */
+    static List<Pogo.Mon> fetch(Context app, PogoFilter f, int k, double lat, double lng) throws java.io.IOException {
+        if (k == WORLD) return Pogo.search(app, f);
+        double[] b = around(lat, lng, k * 1000.0);
+        return near(Pogo.lookup(app, b[0], b[1], b[2], b[3], f), lat, lng, k * 1000.0);
+    }
 
     /** Caixa {n,w,s,e} que contém o círculo de raio m. */
     static double[] around(double lat, double lng, double m) {

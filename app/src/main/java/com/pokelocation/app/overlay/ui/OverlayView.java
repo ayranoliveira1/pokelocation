@@ -59,9 +59,9 @@ public final class OverlayView implements View.OnClickListener {
     private final EngineConfig cfg;
     private final WindowManager wm;
     private final OverlayFlows flows;
-    private final boolean classic, secure;
+    final boolean classic, secure;
     private final int sizePct;
-    private final float alpha;
+    final float alpha;
     private final Display display;           // DisplayInfo ao vivo: acompanha a rotação (o ctx temático não)
     private final Point scr = new Point();   // tela real, relida a cada place/fit
 
@@ -123,6 +123,7 @@ public final class OverlayView implements View.OnClickListener {
         if (stickWin == null) inflate();
         stickShown = show(stickWin, stickLp, stickShown, v && !stickHidden, true);
         if (drawerWin != null) drawerShown = show(drawerWin, drawerLp, drawerShown, v, false);
+        flows.pogoVisible(v);
     }
 
     public boolean hasVisibleWindow() {
@@ -151,6 +152,7 @@ public final class OverlayView implements View.OnClickListener {
         if (destroyed) return;
         destroyed = true;
         flows.close();
+        flows.closePogo();
         if (stick != null) stick.shutdown();
         removeDrop();
         if (stickShown) remove(stickWin);
@@ -258,7 +260,9 @@ public final class OverlayView implements View.OnClickListener {
         chat = on;
         setShown(chatBox, on);
         setShown(pogo, on);
-        if (!on) {
+        if (on) {
+            flows.startPogo(visible);
+        } else {
             flows.closeChat();
             flows.closePogo();
         }

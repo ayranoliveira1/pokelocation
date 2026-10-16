@@ -58,4 +58,6 @@
     <string name="pogo_notified_none">Nenhum Pokémon notificado ainda. Crie um alerta em Meus alertas.</string>
     <string name="pogo_notified_expired">Expirado</string>
     <string name="pogo_notified_gone">Este Pokémon já sumiu</string>
+    <string name="pogo_bubbles_logo">Lista de Pokémon</string>
+    <string name="pogo_bubbles_count">Pokémon na coluna: %d</string>
 </resources>

@@ -45,7 +45,7 @@ public final class PogoListActivity extends BaseActivity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         getLayoutInflater().inflate(R.layout.base_toolbar, root, true);
-        panel = new PogoPanel(this, c[0], c[1], R.string.pogo_card_set_dest, true, new PogoPanel.Host() {
+        panel = new PogoPanel(this, c[0], c[1], R.string.pogo_card_set_dest, new PogoPanel.Host() {
             @Override public void go(double lat, double lng, String title) { fill(PogoListActivity.this, lat, lng); }
 
             @Override public void close() { finish(); }

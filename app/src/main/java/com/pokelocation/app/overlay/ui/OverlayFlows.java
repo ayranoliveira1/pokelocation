@@ -15,7 +15,7 @@ import com.pokelocation.app.model.Favorite;
 import com.pokelocation.app.model.Folder;
 import com.pokelocation.app.model.MarkerType;
 import com.pokelocation.app.model.Route;
-import com.pokelocation.app.pogo.PogoPanel;
+import com.pokelocation.app.pogo.PogoBubbles;
 import com.pokelocation.app.ui.panel.ItemListPanel;
 import com.pokelocation.app.ui.panel.NameFolderPanel;
 import com.pokelocation.app.social.ui.chat.ChatPanel;
@@ -37,7 +37,7 @@ final class OverlayFlows {
     private final Context ctx;
     private final Context app;            // DAOs no Io: nunca segurar o contexto temático
     private final boolean showDistance;   // display_distance_info
-    private boolean pogoOpened;
+    private PogoBubbles pogo;
 
     OverlayFlows(OverlayView ov, boolean showDistance) {
         this.ov = ov;
@@ -71,16 +71,30 @@ final class OverlayFlows {
         ChatPanel.show(ctx, text -> openTeleport(text, title));
     }
 
+    /** Com login a coluna PoGo já sobe aberta e busca; o botão PoGo do joystick só abre e fecha. */
+    void startPogo(boolean visible) {
+        if (pogo == null) pogo = new PogoBubbles(ctx, ov.classic, ov.alpha, ov.secure, new PogoBubbles.Host() {
+            @Override public double lat() { return ov.engine.lat(); }
+
+            @Override public double lng() { return ov.engine.lng(); }
+
+            @Override public void teleport(String text, String title) { openTeleport(text, title); }
+        });
+        pogo.setVisible(visible);
+    }
+
+    void pogoVisible(boolean v) {
+        if (pogo != null) pogo.setVisible(v);
+    }
+
     void closePogo() {
-        if (!pogoOpened) return;   // nunca aberto: nem carrega a classe
-        PogoPanel.dismissOpen();
-        PogoPanel.clearCache();   // logout: o resultado era da conta que saiu
+        if (pogo == null) return;
+        pogo.destroy();
+        pogo = null;
     }
 
     void openPogo() {
-        close();
-        pogoOpened = true;
-        PogoPanel.show(ctx, ov.engine.lat(), ov.engine.lng(), this::openTeleport);
+        if (pogo != null) pogo.toggle();
     }
 
     void openTeleport(String text, String title) {

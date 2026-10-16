@@ -2,9 +2,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="wrap_content"
     android:orientation="vertical" android:paddingTop="@dimen/panel_padding" android:paddingBottom="@dimen/gap">
-    <TextView android:id="@+id/pogo_title" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:paddingStart="16dp" android:paddingEnd="16dp" android:text="@string/pogo_map_layer"
-        android:textAppearance="@style/TextAppearance.PokeLocation.PanelTitle" />
     <FrameLayout android:id="@+id/pogo_chips" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="8dp" />
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"

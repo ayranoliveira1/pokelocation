@@ -158,7 +158,7 @@ public final class PogoAlertsActivity extends BaseActivity {
         ed.addView(buttons);
         editor = ed;
 
-        panel = new PogoPanel(this, lat, lng, R.string.pogo_card_set_dest, true, new PogoPanel.Host() {
+        panel = new PogoPanel(this, lat, lng, R.string.pogo_card_set_dest, new PogoPanel.Host() {
             @Override public void go(double la, double ln, String title) { PogoListActivity.fill(PogoAlertsActivity.this, la, ln); }
 
             @Override public void close() { finish(); }

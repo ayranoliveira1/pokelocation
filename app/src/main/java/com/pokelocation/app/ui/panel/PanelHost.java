@@ -119,6 +119,21 @@ public final class PanelHost {
         return h;
     }
 
+    /** Folha de tela cheia sobre o jogo (filtros da coluna PoGo): sem véu nem card do painel; o BACK chama onBack. */
+    public static PanelHost sheet(Context ctx, View v, Runnable onBack) {
+        PanelHost h = show(ctx, v, true);
+        if (h.window == null) return h;
+        FrameLayout root = (FrameLayout) h.window;
+        ((ViewGroup) v.getParent()).removeView(v);
+        root.removeAllViews();
+        root.setBackground(null);
+        root.setOnClickListener(null);
+        root.setClickable(false);
+        root.addView(v, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        h.coverBack = onBack;
+        return h;
+    }
+
     private FrameLayout buildRoot(Context ctx, View content, boolean handleBack) {
         FrameLayout root = new FrameLayout(ctx) {
             @Override
