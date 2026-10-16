@@ -47,4 +47,6 @@
     <string name="pogo_notif_off">Notifications off — you won\'t get alerts</string>
     <string name="pogo_notif_enable">Enable</string>
     <string name="pogo_notif_settings">Open settings</string>
+    <string name="pogo_alert_need_trainer">Off: link your trainer</string>
+    <string name="pogo_alert_bad_account">The chosen trainer account is not active</string>
 </resources>

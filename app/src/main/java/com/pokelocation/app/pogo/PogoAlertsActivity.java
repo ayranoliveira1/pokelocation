@@ -207,7 +207,13 @@ public final class PogoAlertsActivity extends BaseActivity {
         title.setText(r.name);
         title.setTextColor(getColor(R.color.on_surface));
         TextView sub = text(13);
-        sub.setText(summary(r));
+        if ("trainer_required".equals(r.disabledReason) && !r.enabled) {   // o servidor desligou: o vínculo caiu
+            sub.setText(R.string.pogo_alert_need_trainer);
+            sub.setTextColor(getColor(R.color.danger));
+            sub.setOnClickListener(v -> startActivity(new Intent(this, PogoActivity.class)));
+        } else {
+            sub.setText(summary(r));
+        }
         texts.addView(title);
         texts.addView(sub);
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -238,11 +244,12 @@ public final class PogoAlertsActivity extends BaseActivity {
         if (on) checkNotifications(true);
         sw.setEnabled(false);
         Context app = getApplicationContext();
-        Io.run(() -> {
-            Pogo.updateRule(app, r);
-            return Boolean.TRUE;
-        }, new Io.Callback<Boolean>() {
-            @Override public void onResult(Boolean ok) { sw.setEnabled(true); }
+        Io.run(() -> Pogo.updateRule(app, r), new Io.Callback<Pogo.Rule>() {
+            @Override public void onResult(Pogo.Rule saved) {   // o PUT limpa o disabled_reason: vale o que o servidor devolveu
+                int i = rules.indexOf(r);
+                if (saved != null && i >= 0) rules.set(i, saved);
+                render();
+            }
 
             @Override public void onError(Throwable t) {
                 r.enabled = !on;
@@ -302,7 +309,7 @@ public final class PogoAlertsActivity extends BaseActivity {
     private void save() {
         if (busy || editing == null) return;
         Pogo.Rule r = new Pogo.Rule();
-        r.filter = editing;
+        r.filter = PogoText.asSent(this, editing);   // sem treinador o form esconde o Shiny: um shiny salvo de antes viraria 422
         r.world = editing.km == 0;
         if (!r.world && Double.isNaN(lat)) {
             Ui.toast(this, R.string.pogo_alert_no_center);
@@ -377,6 +384,8 @@ public final class PogoAlertsActivity extends BaseActivity {
     private String error(Throwable t) {
         if (Pogo.ruleLimit(t)) return getString(R.string.pogo_alert_limit, Pogo.MAX_RULES);
         if (Pogo.relogin(t)) return getString(R.string.pogo_alert_relogin);
+        if (Pogo.trainerRequired(t)) return getString(R.string.pogo_no_trainer);
+        if (Pogo.shinyAccountUnavailable(t)) return getString(R.string.pogo_alert_bad_account);
         return PogoText.error(this, t);
     }
 

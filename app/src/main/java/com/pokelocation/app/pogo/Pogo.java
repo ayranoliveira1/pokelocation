@@ -465,13 +465,24 @@ public final class Pogo {
         prefs(c).edit().remove(K_LINKED).remove(K_NAME).remove(K_TRAINERS).apply();
     }
 
-    public static boolean relogin(Throwable t) { return t instanceof Error && "pogo_relogin".equals(((Error) t).error); }
+    public static boolean relogin(Throwable t) { return code(t, "pogo_relogin"); }
 
-    public static boolean ruleLimit(Throwable t) { return t instanceof Error && "too_many_rules".equals(((Error) t).error); }
+    public static boolean ruleLimit(Throwable t) { return code(t, "too_many_rules"); }
 
-    /** Regra de alerta (contrato §4). world = scope "world"; near usa lat/lng/radiusKm. */
+    /** 422 ao salvar regra com shiny sem treinador ativo (T22): o mesmo aviso de "Vincular treinador". */
+    public static boolean trainerRequired(Throwable t) { return code(t, "trainer_required"); }
+
+    /** 422: o shiny_account da regra não é um treinador ativo da conta. */
+    public static boolean shinyAccountUnavailable(Throwable t) { return code(t, "shiny_account_unavailable"); }
+
+    private static boolean code(Throwable t, String code) { return t instanceof Error && code.equals(((Error) t).error); }
+
+    /**
+     * Regra de alerta (contrato §4). world = scope "world"; near usa lat/lng/radiusKm. disabledReason: por que o servidor
+     * a desligou (ex.: "trainer_required"); só leitura, null se ligada pelo usuário.
+     */
     public static final class Rule {
-        public String id, name;
+        public String id, name, disabledReason;
         public PogoFilter filter;
         public boolean world, enabled = true;
         public double lat = Double.NaN, lng = Double.NaN;
@@ -498,12 +509,13 @@ public final class Pogo {
         }
     }
 
-    /** PUT da regra inteira (o switch troca r.enabled e chama aqui). */
-    public static void updateRule(Context c, Rule r) throws IOException {
+    /** PUT da regra inteira (o switch troca r.enabled e chama aqui). Devolve a do servidor: todo PUT limpa o disabled_reason. */
+    public static Rule updateRule(Context c, Rule r) throws IOException {
         try {
-            proxy(c, "PUT", "/rules/" + URLEncoder.encode(r.id, "UTF-8"), ruleJson(r), MAX_BODY, TIMEOUT_MS);
+            return parseRule(new JSONObject(proxy(c, "PUT", "/rules/" + URLEncoder.encode(r.id, "UTF-8"), ruleJson(r),
+                    MAX_BODY, TIMEOUT_MS)));
         } catch (JSONException x) {
-            throw new IOException("bad request");
+            throw new IOException("bad response");
         }
     }
 
@@ -530,6 +542,7 @@ public final class Pogo {
         r.lng = o.optDouble("lng", Double.NaN);
         r.radiusKm = o.optInt("radius_km");
         r.enabled = o.optBoolean("enabled", true);
+        r.disabledReason = str(o, "disabled_reason");
         return r;
     }
 

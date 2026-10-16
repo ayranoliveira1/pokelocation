@@ -47,4 +47,6 @@
     <string name="pogo_notif_off">Notificações desligadas — você não vai receber alertas</string>
     <string name="pogo_notif_enable">Ativar</string>
     <string name="pogo_notif_settings">Abrir configurações</string>
+    <string name="pogo_alert_need_trainer">Desligado: vincule seu treinador</string>
+    <string name="pogo_alert_bad_account">A conta de treinador escolhida não está ativa</string>
 </resources>

@@ -378,4 +378,16 @@ public class PogoTest {
         Pogo.searchLimited(Pogo.fromApi(429, "upstream", "{\"error\":\"upstream\",\"status\":429,\"retry_after\":46}", 60));
         assertNull(Pogo.enrich(null, m)); // sem Context: se fosse à rede, quebraria
     }
+
+    @Test public void t22TrainerErrorsAndDisabledReason() throws Exception {
+        assertTrue(Pogo.trainerRequired(Pogo.fromApi(422, "trainer_required", "{\"error\":\"trainer_required\"}", 60)));
+        assertTrue(Pogo.shinyAccountUnavailable(Pogo.fromApi(422, "shiny_account_unavailable", "{}", 60)));
+        assertFalse(Pogo.trainerRequired(Pogo.fromApi(422, "bad_request", "{}", 60)));
+        Pogo.Rule off = Pogo.parseRule(new JSONObject("{\"id\":\"u\",\"name\":\"x\",\"filters\":{\"shiny_only\":true},"
+                + "\"scope\":\"world\",\"enabled\":false,\"disabled_reason\":\"trainer_required\"}"));
+        assertEquals("trainer_required", off.disabledReason);
+        assertFalse(off.enabled);
+        assertNull(Pogo.parseRule(new JSONObject("{\"id\":\"u\",\"scope\":\"world\",\"disabled_reason\":null}")).disabledReason);
+        assertFalse(Pogo.ruleJson(off).has("disabled_reason"));
+    }
 }
