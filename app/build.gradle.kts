@@ -7,8 +7,8 @@ android {
         applicationId = "com.pokelocation.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
         // Build de teste lado a lado com o app instalado: outro pacote, dados separados.
         providers.gradleProperty("POKELOCATION_ID_SUFFIX").orNull?.let { applicationIdSuffix = it }
         buildConfigField("String", "SOCIAL_API",
