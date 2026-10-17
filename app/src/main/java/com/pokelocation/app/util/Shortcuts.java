@@ -32,7 +32,6 @@ public final class Shortcuts {
         return false;
     }
 
-    /** Depois do notify. */
     public static void release(Context c, String id) {
         if (Build.VERSION.SDK_INT < 30) return;
         try {

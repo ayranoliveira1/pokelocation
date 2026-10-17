@@ -535,7 +535,6 @@ public final class PogoPanel {
         v.animate().translationX(t).setDuration(150).setUpdateListener(a -> list.invalidate()).start();
     }
 
-    /** Deslocamento no arrasto: só para o lado da lixeira (side -1 = esquerda), no máximo w. */
     static float slide(float base, float dx, float w, int side) {
         return side * Math.max(0, Math.min(w, (base + dx) * side));
     }
@@ -545,7 +544,6 @@ public final class PogoPanel {
         return Math.abs(t) > w / 2 ? Math.signum(t) * w : 0;
     }
 
-    /** (x, y) no bloco da lixeira (largura bw) do lado que o item deslocado (t) deixou à mostra. */
     static boolean onBin(float x, float y, int left, float top, int right, float bottom, float t, int bw) {
         if (y < top || y > bottom) return false;
         return t < 0 ? x >= right - bw && x <= right : t > 0 && x >= left && x <= left + bw;
