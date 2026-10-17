@@ -31,9 +31,9 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.view.ViewCompat;
+import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import com.pokelocation.app.App;
 import com.pokelocation.app.Io;
@@ -211,7 +211,12 @@ public final class PogoPanel {
         frame.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         pull = view.findViewById(R.id.pogo_pull);
         list.setLayoutManager(new LinearLayoutManager(c));
-        ((SimpleItemAnimator) list.getItemAnimator()).setSupportsChangeAnimations(false);
+        list.setItemAnimator(new DefaultItemAnimator() {
+            /** O original soma o translationX ao fromX e anima o bloco de volta a 0: o item aberto fecharia sozinho. */
+            @Override public boolean animateMove(@NonNull RecyclerView.ViewHolder h, int fromX, int fromY, int toX, int toY) {
+                return super.animateMove(h, fromX - (int) h.itemView.getTranslationX(), fromY, toX, toY);
+            }
+        });
         adapter = new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             @Override public int getItemCount() { return mons.size(); }
 
@@ -536,9 +541,13 @@ public final class PogoPanel {
         return t < 0 ? x >= right - bw && x <= right : t > 0 && x >= left && x <= left + bw;
     }
 
-    /** Com payload o RecyclerView rebinda os mesmos blocos (sem trocar o ViewHolder): não desfaz um arrasto em curso. */
+    /** Rebinda só os blocos à vista, sem notify: nenhum layout nem animação por segundo. */
     private void redraw() {
-        adapter.notifyItemRangeChanged(0, mons.size(), Boolean.TRUE);
+        for (int i = 0; i < list.getChildCount(); i++) {
+            View v = list.getChildAt(i);
+            int at = list.getChildAdapterPosition(v);
+            if (at >= 0 && at < mons.size()) bind(v, mons.get(at));
+        }
     }
 
     /** true = o BACK fechou o card. */
