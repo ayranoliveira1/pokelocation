@@ -121,8 +121,10 @@ public final class PogoBubbles {
         bubbles.setOrientation(LinearLayout.VERTICAL);
         root = new LinearLayout(c);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.addView(top);
-        root.addView(bubbles);
+        // WRAP: com MATCH (o padrão) as bolhas ficavam na largura dos botões abertos, e não embaixo da logo
+        LinearLayout.LayoutParams wrap = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        root.addView(top, wrap);
+        root.addView(bubbles, new LinearLayout.LayoutParams(wrap));
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> { if (b - t != ob - ot || r - l != or - ol) fit(); });
 
         spin = ObjectAnimator.ofFloat(refresh, View.ROTATION, 0f, 360f);
