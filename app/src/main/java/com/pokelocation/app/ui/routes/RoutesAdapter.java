@@ -65,8 +65,6 @@ final class RoutesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         colorSelected = ContextCompat.getColor(c, R.color.primary_container);
     }
 
-    // ---- dados ----
-
     @SuppressLint("NotifyDataSetChanged")
     void setData(List<Folder> f, Map<String, Integer> c, List<Route> r) {
         folders = new ArrayList<>(f);   // mutável (o DAO pode devolver lista imutável)
@@ -187,8 +185,6 @@ final class RoutesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         return -1;
     }
 
-    // ---- estado visual (seleção / reordenação) ----
-
     void setReorder(boolean on) {
         reorder = on;
         refreshState();
@@ -212,8 +208,6 @@ final class RoutesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         else if (vh instanceof RouteVH) ((RouteVH) vh).bindState();
     }
 
-    // ---- arrasto ----
-
     boolean canDrag() { return reorder && allFolders == null; }
 
     boolean isFolderPos(int p) { return p < folders.size(); }
@@ -229,8 +223,6 @@ final class RoutesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         else Collections.swap(routes, from - folders.size(), to - folders.size());
         notifyItemMoved(from, to);
     }
-
-    // ---- RecyclerView ----
 
     @Override public int getItemCount() { return folders.size() + routes.size(); }
 

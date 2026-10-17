@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-/** 02 §3.5: ângulo atan2(−dy,dx) (y de tela para baixo) e magnitude limitada a 0..1. */
+/** Ângulo atan2(−dy,dx) (y de tela para baixo) e magnitude limitada a 0..1. */
 public class JoystickMathTest {
     private static final float EPS = 1e-4f;
 

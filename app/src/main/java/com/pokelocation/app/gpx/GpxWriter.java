@@ -9,7 +9,7 @@ import java.io.OutputStream;
 import java.util.List;
 
 /**
- * GPX 1.1 em streaming (06 §3.10.1, versão PokeLocation): todos os wpt (favoritos) e depois os rte (rotas), sem trk.
+ * GPX 1.1 em streaming (versão PokeLocation): todos os wpt (favoritos) e depois os rte (rotas), sem trk.
  * lat/lon sempre; &lt;ele&gt; só se ≠ 0 e conhecida; pasta em &lt;extensions&gt;&lt;pokelocation:folder&gt;.
  */
 public final class GpxWriter {

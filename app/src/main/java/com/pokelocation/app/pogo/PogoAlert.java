@@ -109,7 +109,7 @@ public final class PogoAlert {
         m.cp = (int) num(d.get("cp"), 0);
         m.level = num(d.get("lv"), 0);
         m.despawnMs = (long) num(d.get("d"), 0);
-        m.verified = !"0".equals(d.get("v"));   // servidor antigo não manda: como antes
+        m.verified = !"0".equals(d.get("v"));   // servidor antigo não manda: conta como verificado
         m.lat = num(d.get("la"), Double.NaN);
         m.lng = num(d.get("lo"), Double.NaN);
         if (Double.isNaN(m.lng)) m.lat = Double.NaN;

@@ -89,7 +89,7 @@ public class PogoAlertTest {
         assertTrue(world.verified);
     }
 
-    /** O exemplo do usuário: 2 Pokémon no filtro avisam 1 vez; as rodadas seguintes não; outro spawn da espécie, sim. */
+    /** 2 Pokémon no filtro avisam 1 vez; as rodadas seguintes não; outro spawn da espécie, sim. */
     @Test public void sameSpawnOnlyOnce() {
         JSONObject seen = new JSONObject();
         JSONArray log = new JSONArray();

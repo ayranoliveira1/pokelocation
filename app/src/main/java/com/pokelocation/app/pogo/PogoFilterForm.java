@@ -37,8 +37,8 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 /**
- * Todos os filtros do §6.1 + o escopo, na ordem do docs/pogo/filtros-design.md (Onde, Ordenar, Espécies, Qualidade,
- * Aparência, Shiny, Avançado). Só views de framework por código: serve à PogoFiltersActivity e ao PogoFilterSheet no
+ * Todos os filtros + o escopo, na ordem Onde, Ordenar, Espécies, Qualidade,
+ * Aparência, Shiny, Avançado. Só views de framework por código: serve à PogoFiltersActivity e ao PogoFilterSheet no
  * :overlay. Edita o PogoFilter ao vivo e chama onChanged.
  */
 public final class PogoFilterForm {
@@ -67,7 +67,7 @@ public final class PogoFilterForm {
         scroll = new ScrollView(c);
         body = new LinearLayout(c);
         body.setOrientation(LinearLayout.VERTICAL);
-        body.setPadding(pad, 0, pad, pad); // 16dp em tudo (filtros-design-v3)
+        body.setPadding(pad, 0, pad, pad);
         scroll.addView(body);
         root.addView(scroll);
         render();
@@ -421,7 +421,7 @@ public final class PogoFilterForm {
     }
 
     /**
-     * Subtela empilhada (filtros-design-v3 §4): busca fixa, escolhidas como avatares removíveis e uma linha de 64dp com
+     * Subtela empilhada: busca fixa, escolhidas como avatares removíveis e uma linha de 64dp com
      * foto por espécie ("qualquer forma") e por forma quando há mais de uma. Fotos só das linhas visíveis (PogoIcons).
      */
     private void speciesPage() {

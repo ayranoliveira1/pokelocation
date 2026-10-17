@@ -12,7 +12,7 @@ import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.model.MapOptions;
 import com.pokelocation.app.ui.panel.PanelHost;
 
-/** Generate Route (04 §2.3): Random/Circle, contagem 1..5000, offset > 0. Valores iniciais e salvos em MapOptions. */
+/** Generate Route: Random/Circle, contagem 1..5000, offset > 0. Valores iniciais e salvos em MapOptions. */
 final class GenerateRoutePanel {
     static final int MAX_COUNT = 5000;
 

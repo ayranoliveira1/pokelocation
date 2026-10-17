@@ -13,7 +13,7 @@ import java.util.ArrayList;
 /**
  * KML em streaming (match por localName, então aceita "kml:Placemark"). Folder aninhado vira caminho "A/B";
  * Placemark → Point / LineString / MultiGeometry (vários itens com o mesmo nome/desc/pasta).
- * Placemark sem geometria válida conta em {@link ImportData#skipped}. KMZ fora (DECISIONS).
+ * Placemark sem geometria válida conta em {@link ImportData#skipped}. KMZ fora.
  */
 public final class KmlReader {
     private final XmlPullParser p;

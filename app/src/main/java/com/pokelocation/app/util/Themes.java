@@ -35,7 +35,6 @@ public final class Themes {
         return new ContextThemeWrapper(c, R.style.Theme_PokeLocation_Overlay);
     }
 
-    /** true se o contexto está em modo noturno (útil para ícones da barra de status). */
     public static boolean isNight(Context c) {
         return (c.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
     }

@@ -43,7 +43,7 @@ public final class App extends Application {
         super.onCreate();
         if (process() != PROC_MAIN) return;
         Themes.applyNightMode(Prefs.getString(this, Prefs.SETTINGS_THEME_MODE));
-        // DECISIONS: CARTO Voyager removido (exige API key); o valor antigo migra para o padrão OSM
+        // CARTO Voyager exige API key: o valor antigo migra para o padrão OSM
         if ("voyager".equals(Prefs.getString(this, Prefs.MAP_TILE_SOURCE))) {
             Prefs.edit(this).putString(Prefs.MAP_TILE_SOURCE, "osm").apply();
         }

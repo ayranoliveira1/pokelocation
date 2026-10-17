@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-/** "Show Markers" (F36/N12): favoritos + marcadores customizados só no viewport, com limite no zoom afastado e diff por id. */
+/** "Show Markers": favoritos + marcadores customizados só no viewport, com limite no zoom afastado e diff por id. */
 final class MarkerLayer {
     /** Item visível; vai no relatedObject do Marker. */
     static final class Item {

@@ -19,7 +19,7 @@ import com.pokelocation.app.R;
 import com.pokelocation.app.ipc.Intents;
 
 /**
- * Notificação do serviço (F52, N08). Só framework: Notification.Builder + RemoteViews.
+ * Notificação do serviço. Só framework: Notification.Builder + RemoteViews.
  * PendingIntents criados uma vez; RemoteViews novo a cada mudança de estado (reaproveitar acumula ações);
  * notify() só quando o estado muda, no máximo 1×/s.
  */
@@ -81,7 +81,7 @@ public final class OverlayNotification {
                 : PendingIntent.getService(ctx, rc, i, f);
     }
 
-    /** onCreate do serviço: obrigatório em até 5 s. Lança se o sistema recusar (N14: o serviço trata). */
+    /** onCreate do serviço: obrigatório em até 5 s. Lança se o sistema recusar (o serviço trata). */
     public void startForeground(Service s) {
         Notification n = build();
         if (Build.VERSION.SDK_INT >= 29) s.startForeground(ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
@@ -95,7 +95,7 @@ public final class OverlayNotification {
 
     public void setProgress(int i, int n) { index = i; total = n; request(); }
 
-    /** Android 15+ sem janela visível (DECISIONS dúvida 4): ação "Inject" abre a MockingActivity com a posição. */
+    /** Android 15+ sem janela visível: ação "Inject" abre a MockingActivity com a posição. */
     public void setInject(Intent mocking) {
         piInject = PendingIntent.getActivity(ctx, RC_INJECT, mocking,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT); // atualiza os extras do token já publicado

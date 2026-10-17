@@ -35,7 +35,7 @@ import com.pokelocation.app.util.Themes;
 import com.pokelocation.app.util.Ui;
 
 /**
- * FGS do processo :overlay (F65, N01, N03, N14). Dono do estado da sessão: rota (via motor), gravação, hidden,
+ * FGS do processo :overlay. Dono do estado da sessão: rota (via motor), gravação, hidden,
  * posição anterior, mapa e notificação. Motor, injetor e janelas só nascem no start: STATUS/STOP frios não os criam.
  */
 public final class OverlayService extends Service
@@ -65,7 +65,7 @@ public final class OverlayService extends Service
         notif = new OverlayNotification(this);
         try {
             notif.startForeground(this);
-        } catch (RuntimeException e) { // Android 14+: FGS em segundo plano recusado (N14)
+        } catch (RuntimeException e) { // Android 14+: FGS em segundo plano recusado
             fgFailed = true;
         }
     }
@@ -91,7 +91,7 @@ public final class OverlayService extends Service
             return START_STICKY;
         }
         if (!running) {
-            // F97 sem passar pela Main (QA F102: sem o 2º fork do :overlay e ACTIVE na hora) quando nada falta;
+            // Sobe direto, sem passar pela Main, quando nada falta (sem o 2º fork do :overlay e ACTIVE na hora);
             // senão a Main faz as checagens e reenvia (replay).
             if (Actions.wantsStart(intent, action) && Perms.canDrawOverlays(this) && Perms.hasFine(this)
                     && Perms.isMockApp(this)) {
@@ -112,8 +112,6 @@ public final class OverlayService extends Service
         if (!handleInternal(intent, action)) Actions.handle(this, intent, action);
         return START_STICKY;
     }
-
-    // ---------------------------------------------------------------- start / stop
 
     /** Start da Main (action null). intent null = restart do sistema (START_STICKY). */
     private void start(Intent i) {
@@ -250,8 +248,6 @@ public final class OverlayService extends Service
         return null;
     }
 
-    // ---------------------------------------------------------------- ações internas
-
     private boolean handleInternal(Intent i, String a) {
         switch (a) {
             case Intents.INT_STOP_JOYSTICK:
@@ -302,7 +298,7 @@ public final class OverlayService extends Service
         }
     }
 
-    // ---------------------------------------------------------------- estado usado por svc/Actions
+    // Estado usado por svc/Actions.
 
     public boolean isRunning() { return running; }
     public boolean isHidden() { return hidden; }
@@ -372,8 +368,6 @@ public final class OverlayService extends Service
         });
     }
 
-    // ---------------------------------------------------------------- gravação (F50, F100)
-
     public void startRecording(double lat, double lng, double alt) {
         if (engine.hasRoute()) engine.stopRoute();
         rec = new double[]{lat, lng, alt};
@@ -410,8 +404,6 @@ public final class OverlayService extends Service
             }
         });
     }
-
-    // ---------------------------------------------------------------- ponte :map (F51)
 
     private void openMap(int mapAction) {
         if (mapOpen && mapAlive()) return;
@@ -536,8 +528,6 @@ public final class OverlayService extends Service
         }
     }
 
-    // ---------------------------------------------------------------- MockEngine.Listener
-
     @Override
     public void onRouteProgress(int index1Based, int total) {
         ui.setRouteProgress(index1Based, total);
@@ -555,13 +545,11 @@ public final class OverlayService extends Service
         ui.setAutoSuspendCountdown(secondsLeft);
     }
 
-    // ---------------------------------------------------------------- Suspended (F62)
-
     @Override
     public void publishSuspended(double lat, double lng, double alt, float speedMs, float accuracy, float bearing) {
         if (mockIntent == null) mockIntent = MockingActivity.newIntent(this);
         MockingActivity.fill(mockIntent, lat, lng, alt, speedMs, accuracy, bearing);
-        // Android 15+: a isenção de abrir Activity em segundo plano exige janela de overlay visível (DECISIONS dúvida 4)
+        // Android 15+: a isenção de abrir Activity em segundo plano exige janela de overlay visível
         if (Build.VERSION.SDK_INT >= 35 && !ui.hasVisibleWindow()) {
             notif.setInject(mockIntent);
             return;
@@ -573,8 +561,6 @@ public final class OverlayService extends Service
             notif.setInject(mockIntent);
         }
     }
-
-    // ---------------------------------------------------------------- OverlayView.Host
 
     @Override
     public void onGo(double lat, double lng, double alt, boolean walk) {

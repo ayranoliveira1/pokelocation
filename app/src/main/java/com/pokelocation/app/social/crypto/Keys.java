@@ -56,7 +56,7 @@ final class Keys {
                 });
             }
             // pendente = gerado e ainda não aceito pelo servidor (falha de rede antes): reenvia sem gerar de novo, em lotes
-            // de até 100 por lista (api.md §4); o servidor acrescenta sem duplicar (ON CONFLICT DO NOTHING)
+            // de até 100 por lista; o servidor acrescenta sem duplicar (ON CONFLICT DO NOTHING)
             for (boolean more = true; more; ) {
                 Api.KeyBundle b = SocialDb.atomic(c, () -> bundle(SocialDb.get(c)));
                 try {
@@ -85,7 +85,7 @@ final class Keys {
         }
     }
 
-    // ponytail: signed prekey e kyber last resort nunca rotacionam (o Signal rotaciona ~30 dias); a spec não pede.
+    // ponytail: signed prekey e kyber last resort nunca rotacionam (o Signal rotaciona ~30 dias).
     // Rotacionar = gerar nova com id+1, PUT, e manter a anterior alguns dias para mensagens em trânsito.
     private static void create(SQLiteDatabase db) throws GeneralSecurityException {
         IdentityKeyPair id = IdentityKeyPair.generate();

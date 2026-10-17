@@ -11,7 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Chaves e defaults canônicos. Arquivo "prefs": SÓ o processo main escreve (PLAN §1.3).
+ * Chaves e defaults canônicos. Arquivo "prefs": SÓ o processo main escreve.
  * double é gravado como long (Double.doubleToRawLongBits); ausente = default (NaN se não houver).
  */
 public final class Prefs {
@@ -72,7 +72,7 @@ public final class Prefs {
     public static final String SPOOF_ACTIVE = "spoof_active";
     public static final String SETUP_WIZARD_COMPLETED = "setup_wizard_completed";
     public static final String ELEVATION_LOOKUP_ENABLED = "elevation_lookup_enabled";
-    public static final String MAP_TILE_SOURCE = "map_tile_source";                     // "osm" | "osm_de" (DECISIONS)
+    public static final String MAP_TILE_SOURCE = "map_tile_source";                     // "osm" | "osm_de"
     public static final String SHARE_FILE = "social_share", SHARE_LOCATION = "share_location";
     // Bases das chaves por widget: widgetKey(base, id)
     public static final String WIDGET_ITEMS = "widget_items";                // String ""
@@ -153,7 +153,7 @@ public final class Prefs {
 
     private Prefs() {}
 
-    /** Default da tabela §3.4 (null se a chave não tem default, ex.: last_latitude). */
+    /** null se a chave não tem default (ex.: last_latitude). */
     public static Object defaultOf(String key) { return DEFAULTS.get(key); }
 
     public static boolean isDoubleKey(String key) {

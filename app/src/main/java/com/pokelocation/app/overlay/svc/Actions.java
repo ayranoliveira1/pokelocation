@@ -24,13 +24,13 @@ import com.pokelocation.app.overlay.OverlayService;
 import com.pokelocation.app.util.Perms;
 
 /**
- * Ações públicas pokelocation.action.* (F96–F100; 02 §3.9, 10 §3.4). Dispatcher por switch (sem objetos por ação).
+ * Ações públicas pokelocation.action.*. Dispatcher por switch (sem objetos por ação).
  * Mensagens de ERROR são da API de automação (não UI): inglês fixo, como no original.
  */
 public final class Actions {
     private Actions() {}
 
-    /** Serviço não está rodando (frio) ou o startForeground falhou (N14). */
+    /** Serviço não está rodando (frio) ou o startForeground falhou. */
     public static void cold(OverlayService s, Intent i, String action) {
         switch (action) {
             case Intents.ACTION_STOP:
@@ -51,7 +51,7 @@ public final class Actions {
 
     private static final String INTERNAL = "com.pokelocation.app.internal.";
 
-    /** F97: a Main sobe o joystick e reenvia com todos os extras. */
+    /** A Main sobe o joystick e reenvia com todos os extras. */
     private static void replay(OverlayService s, Intent i) {
         Intent main = Intents.replayToMain(s, i);
         boolean started = false;
@@ -61,8 +61,8 @@ public final class Actions {
         } catch (RuntimeException ignored) {
         }
         // Android 10+ bloqueia o start em segundo plano sem lançar exceção. A isenção vem da permissão de overlay,
-        // e no 15+ só vale com janela visível (o serviço frio não tem nenhuma). Segunda via: notificação de ação
-        // (DECISIONS dúvida 4). A Main a cancela ao receber o replay.
+        // e no 15+ só vale com janela visível (o serviço frio não tem nenhuma). Segunda via: notificação de ação.
+        // A Main a cancela ao receber o replay.
         if (!started || (Build.VERSION.SDK_INT >= 29 && (Build.VERSION.SDK_INT >= 35 || !Perms.canDrawOverlays(s)))) {
             notifyReplay(s, main);
         }
@@ -88,7 +88,7 @@ public final class Actions {
         }
     }
 
-    /** Ação pública que, com o serviço parado, sobe o joystick. TELEPORT sem lat/lng e WALK vazio só são ignorados (10 §3.4); fora da faixa, só o erro. */
+    /** Ação pública que, com o serviço parado, sobe o joystick. TELEPORT sem lat/lng e WALK vazio só são ignorados; fora da faixa, só o erro. */
     public static boolean wantsStart(Intent i, String action) {
         switch (action) {
             case Intents.ACTION_STOP:
@@ -116,7 +116,7 @@ public final class Actions {
             case Intents.ACTION_TELEPORT: {
                 double lat = Intents.getDouble(i, Intents.EXTRA_LAT, Double.NaN);
                 double lng = Intents.getDouble(i, Intents.EXTRA_LNG, Double.NaN);
-                if (Double.isNaN(lat) || Double.isNaN(lng)) return; // sem lat/lng: ignora (02 §3.9)
+                if (Double.isNaN(lat) || Double.isNaN(lng)) return; // sem lat/lng: ignora
                 if (!Intents.validLatLng(lat, lng)) {
                     Intents.broadcastError(s, i, Intents.ERR_INVALID_EXTRAS, "lat must be in [-90, 90] and lng in [-180, 180]");
                     return;
@@ -129,7 +129,7 @@ public final class Actions {
                 return;
             case Intents.ACTION_WALK: {
                 double[] pts = CoordParser.waypoints(i.getStringExtra(Intents.EXTRA_WAYPOINTS));
-                if (pts == null || Route.count(pts) == 0) return; // lista vazia: ignora (10 §3.4)
+                if (pts == null || Route.count(pts) == 0) return; // lista vazia: ignora
                 float speed = Intents.getFloat(i, Intents.EXTRA_SPEED, 0f);
                 if (speed > 0) s.setSpeed(speed);
                 s.mapOptions().routeStartMode = Intents.getBool(i, Intents.EXTRA_TELEPORT, false) ? 0 : 1;
@@ -262,7 +262,7 @@ public final class Actions {
         });
     }
 
-    /** STATUS_RESPONSE (02 §3.9). running == null: serviço frio, posição das prefs (10 §3.4 item 6). */
+    /** STATUS_RESPONSE. running == null: serviço frio, posição das prefs. */
     private static Intent status(OverlayService s, OverlayService running) {
         Intent r = new Intent(Intents.BC_STATUS_RESPONSE);
         if (running == null) {

@@ -4,12 +4,12 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.function.IntPredicate;
 
-/** Máquina de estados do Setup Wizard (07 §3.4). Java puro: a verificação de cada passo é injetada. */
+/** Máquina de estados do Setup Wizard. Java puro: a verificação de cada passo é injetada. */
 final class Wizard {
     static final int WELCOME = 0, STEP = 1, OVERLAY_DENIAL = 2, LOCATION_DENIED = 3, COMPLETE = 4;
     /** Passos em ordem fixa. */
     static final int NOTIFICATION = 0, LOCATION = 1, OVERLAY = 2, DEV_OPTIONS = 3, MOCK = 4, COUNT = 5;
-    /** Famílias de instrução do passo DEV_OPTIONS (07 §2.3). */
+    /** Famílias de instrução do passo DEV_OPTIONS. */
     static final int FAMILY_SAMSUNG = 0, FAMILY_ONEPLUS = 1, FAMILY_XIAOMI = 2, FAMILY_DEFAULT = 3;
 
     private final IntPredicate ok;
@@ -80,7 +80,7 @@ final class Wizard {
         else advance();             // notificação negada não bloqueia o fluxo normal
     }
 
-    /** Voltou da tela de overlay do sistema. Bloqueio a partir da 2ª negação (F03) ou com restricted settings. */
+    /** Voltou da tela de overlay do sistema. Bloqueio a partir da 2ª negação ou com restricted settings. */
     void overlayReturned(boolean restrictedLikely) {
         if (ok.test(OVERLAY)) {
             advance();

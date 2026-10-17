@@ -103,7 +103,7 @@ public class GpxReaderTest {
         }
     }
 
-    /** N11: ~10 MB gerados sob demanda (sem String gigante) passam pelo parser em streaming. */
+    /** ~10 MB gerados sob demanda (sem String gigante) passam pelo parser em streaming. */
     @Test
     public void largeTrackStreams() throws Exception {
         final int n = 130_000;

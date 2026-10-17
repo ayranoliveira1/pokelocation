@@ -21,7 +21,6 @@ public final class GpxReader {
     private final ImportData.Buf buf = new ImportData.Buf();
     private final StringBuilder sb = new StringBuilder();
 
-    // campos do container/ponto corrente
     private String name, desc, folder;
 
     private GpxReader(XmlPullParser p) { this.p = p; }
@@ -160,7 +159,6 @@ public final class GpxReader {
         return a == b ? null : sb.substring(a, b);
     }
 
-    /** Pula a subárvore do START_TAG corrente. */
     static void skip(XmlPullParser p) throws IOException, XmlPullParserException {
         int depth = 1;
         while (depth > 0) {

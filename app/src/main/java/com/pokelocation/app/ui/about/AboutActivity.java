@@ -9,7 +9,6 @@ import android.widget.TextView;
 import com.pokelocation.app.R;
 import com.pokelocation.app.ui.base.BaseActivity;
 
-/** About (F95): ícone, nome e "Version: x.y.z". */
 public final class AboutActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {

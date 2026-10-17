@@ -57,7 +57,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * GPX Export (F88): monta uma lista de favoritos, rotas e marcadores de um tipo (como uma rota) e grava GPX ou KML
+ * GPX Export: monta uma lista de favoritos, rotas e marcadores de um tipo (como uma rota) e grava GPX ou KML
  * via SAF. A lista guarda só entradas leves; os pontos de cada rota são lidos um a um na escrita.
  */
 public final class ExportActivity extends BaseActivity {
@@ -127,8 +127,6 @@ public final class ExportActivity extends BaseActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-
-    // ---------------------------------------------------------------- montagem da lista
 
     private void addItems() {
         if (busy) return;
@@ -204,7 +202,7 @@ public final class ExportActivity extends BaseActivity {
         });
     }
 
-    /** Caminho "Pai/Filho" da pasta (cache por lote); pasta que falhar é omitida (06 §3.10). */
+    /** Caminho "Pai/Filho" da pasta (cache por lote); pasta que falhar é omitida. */
     private static String path(Context app, String folderId, Map<String, String> cache) {
         if (folderId == null) return null;
         if (cache.containsKey(folderId)) return cache.get(folderId);
@@ -247,8 +245,6 @@ public final class ExportActivity extends BaseActivity {
         }
         rebuild();
     }
-
-    // ---------------------------------------------------------------- exportação
 
     private void chooseFormat() {
         if (busy || (favs.isEmpty() && routes.isEmpty())) return;
@@ -307,8 +303,6 @@ public final class ExportActivity extends BaseActivity {
             return app.getContentResolver().openOutputStream(uri, "w");
         }
     }
-
-    // ---------------------------------------------------------------- lista
 
     private final class Adapter extends TreeAdapter {
         private final LayoutInflater inflater = getLayoutInflater();

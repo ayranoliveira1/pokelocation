@@ -10,7 +10,6 @@ import android.widget.TextView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pokelocation.app.util.Ui;
 
-/** Diálogos simples do import/export. */
 final class GpxUi {
     private GpxUi() {}
 

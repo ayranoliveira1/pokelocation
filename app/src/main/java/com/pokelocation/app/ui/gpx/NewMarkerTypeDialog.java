@@ -20,7 +20,7 @@ import com.pokelocation.app.R;
 import com.pokelocation.app.map.MapHelper;
 import com.pokelocation.app.util.Ui;
 
-/** "Add As New Marker": cria um tipo de marcador (nome pré-preenchido + ícone + cor) — 06 §3.6. */
+/** "Add As New Marker": cria um tipo de marcador (nome pré-preenchido + ícone + cor). */
 final class NewMarkerTypeDialog {
     interface Callback { void onCreate(String name, String icon, int color); }
 

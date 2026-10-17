@@ -33,7 +33,7 @@ import java.util.Locale;
 import java.util.regex.Pattern;
 
 /**
- * REST do pokelocation-server (pokelocation-server/docs/api.md); único lugar que conhece o JSON. Bloqueante: nunca na
+ * REST do pokelocation-server; único lugar que conhece o JSON. Bloqueante: nunca na
  * main. 401 numa chamada autenticada → renova o access uma vez e repete; refresh morto → limpa a sessão.
  */
 public final class Api {
@@ -822,7 +822,7 @@ public final class Api {
         return sb.toString();
     }
 
-    /** api.md §4: até 100 por lista em cada PUT /v1/keys. */
+    /** Teto do servidor: até 100 por lista em cada PUT /v1/keys. */
     public static final int MAX_KEYS_PER_PUT = 100;
 
     static JSONObject keysJson(KeyBundle k) throws JSONException {

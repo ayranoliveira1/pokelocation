@@ -77,7 +77,7 @@ public class MockEngineImplTest {
         }
     }
 
-    @Test public void freezeTable() {   // 10 §3.1 fato 1
+    @Test public void freezeTable() {
         assertEquals(30, MockEngineImpl.freezeTicks(100));
         assertEquals(6, MockEngineImpl.freezeTicks(500));
         assertEquals(2, MockEngineImpl.freezeTicks(1000));
@@ -85,7 +85,7 @@ public class MockEngineImplTest {
         assertEquals(0, MockEngineImpl.freezeTicks(3000));
     }
 
-    @Test public void stickMapsToCompassAndSpeed() {   // F39, F57
+    @Test public void stickMapsToCompassAndSpeed() {
         float[][] cases = {{90, 0}, {0, 90}, {-90, 180}, {180, 270}};
         for (float[] k : cases) {
             TestEngine e = new TestEngine(cfg());
@@ -102,7 +102,7 @@ public class MockEngineImplTest {
         assertEquals(5 / 3.6, Geo.distance(0, 0, half.pLat, half.pLng), 1e-3);
     }
 
-    @Test public void updateIntervalDecoupledFromProcess() {   // F60: injeta 10×/s, anda 1×/s
+    @Test public void updateIntervalDecoupledFromProcess() {   // injeta 10×/s, anda 1×/s
         TestEngine e = new TestEngine(cfg(100, false, false, false));
         e.start(0, 0, NaN);
         e.setStick(90, 1f);
@@ -116,7 +116,7 @@ public class MockEngineImplTest {
         assertEquals(2, moves);
     }
 
-    @Test public void teleportFreezesSpeedAndPublishesDestination() {   // F58, rep ← pos
+    @Test public void teleportFreezesSpeedAndPublishesDestination() {
         TestEngine e = new TestEngine(cfg());
         e.start(0, 0, NaN);
         e.pump();
@@ -132,7 +132,7 @@ public class MockEngineImplTest {
         assertTrue(e.pHasSpeed);
     }
 
-    @Test public void suspendedCountdown() {   // 11 §2.4
+    @Test public void suspendedCountdown() {
         TestEngine e = new TestEngine(cfg(1000, true, false, false));
         e.start(0, 0, NaN);
         assertEquals("[5]", e.countdowns.toString());
@@ -158,7 +158,7 @@ public class MockEngineImplTest {
         assertEquals(8, e.publishes);
     }
 
-    @Test public void suspendedRoutePlayingAdvancesEverySecond() {   // DECISIONS dúvida 2
+    @Test public void suspendedRoutePlayingAdvancesEverySecond() {
         TestEngine e = new TestEngine(cfg(1000, true, false, false));
         e.start(0, 0, NaN);
         e.startRoute(new double[]{0, 0, NaN, 0.01, 0, NaN}, MockEngine.ROUTE_STOP, true);
@@ -175,7 +175,7 @@ public class MockEngineImplTest {
         assertEquals(4, e.publishes);              // pausado e parado: nada
     }
 
-    @Test public void stopRouteEndsOnLastPoint() {   // F69 Stop
+    @Test public void stopRouteEndsOnLastPoint() {
         TestEngine e = new TestEngine(cfg());
         e.start(0, 0, NaN);
         double bLat = Geo.metersToLat(2);
@@ -190,7 +190,7 @@ public class MockEngineImplTest {
         assertEquals(-1, e.nextIndex());
     }
 
-    @Test public void walkToStartWalksFromCurrentPosition() {   // F70
+    @Test public void walkToStartWalksFromCurrentPosition() {
         TestEngine e = new TestEngine(cfg());
         e.start(0, 0, NaN);
         double aLat = Geo.metersToLat(100);
@@ -211,7 +211,7 @@ public class MockEngineImplTest {
         assertTrue(e.isRoutePlaying());
     }
 
-    @Test public void saveLiveOnlyMovingAndThrottled() {   // F64
+    @Test public void saveLiveOnlyMovingAndThrottled() {
         TestEngine e = new TestEngine(cfg(1000, false, true, false));
         e.start(0, 0, NaN);
         for (int i = 0; i < 5; i++) e.pump();
@@ -221,7 +221,7 @@ public class MockEngineImplTest {
         assertEquals(3, e.saves);                  // no máx. a cada 5 s
     }
 
-    @Test public void teleportSavesLiveEvenWithoutSaveLocation() {   // v1.2 item 4
+    @Test public void teleportSavesLiveEvenWithoutSaveLocation() {
         TestEngine e = new TestEngine(cfg());
         e.start(0, 0, NaN);
         e.pump();
@@ -236,7 +236,7 @@ public class MockEngineImplTest {
         assertEquals(4, e.sLng, 0);
     }
 
-    @Test public void releaseStickAndRouteStopSaveLiveWithoutSaveLocation() {   // v1.2 item 4
+    @Test public void releaseStickAndRouteStopSaveLiveWithoutSaveLocation() {
         TestEngine e = new TestEngine(cfg());
         e.start(0, 0, NaN);
         e.setStick(0, 1f);
@@ -256,7 +256,7 @@ public class MockEngineImplTest {
         assertEquals(3, e.saves);
     }
 
-    @Test public void registerFailedStopsOnFirstLoop() {   // item 17
+    @Test public void registerFailedStopsOnFirstLoop() {
         TestEngine e = new TestEngine(cfg());
         e.setOnMockLost(() -> e.mockLost++);
         e.registerOk = false;
@@ -288,7 +288,7 @@ public class MockEngineImplTest {
         assertEquals(1, e.mockLost);
     }
 
-    @Test public void tickDoesNotAllocate() throws Exception {   // N09 / R2
+    @Test public void tickDoesNotAllocate() throws Exception {
         // Por reflexão: o classpath de compilação do teste é o android.jar (sem java.lang.management).
         Object mx = Class.forName("java.lang.management.ManagementFactory").getMethod("getThreadMXBean").invoke(null);
         Method allocatedBytes = Class.forName("com.sun.management.ThreadMXBean").getMethod("getThreadAllocatedBytes", long.class);

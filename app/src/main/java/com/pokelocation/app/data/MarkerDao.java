@@ -28,7 +28,6 @@ public final class MarkerDao {
         return out;
     }
 
-    /** ORDER BY id, com count. */
     public static List<MarkerType> types(Context c) { return types(c, null, null); }
 
     public static MarkerType getType(Context c, int id) {
@@ -36,7 +35,6 @@ public final class MarkerDao {
         return l.isEmpty() ? null : l.get(0);
     }
 
-    /** id = max + 1. */
     public static MarkerType insertType(Context c, String name, String icon, int color) {
         SQLiteDatabase db = Db.get(c);
         int id;
@@ -110,7 +108,6 @@ public final class MarkerDao {
                 : query(c, w, a, null);
     }
 
-    /** ORDER BY id. */
     public static List<Marker> listByType(Context c, int typeId) {
         return query(c, "type_id=?", new String[]{String.valueOf(typeId)}, null);
     }
@@ -119,7 +116,6 @@ public final class MarkerDao {
         return Math.max(Marker.USER_ID_MIN, longQuery(db, "SELECT IFNULL(MAX(id),0) FROM marker") + 1);
     }
 
-    /** id = max(1e9, max+1). */
     public static Marker insert(Context c, int typeId, String name, double lat, double lng, double alt) {
         SQLiteDatabase db = Db.get(c);
         long id;

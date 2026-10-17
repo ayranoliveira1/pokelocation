@@ -85,7 +85,7 @@ public class PogoIconsTest {
         assertEquals(cat[2], pika[2]);                                   // o mesmo zoom: a proporção entre eles fica
         assertTrue(share(CATERPIE, cat) < share(PIKACHU, pika));
         assertTrue(share(PIKACHU, pika) < share(DRAGONITE, dragon));
-        assertTrue(share(PIKACHU, pika) > 104f / 256 * 1.4f);              // o médio cresce (era 41% do ícone)
+        assertTrue(share(PIKACHU, pika) > 104f / 256 * 1.4f);              // o médio cresce
         for (int[][] c : new int[][][]{{CATERPIE, cat}, {PIKACHU, pika}, {DRAGONITE, dragon}, {KYOGRE, kyogre}})
             assertTrue(contains(c[1], c[0]));                             // ninguém cortado
         assertEquals(255, kyogre[2]);                                    // o maior: só a folga, quase sem zoom
@@ -95,7 +95,7 @@ public class PogoIconsTest {
         assertEquals(Arrays.toString(new int[]{0, 0, 96}), Arrays.toString(PogoIcons.square(96, 96, null)));   // tudo transparente
     }
 
-    /** Obs. d da QA: duas chaves no mesmo fallback (u25.png) baixavam juntas; agora uma espera a outra. */
+    /** Duas chaves no mesmo fallback (u25.png) não baixam juntas: uma espera a outra. */
     @Test public void sameFileIsFetchedOneAtATime() throws Exception {
         java.util.concurrent.atomic.AtomicInteger inside = new java.util.concurrent.atomic.AtomicInteger(), most =
                 new java.util.concurrent.atomic.AtomicInteger();

@@ -1,6 +1,6 @@
 package com.pokelocation.app.engine;
 
-/** Implementado por engine/MockEngineImpl (frente overlay). Roda na main thread do :overlay. */
+/** Roda na main thread do :overlay. */
 public interface MockEngine {
     int STATE_JOYSTICK = 1, STATE_ROUTE = 2;
     int ROUTE_STOP = 0, ROUTE_LOOP = 1, ROUTE_REVERSE = 2;
@@ -22,9 +22,9 @@ public interface MockEngine {
     void setAltitude(double alt);                      // resultado assíncrono da elevação
     void startRoute(double[] pts, int routeMode, boolean teleportToStart);
     void resumeRoute(double[] pts, int routeMode, boolean reversed, int nextIndex); // retorno MAP_RESUME
-    void setRoutePlaying(boolean playing);             // pause/resume
+    void setRoutePlaying(boolean playing);
     boolean next();                                    // fast-forward; false sem rota
-    boolean previous();                                // regras de 10 §3.3 (Stop trava em 0)
+    boolean previous();                                // Stop trava em 0
     void stopRoute();
     boolean hasRoute();
     boolean isRoutePlaying();
@@ -43,7 +43,7 @@ public interface MockEngine {
     float accuracy();
     long lastTickTime();
 
-    // --- Suspended (F62, 11 §2). Sem efeito se EngineConfig.suspended = false ---
+    // Sem efeito se EngineConfig.suspended = false.
     interface SuspendedPublisher {          // implementado pelo OverlayService: abre/atualiza a MockingActivity
         void publishSuspended(double lat, double lng, double alt, float speedMs, float accuracy, float bearing);
     }

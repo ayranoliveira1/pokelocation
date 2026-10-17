@@ -11,7 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
- * KML 2.2 em streaming (06 §3.10.2): favoritos sem pasta, rotas sem pasta, depois a árvore de &lt;Folder&gt;
+ * KML 2.2 em streaming: favoritos sem pasta, rotas sem pasta, depois a árvore de &lt;Folder&gt;
  * (em cada pasta: favoritos, rotas, subpastas). Ordem das pastas: as dos favoritos, depois as novas das rotas.
  */
 public final class KmlWriter {

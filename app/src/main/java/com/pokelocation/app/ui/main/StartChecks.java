@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.function.BooleanSupplier;
 
 /**
- * Checagens do Start (03 §3.7 D0): GPS → overlay → notificação (33+) → mock app (F07) → FINE (divulgação).
+ * Checagens do Start: GPS → overlay → notificação (33+) → mock app → FINE (divulgação).
  * Construir no onCreate da Activity (registra os launchers antes de STARTED).
  */
 public final class StartChecks {
@@ -123,7 +123,6 @@ public final class StartChecks {
                 .show());
     }
 
-    /** startActivity; falha → mensagem. */
     static boolean open(AppCompatActivity a, Intent i, int failMsg) {
         try {
             a.startActivity(i);

@@ -85,7 +85,7 @@ public final class MapHelper {
     public static final String TILES_OSM = "osm", TILES_OSM_DE = "osm_de";
 
     /**
-     * Pref map_tile_source (DECISIONS: sem chave de API): "osm" = OSM Mapnik (padrão), "osm_de" = tile.openstreetmap.de
+     * Pref map_tile_source (sem chave de API): "osm" = OSM Mapnik (padrão), "osm_de" = tile.openstreetmap.de
      * (nomes latinos). Qualquer outro valor (ex.: "voyager" antigo) = Mapnik.
      */
     public static synchronized ITileSource tileSource(Context c) {
@@ -251,7 +251,7 @@ public final class MapHelper {
     /**
      * onPause(), onDetach() (solta tiles, overlays e o cache em disco do provider), overlays.clear(), remove dos vivos.
      * Sem outro mapa vivo, esvazia o BitmapPool: o onDetach devolve os tiles ao pool de forma assíncrona (executor do
-     * osmdroid), então a limpeza roda agora e de novo depois que essa reciclagem terminou (N06/R7).
+     * osmdroid), então a limpeza roda agora e de novo depois que essa reciclagem terminou.
      */
     public static void destroy(MapView mv) {
         if (mv == null) return;

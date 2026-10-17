@@ -15,7 +15,7 @@ public class FolderTreeTest {
     @Test
     public void normalize() {
         assertEquals("A/B", FolderTree.normalize("  A / /B "));
-        assertEquals("Casa/Pokestops", FolderTree.normalize("Casa/Poke\tstops\n"));   // \n \r \t removidos (06 §3.10.1)
+        assertEquals("Casa/Pokestops", FolderTree.normalize("Casa/Poke\tstops\n"));   // \n \r \t removidos
         assertNull(FolderTree.normalize(" / "));
         assertNull(FolderTree.normalize(null));
     }

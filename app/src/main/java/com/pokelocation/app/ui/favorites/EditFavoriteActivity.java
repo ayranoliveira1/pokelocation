@@ -22,7 +22,7 @@ import com.pokelocation.app.model.Favorite;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.ui.base.StateView;
 
-/** Edit Favorite (F75, 05 §2.2): Name obrigatório, Address livre, Lat/Lng/Alt numéricos, Sort Order 1-based. */
+/** Edit Favorite: Name obrigatório, Address livre, Lat/Lng/Alt numéricos, Sort Order 1-based. */
 public class EditFavoriteActivity extends BaseActivity {
     private Context app;
     private StateView state;
@@ -109,8 +109,6 @@ public class EditFavoriteActivity extends BaseActivity {
         });
     }
 
-    // --- validação ---
-
     private void validate() {
         boolean ok = true;
         if (text(name).isEmpty()) {
@@ -158,8 +156,6 @@ public class EditFavoriteActivity extends BaseActivity {
         return text(name) + '\u0000' + text(address) + '\u0000' + text(lat) + '\u0000' + text(lng) + '\u0000'
                 + text(alt) + '\u0000' + text(sort);
     }
-
-    // --- menu / save ---
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

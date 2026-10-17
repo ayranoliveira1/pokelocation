@@ -44,7 +44,7 @@ public final class RouteDao {
         return Db.eqOrNull("folder_id", folderId, a) + " AND " + NOT_LAST;
     }
 
-    /** Sem pts; exclui Last Route; ORDER BY sort. */
+    /** Sem pts; exclui Last Route. */
     public static List<Route> list(Context c, String folderId) {
         List<String> a = new ArrayList<>();
         return query(c, false, scope(folderId, a), Db.arr(a), "sort", null);
@@ -109,7 +109,7 @@ public final class RouteDao {
         return r;
     }
 
-    /** Nome + pts inteiros (pts null = mantém); pasta nova → fim dela; clamp/moveSort do sort. */
+    /** pts null = mantém; pasta nova → fim dela; sort com clamp. */
     public static void update(Context c, Route r) {
         SQLiteDatabase db = Db.get(c);
         db.beginTransaction();
@@ -149,7 +149,6 @@ public final class RouteDao {
         WidgetPing.requestUpdate(c);
     }
 
-    /** "Add To Route" (F72). */
     public static void appendPoint(Context c, String id, double lat, double lng, double alt) {
         SQLiteDatabase db = Db.get(c);
         db.beginTransaction();

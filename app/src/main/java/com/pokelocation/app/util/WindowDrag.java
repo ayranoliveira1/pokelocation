@@ -14,7 +14,7 @@ public final class WindowDrag implements View.OnTouchListener {
     /** Ao soltar, com a posição já presa na tela. */
     public interface Listener { void onMoved(int x, int y); }
 
-    private static final int CLICK_SLOP_PX = 20;   // 02 §3.13
+    private static final int CLICK_SLOP_PX = 20;
 
     private final WindowManager wm;
     private final View win;
@@ -59,7 +59,7 @@ public final class WindowDrag implements View.OnTouchListener {
                 }
                 return true;
             case MotionEvent.ACTION_UP:
-                done.onMoved(lp.x, lp.y);   // já preso na tela (corrige o original)
+                done.onMoved(lp.x, lp.y);   // já preso na tela
                 if (clickable && !dragged(lp.x - x0, lp.y - y0)) v.performClick();
                 return true;
             case MotionEvent.ACTION_CANCEL:

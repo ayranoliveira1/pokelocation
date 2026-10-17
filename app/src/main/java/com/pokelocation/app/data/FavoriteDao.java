@@ -37,7 +37,7 @@ public final class FavoriteDao {
         return out;
     }
 
-    /** null = raiz; ORDER BY sort. */
+    /** null = raiz. */
     public static List<Favorite> list(Context c, String folderId) {
         List<String> a = new ArrayList<>();
         String w = Db.eqOrNull("folder_id", folderId, a);
@@ -131,7 +131,7 @@ public final class FavoriteDao {
 
     private static String scope(String folderId, List<String> a) { return Db.eqOrNull("folder_id", folderId, a); }
 
-    /** Grava campos; pasta nova → vai pro fim dela; sort com clamp em [0,n-1] e moveSort se mudou. */
+    /** Pasta nova → vai pro fim dela; sort com clamp em [0,n-1]. */
     public static void update(Context c, Favorite f) {
         SQLiteDatabase db = Db.get(c);
         db.beginTransaction();
@@ -242,7 +242,7 @@ public final class FavoriteDao {
         WidgetPing.requestUpdate(c);
     }
 
-    /** Ids dos favoritos dentro das pastas (recursivo). */
+    /** Inclui as subpastas. */
     public static List<String> idsInFolders(Context c, Collection<String> folderIds) {
         return FolderDao.itemIdsIn(c, T, folderIds, null);
     }

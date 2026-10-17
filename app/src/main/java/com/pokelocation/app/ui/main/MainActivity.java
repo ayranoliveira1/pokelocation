@@ -63,8 +63,8 @@ import com.pokelocation.app.ui.setup.SetupWizardActivity;
 import com.pokelocation.app.util.Ui;
 
 /**
- * Tela principal (W3a): formulário OU mapa (o mapa só existe no modo 1 e é destruído ao sair, N06),
- * fluxo Start/Stop (F08/F15), drawer (F22), links externos (F23/F24) e replay de automação (F97).
+ * Tela principal: formulário OU mapa (o mapa só existe no modo 1 e é destruído ao sair),
+ * fluxo Start/Stop, drawer, links externos e replay de automação.
  */
 public final class MainActivity extends BaseActivity {
     private static final String K_SOURCE = "main.source", K_ROUTE = "main.route", K_STARTING = "main.starting";
@@ -83,7 +83,7 @@ public final class MainActivity extends BaseActivity {
     private int mode;
     private boolean running, starting, restartAfterStop, resumed;
     private MainForm.Req pendingReq;
-    private Intent pendingReplay;          // ação externa que chegou com o serviço parado (F97)
+    private Intent pendingReplay;          // ação externa que chegou com o serviço parado
     private Io.Task elevTask, upsertTask, favTask, routeTask;
     private AnimatorSet heartAnim;
 
@@ -110,11 +110,9 @@ public final class MainActivity extends BaseActivity {
     private final ActivityResultLauncher<Intent> searchLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this::onSearchResult);
 
-    // ================================================================ ciclo de vida
-
     @Override
     protected void onCreate(Bundle s) {
-        setTheme(R.style.Theme_PokeLocation);   // F06: troca o tema Launch antes do super
+        setTheme(R.style.Theme_PokeLocation);   // troca o tema Launch antes do super
         super.onCreate(s);
         if (!Prefs.getBool(this, Prefs.SETUP_WIZARD_COMPLETED)) {
             startActivity(new Intent(this, SetupWizardActivity.class));
@@ -152,7 +150,7 @@ public final class MainActivity extends BaseActivity {
                 s == null ? null : s.getString(K_ROUTE));
         setMode(Prefs.getInt(this, Prefs.MAIN_SCREEN_MODE));
         if (s == null) handleIntent(getIntent());
-        else if (s.getBoolean(K_STARTING)) ui.post(this::startFlow);   // F27: estava iniciando
+        else if (s.getBoolean(K_STARTING)) ui.post(this::startFlow);   // estava iniciando
     }
 
     @Override
@@ -237,8 +235,6 @@ public final class MainActivity extends BaseActivity {
         if (map != null) map.onTrimMemory(level);
     }
 
-    // ================================================================ toolbar e drawer
-
     private void setupToolbar() {
         toolbar = findViewById(R.id.toolbar);
         toolbar.setTitle(R.string.app_name);
@@ -301,7 +297,7 @@ public final class MainActivity extends BaseActivity {
                     new CharSequence[]{getString(R.string.main_gpx_import), getString(R.string.main_gpx_export)},
                     i -> startActivity(new Intent(this, i == 0 ? ImportActivity.class : ExportActivity.class)));
         } else if (id == R.id.main_nav_widget) {
-            if (!WidgetPing.requestPin(this)) Ui.toast(this, R.string.main_widget_unsupported);   // F106
+            if (!WidgetPing.requestPin(this)) Ui.toast(this, R.string.main_widget_unsupported);
         } else if (id == R.id.main_nav_settings) {
             startActivity(new Intent(this, SettingsActivity.class));
         } else if (id == R.id.main_nav_setup) {
@@ -310,8 +306,6 @@ public final class MainActivity extends BaseActivity {
             startActivity(new Intent(this, AboutActivity.class));
         }
     }
-
-    // ================================================================ modo formulário / mapa (F09, F37, N06)
 
     void setMode(int m) {
         mode = m == 1 ? 1 : 0;
@@ -406,8 +400,6 @@ public final class MainActivity extends BaseActivity {
         @Override public void onMapFailed() { mapFailed(); }
     };
 
-    // ================================================================ Start / Stop (F08, F15, F25)
-
     /** Botão Start (form ou mapa): Stop se rodando; senão valida o rádio e passa pelas checagens. */
     void startFlow() {
         if (running || Intents.isOverlayRunning(this)) {
@@ -478,7 +470,7 @@ public final class MainActivity extends BaseActivity {
         showLast(Prefs.lastPosition(this));
         form.syncRouteRadios();
         if (map != null) map.clearRoute();
-        if (restartAfterStop) {   // GpsFixDialog mudou algo com o serviço rodando (F19)
+        if (restartAfterStop) {   // GpsFixDialog mudou algo com o serviço rodando
             restartAfterStop = false;
             ui.postDelayed(restart, RESTART_DELAY_MS);
         }
@@ -497,7 +489,7 @@ public final class MainActivity extends BaseActivity {
         if (resumed && Prefs.getBool(this, Prefs.DISPLAY_DISTANCE_INFO)) updateDistance();
     }
 
-    /** F18: "Distance: … - Cooldown: … - Elapsed: …", verde/vermelho, 1 s entre onResume/onPause. */
+    /** "Distance: … - Cooldown: … - Elapsed: …", verde/vermelho, 1 s entre onResume/onPause. */
     private void updateDistance() {
         Coord cur = form.last(), t = form.target();
         if (mode != 0 || cur == null || t == null || !Cooldown.visible(this)) {
@@ -510,8 +502,6 @@ public final class MainActivity extends BaseActivity {
         distance.setTextColor(Cooldown.color(this, d, lastMocked, now));
         distance.setVisibility(View.VISIBLE);
     }
-
-    // ================================================================ chamados pelo MainForm
 
     void requestFine(Runnable onGranted) { startChecks.requestFine(onGranted); }
 
@@ -526,7 +516,7 @@ public final class MainActivity extends BaseActivity {
         });
     }
 
-    /** F20: "Add to Favorites" depois de uma busca. */
+    /** "Add to Favorites" depois de uma busca. */
     void addFavorite(String name, String address, Coord c) {
         NameFolderPanel.show(this, getString(R.string.main_add_favorites), name, Folder.FAVORITES, null, (n, folderId) -> {
             cancel(favTask);
@@ -562,8 +552,6 @@ public final class MainActivity extends BaseActivity {
         });
         heartAnim.start();
     }
-
-    // ================================================================ resultados (F20, F26)
 
     private void onFavoriteResult(ActivityResult res) {
         Intent d = res.getData();
@@ -605,8 +593,6 @@ public final class MainActivity extends BaseActivity {
         map.setStart(c);
     }
 
-    // ================================================================ intents de entrada (F23, F24, F97)
-
     private void handleIntent(Intent i) {
         if (i == null || !Intents.trusted(this, i)) return;
         String action = i.getAction();
@@ -641,7 +627,7 @@ public final class MainActivity extends BaseActivity {
 
     private void onViewLink(Intent i) {
         String s = i.getDataString();
-        if (LinkParser.isTrackFile(s)) {   // .gpx/.kml recebido por engano (F24)
+        if (LinkParser.isTrackFile(s)) {   // .gpx/.kml recebido por engano
             startActivity(new Intent(Intent.ACTION_VIEW, i.getData(), this, ImportActivity.class)
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
             return;
@@ -654,7 +640,7 @@ public final class MainActivity extends BaseActivity {
         openCoordinate(ll[0], ll[1]);
     }
 
-    /** 03 §3.13 abrirCoordenada: teleporta se rodando, preenche o form, busca a altitude. */
+    /** Teleporta se rodando, preenche o form, busca a altitude. */
     private void openCoordinate(double lat, double lng) {
         if (Intents.isOverlayRunning(this)) {
             Intents.sendToOverlay(this, Intents.overlay(this, Intents.ACTION_TELEPORT)
@@ -678,7 +664,7 @@ public final class MainActivity extends BaseActivity {
         });
     }
 
-    /** F97: ação pública que chegou com o serviço parado. */
+    /** Ação pública que chegou com o serviço parado. */
     private void onReplay(Intent i) {
         Intent svc = Intents.unwrapReplay(this, i);
         if (svc == null) return;
@@ -706,8 +692,6 @@ public final class MainActivity extends BaseActivity {
             form.select(MainForm.SRC_CURRENT);
         }
     }
-
-    // ================================================================ util
 
     private void showProgress(int text) {
         progressText.setText(text);

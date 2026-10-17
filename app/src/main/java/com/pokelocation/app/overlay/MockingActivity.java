@@ -26,7 +26,7 @@ import com.pokelocation.app.util.Perms;
 import com.pokelocation.app.util.Themes;
 
 /**
- * Suspended Mocking (F62, 11 §2.8). Roda no :overlay e usa o injetor do serviço: publica uma vez (e de novo a cada
+ * Suspended Mocking. Roda no :overlay e usa o injetor do serviço: publica uma vez (e de novo a cada
  * onNewIntent) e fecha na primeira localização não-mock ou aos 20 s. Diálogo a partir de 3 s, Cancel a partir de 7 s.
  */
 public final class MockingActivity extends Activity {

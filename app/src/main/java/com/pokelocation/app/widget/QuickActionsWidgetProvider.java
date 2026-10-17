@@ -23,7 +23,7 @@ import com.pokelocation.app.util.Themes;
 import java.util.List;
 
 /**
- * Widget Quick Actions (F102, F103, N07): RemoteViews puros, atualização só por evento.
+ * Widget Quick Actions: RemoteViews puros, atualização só por evento.
  * onUpdate / INT_WIDGET_REFRESH → debounce 300 ms latest-wins → resolve no Io → widget_cache_&lt;id&gt; → render.
  * O render só lê o cache (nunca o banco).
  */
@@ -32,7 +32,7 @@ public class QuickActionsWidgetProvider extends AppWidgetProvider {
     private static final long DEBOUNCE_MS = 300;
     private static final String EXTRA_SHOW_ROUTES = "show_routes";
 
-    // Paletas azuis fixas (DECISIONS): fundo, linha, texto, texto secundário, destaque, ACTIVE
+    // Paletas azuis fixas: fundo, linha, texto, texto secundário, destaque, ACTIVE
     private static final int BG = 0, LINE = 1, TEXT = 2, TEXT2 = 3, ACCENT = 4, ACTIVE = 5;
     private static final int[] LIGHT = {0xFFFFFFFF, 0xFFBBDEFB, 0xFF1A1C1E, 0xFF5F6670, 0xFF1E88E5, 0xFF2E7D32};
     private static final int[] DARK = {0xFF0D1B2A, 0xFF1E3A5F, 0xFFE2E2E6, 0xFFA7B1BE, 0xFF42A5F5, 0xFF81C784};
@@ -132,7 +132,6 @@ public class QuickActionsWidgetProvider extends AppWidgetProvider {
         return night == Configuration.UI_MODE_NIGHT_YES ? MODE_DARK : MODE_LIGHT;
     }
 
-    /** Aplica a cor do slot via método int (setTextColor/setColorFilter/setBackgroundColor). */
     private static void color(RemoteViews rv, int view, String method, int slot, int mode) {
         if (mode == MODE_DUAL && Build.VERSION.SDK_INT >= 31) rv.setColorInt(view, method, LIGHT[slot], DARK[slot]);
         else rv.setInt(view, method, (mode == MODE_DARK ? DARK : LIGHT)[slot]);

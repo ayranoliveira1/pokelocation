@@ -70,7 +70,6 @@ public final class SignalStore implements SignalProtocolStore {
         }
     }
 
-    /** null se não houver a linha. */
     private byte[] openEnv(String sql, String aad, String... args) {
         byte[] b = blob(sql, args);
         if (b == null) return null;

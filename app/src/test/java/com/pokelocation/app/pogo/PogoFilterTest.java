@@ -114,7 +114,7 @@ public class PogoFilterTest {
     @Test public void worldIsTheDefaultScope() throws Exception {
         assertEquals(0, new PogoFilter().km);
         assertEquals(0, new PogoFilter().activeCount());
-        // salvo antes do T30: o 1 km era o padrão, sem escolha
+        // pref antiga: o 1 km era o padrão, sem escolha
         assertEquals(0, PogoFilter.fromJson(new JSONObject("{\"sort\":\"IV\",\"km\":1}")).km);
         // escolha explícita de Perto continua Perto
         assertEquals(5, PogoFilter.fromJson(new JSONObject("{\"km\":5}")).km);

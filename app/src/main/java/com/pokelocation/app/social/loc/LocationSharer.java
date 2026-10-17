@@ -248,7 +248,7 @@ public final class LocationSharer {
                 else Log.w(TAG, "envelope sem ack: " + Locations.rootName(fail));
                 WsClient w = ws;
                 if (got != null) Inbox.deliver(app, got, frame -> w != null && w.send(frame));
-            } else if (f.type == Frames.ACK) { // S→C (api.md §6): o servidor gravou meu envelope
+            } else if (f.type == Frames.ACK) { // S→C: o servidor gravou meu envelope
                 String to = skdmPending.remove(f.msgId);
                 if (to != null) skdmSent.add(to);
                 else ChatSocket.acked(f.msgId);

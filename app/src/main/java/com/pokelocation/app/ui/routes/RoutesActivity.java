@@ -51,7 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Lista de rotas (F66), nova rota no mapa (F67), edição Map/Advanced (F68). Last Route nunca aparece (F71: o DAO exclui). */
+/** Lista de rotas, nova rota no mapa, edição Map/Advanced. Last Route nunca aparece (o DAO exclui). */
 public final class RoutesActivity extends BaseActivity implements RoutesAdapter.Listener {
     private static final String STATE_FOLDER = "routes_folder";
 
@@ -76,7 +76,7 @@ public final class RoutesActivity extends BaseActivity implements RoutesAdapter.
 
     private MenuItem searchItem;
     private boolean searchOpen, reorder;
-    // Seleção na própria toolbar (como em Favoritos): o ActionMode do AppCompat empurrava a toolbar e pintava a status bar (QA nº 4)
+    // Seleção na própria toolbar (como em Favoritos): o ActionMode do AppCompat empurrava a toolbar e pintava a status bar
     private boolean selecting;
     private Menu menu;
     private Drawable backIcon;
@@ -166,8 +166,6 @@ public final class RoutesActivity extends BaseActivity implements RoutesAdapter.
 
     private boolean alive() { return !isFinishing() && !isDestroyed(); }
 
-    // ---------------------------------------------------------------- carga
-
     private static final class Page {
         Folder folder;
         List<Folder> ancestors, folders;
@@ -242,8 +240,6 @@ public final class RoutesActivity extends BaseActivity implements RoutesAdapter.
         if (selectMode) setResult(RESULT_CANCELED);
         return false;
     }
-
-    // ---------------------------------------------------------------- menu
 
     @Override
     public boolean onCreateOptionsMenu(Menu m) {
@@ -335,8 +331,6 @@ public final class RoutesActivity extends BaseActivity implements RoutesAdapter.
         else fab.hide();
     }
 
-    // ---------------------------------------------------------------- cliques da lista
-
     @Override public void onFolderClick(Folder f) {
         if (!selecting) {
             openFolder(f.id);
@@ -366,8 +360,6 @@ public final class RoutesActivity extends BaseActivity implements RoutesAdapter.
     @Override public void onStartDrag(RecyclerView.ViewHolder vh) {
         if (adapter.canDrag()) touchHelper.startDrag(vh);
     }
-
-    // ---------------------------------------------------------------- seleção
 
     private void startSelection() {
         if (selecting || !alive()) return;
@@ -460,8 +452,6 @@ public final class RoutesActivity extends BaseActivity implements RoutesAdapter.
         finish();
     }
 
-    // ---------------------------------------------------------------- ações de rota
-
     @Override public void onCopy(Route r) {
         final Context app = getApplicationContext();
         NameFolderPanel.show(this, getString(R.string.routes_copy_route), r.name, null, null, (name, ignored) -> {
@@ -505,8 +495,6 @@ public final class RoutesActivity extends BaseActivity implements RoutesAdapter.
                 getString(R.string.delete), getString(R.string.cancel),
                 () -> deleteItems(Collections.singletonList(r.id), Collections.emptyList()));
     }
-
-    // ---------------------------------------------------------------- pastas e lote
 
     private void showNew() {
         SelectPanel.show(this, getString(R.string.routes_new),
@@ -670,7 +658,7 @@ public final class RoutesActivity extends BaseActivity implements RoutesAdapter.
                 }));
     }
 
-    // ---------------------------------------------------------------- mapa (criado sob demanda, destruído ao fechar)
+    // Mapa criado sob demanda e destruído ao fechar.
 
     private final RouteMapView.Host mapHost = new RouteMapView.Host() {
         // post: nunca destruir o mapa de dentro do próprio callback dele
@@ -756,7 +744,7 @@ public final class RoutesActivity extends BaseActivity implements RoutesAdapter.
         invalidateOptionsMenu();
     }
 
-    // ---------------------------------------------------------------- arrasto (grava uma vez no drop)
+    // Arrasto: grava uma vez no drop.
 
     private final class DragCallback extends ItemTouchHelper.Callback {
         private int from = -1, to = -1;

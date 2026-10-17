@@ -27,7 +27,7 @@ public class PogoBubblesTest {
         assertArrayEquals(new int[]{W - COL_W - M, TOP}, PogoBubbles.place(false, -1, -1, COL_W, COL_H, FULL, W, H, M, TOP, null));
     }
 
-    /** Decisão 8 revista: com 10 bolhas a coluna do canto chegaria ao joystick; ela desce ao lado dele, por dentro. */
+    /** Com 10 bolhas a coluna do canto chegaria ao joystick; ela desce ao lado dele, por dentro. */
     @Test public void drawerDefaultNeverReachesTheStick() {
         assertArrayEquals(new int[]{W - 300 - COL_W - M, TOP}, PogoBubbles.place(false, -1, -1, COL_W, COL_H, FULL, W, H, M, TOP, STICK));
         assertArrayEquals(new int[]{W - COL_W - M, TOP}, PogoBubbles.place(false, -1, -1, COL_W, COL_H, H / 2 - TOP, W, H, M, TOP, STICK)); // cabe acima

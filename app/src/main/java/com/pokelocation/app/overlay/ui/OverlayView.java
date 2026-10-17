@@ -27,7 +27,7 @@ import com.pokelocation.app.util.Ui;
 import com.pokelocation.app.util.WindowDrag;
 
 /**
- * Janelas do joystick no :overlay (02 §2.1–2.3, 09 §2.3, 11 §2.6). API combinada em docs/team/W1c-api.md.
+ * Janelas do joystick no :overlay.
  * Só framework, janelas sem aceleração de hardware, opacidade por LayoutParams.alpha.
  * Fala direto com o motor em setStick/setSpeedKmh/injectNow/setAutoSuspendActive; o resto vai pelo {@link Host}.
  */
@@ -71,7 +71,6 @@ public final class OverlayView implements View.OnClickListener {
     boolean walkMode;
     long lastMockedTime;
 
-    // Janelas
     private View stickWin, drawerWin, dropWin;
     private WindowManager.LayoutParams stickLp, drawerLp;
     private boolean stickShown, drawerShown;
@@ -115,9 +114,7 @@ public final class OverlayView implements View.OnClickListener {
         flows = new OverlayFlows(this, Prefs.getBool(ctx, Prefs.DISPLAY_DISTANCE_INFO));
     }
 
-    // ------------------------------------------------------------------ ciclo de vida
-
-    /** 10 §2.5: stick ⇔ v && !drawer_hide_joystick (e olho); gaveta ⇔ v. A 1ª chamada cria as janelas. */
+    /** stick ⇔ v && !drawer_hide_joystick (e olho); gaveta ⇔ v. A 1ª chamada cria as janelas. */
     public void setVisible(boolean v) {
         if (destroyed) return;
         visible = v;
@@ -178,8 +175,6 @@ public final class OverlayView implements View.OnClickListener {
         progress = asNum = null;
     }
 
-    // ------------------------------------------------------------------ estado vindo do serviço
-
     public void setRouteState(boolean hasRoute, boolean playing) {
         boolean started = hasRoute && !this.hasRoute;
         this.hasRoute = hasRoute;
@@ -204,7 +199,7 @@ public final class OverlayView implements View.OnClickListener {
         progress.setText(ctx.getString(R.string.ov_route_progress, index1Based, total));
     }
 
-    /** 1×/s em Suspended com auto suspend ativo. setTextColor só ao cruzar N < 6 (11 §2.6). */
+    /** 1×/s em Suspended com auto suspend ativo. setTextColor só ao cruzar N < 6. */
     public void setAutoSuspendCountdown(int secondsLeft) {
         if (destroyed || asBox == null || !cfg.suspended || !autoSuspendActive) return;
         setShown(asBox, true);
@@ -263,8 +258,6 @@ public final class OverlayView implements View.OnClickListener {
         showSpeed(kmh);
     }
 
-    // ------------------------------------------------------------------ abrir fluxos
-
     /** Só com login: sem ele nenhuma classe social carrega no :overlay. O botão Pokémon segue a mesma conta. */
     public void setChatEnabled(boolean on) {
         chat = on;
@@ -304,8 +297,6 @@ public final class OverlayView implements View.OnClickListener {
     boolean isDestroyed() {
         return destroyed;
     }
-
-    // ------------------------------------------------------------------ cliques
 
     @Override
     public void onClick(View v) {
@@ -388,8 +379,6 @@ public final class OverlayView implements View.OnClickListener {
         }
     }
 
-    // ------------------------------------------------------------------ janelas
-
     private void inflate() {
         LayoutInflater inf = LayoutInflater.from(ctx);
         stickWin = inf.inflate(classic ? R.layout.ov_classic : R.layout.ov_stick, null);
@@ -463,7 +452,7 @@ public final class OverlayView implements View.OnClickListener {
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(size, size, Ui.overlayWindowType(),
                 flags | (secure ? WindowManager.LayoutParams.FLAG_SECURE : 0), PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.TOP | Gravity.LEFT;
-        lp.alpha = alpha;   // nunca View.setAlpha na raiz (1.4.2); sem FLAG_HARDWARE_ACCELERATED
+        lp.alpha = alpha;   // nunca View.setAlpha na raiz; sem FLAG_HARDWARE_ACCELERATED
         return lp;
     }
 
@@ -483,7 +472,7 @@ public final class OverlayView implements View.OnClickListener {
         }
     }
 
-    /** Posição salva, ou default medido (02 §3.13): fora da tela volta ao default. */
+    /** Posição salva, ou default medido: fora da tela volta ao default. */
     private void place(View win, WindowManager.LayoutParams lp, boolean isStick) {
         win.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         readScreen();
@@ -552,9 +541,6 @@ public final class OverlayView implements View.OnClickListener {
             remove(d);
         }
     }
-
-    /** Arrasto de janela (02 §3.13) com clamp; toque curto na alça clicável = performClick. */
-    // ------------------------------------------------------------------ pílulas
 
     /** Só uma pílula aberta por vez na gaveta. */
     private void expand(View pill) {
