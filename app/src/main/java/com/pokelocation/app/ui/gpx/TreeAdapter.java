@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * Lista plana de cabeçalhos ({@link FolderTree.Header}) e itens com recolher/expandir.
- * Recolher REMOVE a faixa do cabeçalho da lista (guardada em Header.hidden) — 06 §3.9 / §5.7.
+ * Recolher REMOVE a faixa do cabeçalho da lista (guardada em Header.hidden).
  * Faixa = elementos seguintes com nível maior que o do cabeçalho.
  */
 abstract class TreeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {

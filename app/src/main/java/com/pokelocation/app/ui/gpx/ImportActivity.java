@@ -62,7 +62,7 @@ import java.util.Locale;
 import java.util.function.Consumer;
 
 /**
- * GPX/KML Import (F24, F82–F87). Entrada: ACTION_VIEW + data, ou nada (abre o seletor do sistema).
+ * GPX/KML Import. Entrada: ACTION_VIEW + data, ou nada (abre o seletor do sistema).
  * Resumo com 3 cartões; cada cartão empilha uma lista (View trocada, sem Fragments); o RouteMapView(MODE_IMPORT)
  * é criado só ao revisar uma rota e destruído ao fechar. Estado da sessão (dados + "já salvo") só em campos.
  */
@@ -166,8 +166,6 @@ public final class ImportActivity extends BaseActivity {
         super.onDestroy();
     }
 
-    // ---------------------------------------------------------------- entrada e leitura
-
     private void start(Uri uri) {
         state.setState(StateView.LOADING);
         if ("file".equals(uri.getScheme()) && Build.VERSION.SDK_INT < 29 && !hasStorage()) {
@@ -217,7 +215,7 @@ public final class ImportActivity extends BaseActivity {
 
     private static final class WrongTypeException extends IOException {}
 
-    /** Conteúdo não é GPX/KML válido (QA fase 1): mensagem própria em vez do erro genérico. */
+    /** Conteúdo não é GPX/KML válido: mensagem própria em vez do erro genérico. */
     private static final class InvalidFileException extends IOException {
         final boolean kml;
         InvalidFileException(boolean kml) { this.kml = kml; }
@@ -297,8 +295,6 @@ public final class ImportActivity extends BaseActivity {
         findViewById(cardId).setVisibility(n > 0 ? View.VISIBLE : View.GONE);
         ((TextView) findViewById(countId)).setText(String.valueOf(n));
     }
-
-    // ---------------------------------------------------------------- páginas (listas)
 
     /** Uma lista empilhada sobre o resumo; trata as ações dos itens dela. */
     private final class Page implements ImportListAdapter.Listener {
@@ -409,7 +405,7 @@ public final class ImportActivity extends BaseActivity {
             else bulk(items);
         }
 
-        /** Opções em massa do FAB / "Add all in folder" (06 §2.3). */
+        /** Opções em massa do FAB / "Add all in folder". */
         private void bulk(List<Object> items) {
             if (busy || items.isEmpty()) return;
             String title = getString(R.string.gpx_options);
@@ -504,8 +500,6 @@ public final class ImportActivity extends BaseActivity {
         for (Page p : pages) p.ad.refreshAll();
     }
 
-    // ---------------------------------------------------------------- mapa (sob demanda)
-
     private final RouteMapView.Host mapHost = new RouteMapView.Host() {
         @Override
         public void onRouteSaved(Route saved) {
@@ -557,7 +551,7 @@ public final class ImportActivity extends BaseActivity {
         }
     }
 
-    /** destroy() + removeView + null (06 §5.1). Idempotente. */
+    /** Idempotente. */
     private void closeMap() {
         RouteMapView m = map;
         if (m == null) return;
@@ -575,8 +569,6 @@ public final class ImportActivity extends BaseActivity {
         Page p = top();
         if (p != null && p.mode != ImportListAdapter.TRACKS) p.fab.show();
     }
-
-    // ---------------------------------------------------------------- salvamento (lote sequencial no Io)
 
     private interface Work { List<Object> run(Context app) throws Exception; }
 
@@ -612,7 +604,7 @@ public final class ImportActivity extends BaseActivity {
         progress = null;
     }
 
-    /** 1º passo do lote: cria as pastas na ordem do arquivo e aquece o cache (06 §3.7). */
+    /** 1º passo do lote: cria as pastas na ordem do arquivo e aquece o cache. */
     private static void precreate(Context app, String type, List<Item> items, HashMap<String, String> cache) {
         LinkedHashSet<String> paths = new LinkedHashSet<>();
         for (Item it : items) if (it.folder != null) paths.add(it.folder);
@@ -685,7 +677,7 @@ public final class ImportActivity extends BaseActivity {
         });
     }
 
-    /** "Add All To Routes" de segmentos: cada um vira uma rota com o nome do track, sem pasta (06 §3.6). */
+    /** "Add All To Routes" de segmentos: cada um vira uma rota com o nome do track, sem pasta. */
     private void saveSegments(Item track, List<Object> segs) {
         ArrayList<Integer> todo = new ArrayList<>(segs.size());
         for (Object o : segs) if (!track.segIsSaved((Integer) o)) todo.add((Integer) o);
@@ -709,8 +701,6 @@ public final class ImportActivity extends BaseActivity {
             for (Object o : ok) track.markSeg((Integer) o);
         });
     }
-
-    // ---------------------------------------------------------------- marcadores (F82)
 
     private void pickMarkerType(List<Object> pointItems) {
         pickMarkerType(pointsOf(pointItems), namesOf(pointItems));

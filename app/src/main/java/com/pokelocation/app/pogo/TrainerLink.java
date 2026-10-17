@@ -16,7 +16,7 @@ import com.pokelocation.app.util.Ui;
 
 import java.util.concurrent.Callable;
 
-/** Vínculo de treinador (spec §14): código → lookup → "é você?" → aviso de permanente → confirm → /users/me. */
+/** Vínculo de treinador: código → lookup → "é você?" → aviso de permanente → confirm → /users/me. */
 final class TrainerLink {
     private TrainerLink() {}
 
@@ -143,7 +143,7 @@ final class TrainerLink {
 
     private static boolean gone(Activity a) { return a.isFinishing() || a.isDestroyed(); }
 
-    /** Textos do site para os erros do §14.3; o resto mostra a mensagem do servidor ou uma genérica. */
+    /** Textos do site para os erros do lookup e do confirm; o resto mostra a mensagem do servidor ou uma genérica. */
     private static String message(Context c, Throwable t, boolean confirm) {
         if (!(t instanceof Pogo.Error)) return c.getString(R.string.pogo_t_failed);
         Pogo.Error e = (Pogo.Error) t;

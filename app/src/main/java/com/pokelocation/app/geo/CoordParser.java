@@ -8,7 +8,6 @@ import java.util.regex.Pattern;
 public final class CoordParser {
     private static final String NUM = "([-+]?(?:\\d+\\.?\\d*|\\.\\d+))";
     private static final Pattern PAIR = Pattern.compile("^\\s*" + NUM + "\\s*(?:[,;]\\s*|\\s+)" + NUM + "\\s*$");
-    /** Regex do Format (02 §2.4). */
     private static final Pattern FORMAT = Pattern.compile("([-+]?[0-9]+\\.?[0-9]*)[,;][ ]*([-+]?[0-9]+\\.?[0-9]*)");
 
     private CoordParser() {}

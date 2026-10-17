@@ -19,12 +19,12 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
-/** Item 7: o GET binário de /v1/pogo/* (ícones e catálogo) contra respostas falsas do nosso servidor. */
+/** O GET binário de /v1/pogo/* (ícones e catálogo) contra respostas falsas do nosso servidor. */
 public class ApiFileTest {
     @Rule public TemporaryFolder tmp = new TemporaryFolder();
     private static final byte[] PNG = "png-bytes".getBytes(StandardCharsets.UTF_8);
 
-    /** O servidor do Malho: 200 com o ETag "v1", 304 quando o If-None-Match bate. */
+    /** Servidor falso: 200 com o ETag "v1", 304 quando o If-None-Match bate. */
     private static final class Fake extends HttpURLConnection {
         final int status;
         final byte[] body;

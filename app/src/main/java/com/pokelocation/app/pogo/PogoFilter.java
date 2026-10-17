@@ -16,7 +16,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-/** Filtros do modo "pokemon" do /map/lookup (spec §6.1), salvos só no aparelho. null = sem filtro. */
+/** Filtros do modo "pokemon" do /map/lookup, salvos só no aparelho. null = sem filtro. */
 public final class PogoFilter {
     static final List<String> SORTS = Arrays.asList("IV", "DSP", "CP", "LEVEL");
     static final List<String> LEAGUES = Arrays.asList("great", "ultra");
@@ -161,7 +161,7 @@ public final class PogoFilter {
         return o;
     }
 
-    /** O servidor não valida enums (spec §1): valor fora da lista cai no default em vez de filtrar nada. */
+    /** O servidor não valida enums: valor fora da lista cai no default em vez de filtrar nada. */
     static PogoFilter fromJson(JSONObject o) {
         PogoFilter f = new PogoFilter();
         JSONArray a = o.optJSONArray("pokemon_ids");

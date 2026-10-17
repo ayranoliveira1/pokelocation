@@ -22,7 +22,7 @@ import com.pokelocation.app.geo.Geo;
 import com.pokelocation.app.model.Coord;
 import com.pokelocation.app.util.Ui;
 
-/** Bottom sheet "Cooldown Times" (F17, 03 §3.10, 10 §2.2). Sem Fragment; ticker 1 s só com a sheet aberta e a Activity visível. */
+/** Bottom sheet "Cooldown Times". Sem Fragment; ticker 1 s só com a sheet aberta e a Activity visível. */
 public final class CooldownSheet implements DefaultLifecycleObserver, Runnable {
     private final AppCompatActivity a;
     private final BottomSheetDialog dialog;

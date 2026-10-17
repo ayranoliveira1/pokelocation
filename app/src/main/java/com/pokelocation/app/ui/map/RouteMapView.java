@@ -57,7 +57,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Editor/visualizador de rota sobre osmdroid (PLAN §3.11). Só widgets do framework: roda no main e no :map.
+ * Editor/visualizador de rota sobre osmdroid. Só widgets do framework: roda no main e no :map.
  * O MapView nasce no 1º attach e morre no destroy(); setters antes disso só guardam estado.
  */
 public class RouteMapView extends FrameLayout {
@@ -98,7 +98,6 @@ public class RouteMapView extends FrameLayout {
     private String targetFolder;
     private boolean destroyed, mapTried, resumed = true, attached, centerOnStart;
 
-    // mapa
     private MapView mv;
     private Polyline routeLine, loopLine, walkLine;
     private Marker startMarker, currentMarker, nextOnlyMarker;
@@ -109,14 +108,12 @@ public class RouteMapView extends FrameLayout {
     private final ArrayList<GeoPoint> linePts = new ArrayList<>();
     private boolean lineSimplified;
 
-    // seleção / Move
     private int selIndex = -1;
     private MarkerLayer.Item selItem;
     private Marker selMarker;
     private boolean moving;
     private double moveLat, moveLng;
 
-    // views
     private final View mapContainer, closeBtn, routeBox, routeOptions, routeOptionsBody, actions, movePanel;
     private final TextView optionsTitle, btnStartRoute, btnGenerate, btnLoad, btnSave, btnClear, btnSetRoute, btnSetLocation,
             btnRecord, btnStart, btnTeleport, distance, actTitle, actCoords, actMove, actCopy, actDelete, actAddMarker;
@@ -261,8 +258,6 @@ public class RouteMapView extends FrameLayout {
         updateControls();
     }
 
-    // ------------------------------------------------------------------ API pública (§3.11)
-
     public void setCurrentPosition(Coord c) {
         boolean moved = !c.sameLatLng(current);
         current = c;
@@ -323,13 +318,13 @@ public class RouteMapView extends FrameLayout {
 
     public MapOptions getOptions() { return options; }
 
-    /** Aditivo (W2-api.md): o :map recebe o valor da sessão por extra. */
+    /** O :map recebe o valor da sessão por extra. */
     public void setTeleportWalkMode(boolean walk) {
         teleportWalk = walk;
         rebuildLines();
     }
 
-    /** Aditivo (W2-api.md): last_mocked_time da sessão para a linha de distância no :map. */
+    /** last_mocked_time da sessão para a linha de distância no :map. */
     public void setLastMockedTime(long time) {
         lastMockedTime = time;
         updateDistance();
@@ -398,8 +393,6 @@ public class RouteMapView extends FrameLayout {
         editRoute = null;
         host = NO_HOST;
     }
-
-    // ------------------------------------------------------------------ ciclo de vida da view
 
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -476,7 +469,7 @@ public class RouteMapView extends FrameLayout {
         return l;
     }
 
-    /** 03 §3.5: edição → zoom 17 no início; senão enquadra atual+início se 250 m < d < 5000 km. */
+    /** Edição → zoom 17 no início; senão enquadra atual+início se 250 m < d < 5000 km. */
     private void initialCamera() {
         if (!model.hasStart()) return;
         GeoPoint s = new GeoPoint(model.lat(0), model.lng(0));
@@ -492,8 +485,6 @@ public class RouteMapView extends FrameLayout {
         mv.getController().setZoom(FOCUS_ZOOM);
         mv.getController().setCenter(s);
     }
-
-    // ------------------------------------------------------------------ desenho
 
     private void onPointsChanged() {
         rebuildMarkers();
@@ -630,7 +621,7 @@ public class RouteMapView extends FrameLayout {
         rebuildAuxLines();
     }
 
-    /** Loop (só em Loop) e walk (03 §3.5): segmentos de 2 pontos nas mesmas Polylines. */
+    /** Loop (só em Loop) e walk: segmentos de 2 pontos nas mesmas Polylines. */
     private void rebuildAuxLines() {
         int n = model.size();
         boolean loop = options.routeMode == MockEngine.ROUTE_LOOP && n > 1;
@@ -690,8 +681,6 @@ public class RouteMapView extends FrameLayout {
         distance.setBackgroundColor(Cooldown.color(c, m, lastMockedTime, now));
         distance.setVisibility(VISIBLE);
     }
-
-    // ------------------------------------------------------------------ botões
 
     private void bindOptions() {
         RadioGroup rgMode = findViewById(R.id.map_rg_mode), rgStart = findViewById(R.id.map_rg_start);
@@ -766,7 +755,6 @@ public class RouteMapView extends FrameLayout {
 
     private void optionsChanged() { host.onOptionsChanged(options); }
 
-    /** 03 §3.5 onStartClick. */
     private void onStartButton() {
         if (running && mode == MODE_MAIN) {
             host.onStopClick();
@@ -871,7 +859,7 @@ public class RouteMapView extends FrameLayout {
                 Ui.toast(getContext(), R.string.map_tap_to_set);
                 return;
             }
-            loadRoute(Geo.generate(o.lat, o.lng, genMode, count, offset), -1);   // 04 §3.2: 1º gerado vira o início
+            loadRoute(Geo.generate(o.lat, o.lng, genMode, count, offset), -1);   // 1º gerado vira o início
         });
     }
 
@@ -931,8 +919,6 @@ public class RouteMapView extends FrameLayout {
                     });
                 });
     }
-
-    // ------------------------------------------------------------------ seleção e ações do marcador
 
     private Marker markerFor(int i) {
         if (i == 0) return startMarker;
@@ -1109,8 +1095,6 @@ public class RouteMapView extends FrameLayout {
         };
     }
 
-    // ------------------------------------------------------------------ utilitários
-
     private void moveStart(double lat, double lng, double alt) {
         model.setStart(lat, lng, alt);
         if (Double.isNaN(alt)) fetchStartElevation();
@@ -1118,7 +1102,7 @@ public class RouteMapView extends FrameLayout {
         updateDistance();
     }
 
-    /** Altitude do início (F29): Io + Elevation, só se habilitado; a anterior é cancelada. */
+    /** Altitude do início: Io + Elevation, só se habilitado; a anterior é cancelada. */
     private void fetchStartElevation() {
         cancel(elevTask);
         elevTask = null;

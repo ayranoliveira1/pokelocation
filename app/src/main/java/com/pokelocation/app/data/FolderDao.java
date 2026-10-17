@@ -47,7 +47,6 @@ public final class FolderDao {
 
     private static String itemTable(String type) { return Folder.ROUTES.equals(type) ? RouteDao.T : FavoriteDao.T; }
 
-    /** ORDER BY sort. */
     public static List<Folder> children(Context c, String type, String parentId) {
         List<String> a = new ArrayList<>();
         return query(c, scope(type, parentId, a), Db.arr(a));
@@ -112,7 +111,6 @@ public final class FolderDao {
         return null;
     }
 
-    /** sort = nº de irmãos. */
     public static Folder create(Context c, String type, String parentId, String name) {
         Folder f = createNoPing(c, type, parentId, name);
         WidgetPing.requestUpdate(c);

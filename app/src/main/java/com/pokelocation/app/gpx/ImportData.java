@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Resultado de GpxReader/KmlReader. Pontos sempre em double[] intercalado lat,lng,alt (alt NaN = ausente).
  * GPX: points = wpt, lines = rte, tracks = trk. KML: points = Point, lines = LineString, tracks vazio.
- * O estado "já salvo" da sessão de importação (F87) fica no próprio item.
+ * O estado "já salvo" da sessão de importação fica no próprio item.
  */
 public final class ImportData {
 
@@ -40,7 +40,6 @@ public final class ImportData {
             segSaved.set(s);
         }
 
-        /** Track: todos os segmentos salvos. */
         public boolean allSegsSaved() { return segSaved != null && segSaved.cardinality() >= segs.size(); }
     }
 

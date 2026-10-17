@@ -171,16 +171,16 @@ public final class Locations {
         return !ids.isEmpty();
     }
 
-    /**
-     * Ack ao servidor? Sim se processado (null, inclui o duplicado já visto) ou ilegível para sempre (erro de mensagem
-     * da libsignal ou payload malformado na cadeia de causas). Não em falha transitória (lock, Keystore, banco, timeout)
-     * o servidor entrega de novo.
-     */
     /** Falha transitória explícita: sem Ack, mesmo que a causa seja uma exceção da libsignal. */
     public static final class Transient extends IOException {
         public Transient(String msg, Throwable cause) { super(msg, cause); }
     }
 
+    /**
+     * Ack ao servidor? Sim se processado (null, inclui o duplicado já visto) ou ilegível para sempre (erro de mensagem
+     * da libsignal ou payload malformado na cadeia de causas). Não em falha transitória (lock, Keystore, banco, timeout):
+     * o servidor entrega de novo.
+     */
     public static boolean ack(Throwable failure) {
         if (failure == null) return true;
         for (Throwable t = failure; t != null; t = t.getCause()) if (t instanceof Transient) return false;

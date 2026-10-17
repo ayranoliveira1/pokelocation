@@ -20,7 +20,7 @@ import java.util.List;
 public final class Intents {
     private static final String TAG = "Intents";
 
-    // --- Ações públicas (OverlayService exported) ---
+    // Ações públicas (OverlayService exportado).
     public static final String ACTION_TELEPORT = "pokelocation.action.TELEPORT", ACTION_ROUTE = "pokelocation.action.ROUTE",
             ACTION_WALK = "pokelocation.action.WALK", ACTION_STOP = "pokelocation.action.STOP",
             ACTION_ROUTE_PAUSE = "pokelocation.action.ROUTE_PAUSE", ACTION_ROUTE_RESUME = "pokelocation.action.ROUTE_RESUME",
@@ -35,12 +35,10 @@ public final class Intents {
             ACTION_SPEED, ACTION_FAVORITES, ACTION_RECORD_START, ACTION_RECORD_ADD, ACTION_RECORD_STOP, ACTION_GENERATE,
             ACTION_STATUS};
 
-    // --- Broadcasts ---
     public static final String BC_STATUS_RESPONSE = "pokelocation.action.STATUS_RESPONSE",
             BC_ERROR = "pokelocation.action.ERROR", BC_RECORD_SAVED = "pokelocation.action.RECORD_SAVED",
             BC_SPOOF_STATE_CHANGED = "pokelocation.action.SPOOF_STATE_CHANGED";
 
-    // --- Ações internas ---
     public static final String INT_STOP_JOYSTICK = "com.pokelocation.app.internal.STOP_JOYSTICK",
             INT_TELEPORT_UI = "com.pokelocation.app.internal.TELEPORT_UI",      // abre o TeleportPanel com lat,lng
             INT_SHARE = "com.pokelocation.app.internal.SHARE",
@@ -59,7 +57,7 @@ public final class Intents {
             INT_CHAT_UNREAD = "com.pokelocation.app.internal.CHAT_UNREAD";
     // Start do serviço = Intent explícito com action null.
 
-    // --- Extras públicos ---
+    // Extras públicos.
     public static final String EXTRA_FROM_CHAT = "from_chat";   // INT_TELEPORT_UI: título do chat no painel
     public static final String EXTRA_UNREAD = "n", EXTRA_LOGGED_OUT = "logged_out";
     public static final String EXTRA_LAT = "lat", EXTRA_LNG = "lng", EXTRA_ALT = "alt", EXTRA_NAME = "name",
@@ -82,7 +80,7 @@ public final class Intents {
             ERR_SAVE_FAILED = "SAVE_FAILED", ERR_UNKNOWN_ACTION = "UNKNOWN_ACTION";
     public static final String EXTRA_SPOOF_ACTIVE = "spoof_active";   // + chaves Prefs.SESSION_KEYS no bundle
 
-    // --- Extras internos ---
+    // Extras internos.
     public static final String EXTRA_START_LAT = "start_lat", EXTRA_START_LNG = "start_lng", EXTRA_START_ALT = "start_alt",
             EXTRA_START_HIDDEN = "start_hidden", EXTRA_START_ROUTE_ID = "start_route_id", EXTRA_RECORD_ROUTE = "record_route",
             EXTRA_REPLAY_ACTION = "replay_action", EXTRA_HIDE = "hide", EXTRA_ROUTE_ACTION = "route_action",
@@ -95,7 +93,7 @@ public final class Intents {
             MAP_RESUME_RECORD = 5, MAP_SAVE_RECORD_ROUTE = 6;
     public static final int INLINE_POINTS_MAX = 500;
 
-    // --- Extras entre telas ---
+    // Extras entre telas.
     public static final String EXTRA_SELECT_MODE = "select_mode", EXTRA_IDS = "ids", EXTRA_FOLDER_IDS = "folder_ids",
             EXTRA_TYPE_IDS = "type_ids", EXTRA_ADDRESS = "address";
 
@@ -113,7 +111,7 @@ public final class Intents {
         }
     }
 
-    // --- Leitura tolerante (Number → valor; String → parse; senão def) ---
+    // Leitura tolerante: Number → valor; String → parse; senão def.
     public static double getDouble(Intent i, String key, double def) {
         Object v = raw(i, key);
         if (v instanceof Number) return ((Number) v).doubleValue();
@@ -169,7 +167,7 @@ public final class Intents {
         return def;
     }
 
-    // --- Pontos entre processos (chamar no Io: pode tocar o banco) ---
+    // Pontos entre processos: chamar no Io, pode tocar o banco.
 
     /** n ≤ 500 → EXTRA_POINTS (double[]); senão EXTRA_POINTS_ROUTE_ID = id salvo ou upsertLastRoute(pts).id. */
     public static void putPoints(Context c, Intent i, double[] pts, String savedRouteIdOrNull) {
@@ -192,8 +190,6 @@ public final class Intents {
         Route r = RouteDao.get(c, id);
         return r != null ? r.pts : null;
     }
-
-    // --- Envio ---
 
     /** Nome da MainActivity como String: um class literal carregaria AppCompatActivity no :overlay (RAM). */
     public static final String MAIN_ACTIVITY = "com.pokelocation.app.ui.main.MainActivity";
@@ -240,7 +236,7 @@ public final class Intents {
         return action == null || !action.startsWith(INTERNAL) || ownToken;
     }
 
-    /** O replay (F97) só existe para ações públicas: senão o overlay() assinaria uma interna vinda de fora. */
+    /** O replay só existe para ações públicas: senão o overlay() assinaria uma interna vinda de fora. */
     static boolean replayable(String action) {
         return action == null || Arrays.asList(PUBLIC_ACTIONS).contains(action);
     }
@@ -298,7 +294,7 @@ public final class Intents {
 
     /**
      * Toda resposta do serviço (STATUS_RESPONSE, ERROR, RECORD_SAVED): setPackage(reply_package), ou só o próprio app
-     * sem ele (DECISIONS). Broadcast implícito é barrado pelo Android 8+ para receivers de manifest (QA F100).
+     * sem ele. Broadcast implícito é barrado pelo Android 8+ para receivers de manifest.
      */
     public static void reply(Context c, Intent request, Intent response) {
         String rp = request != null ? request.getStringExtra(EXTRA_REPLY_PACKAGE) : null;

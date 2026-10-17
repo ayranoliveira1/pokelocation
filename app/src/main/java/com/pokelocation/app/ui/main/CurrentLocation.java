@@ -9,7 +9,7 @@ import android.util.Log;
 
 import com.pokelocation.app.Io;
 
-/** Leitura única da posição real (03 §3.9, §5.12): sem listener contínuo, timeout de 30 s. Só na main thread. */
+/** Leitura única da posição real: sem listener contínuo, timeout de 30 s. Só na main thread. */
 final class CurrentLocation {
     interface Callback { void onLocation(Location l); }   // null = erro/timeout
 
@@ -30,7 +30,6 @@ final class CurrentLocation {
         try {
             lm = (LocationManager) c.getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
             
-            // Tenta providers em ordem: GPS, network, passive
             for (String provider : new String[] {
                     LocationManager.GPS_PROVIDER,
                     LocationManager.NETWORK_PROVIDER,
@@ -42,7 +41,6 @@ final class CurrentLocation {
                 
                 Log.d("CurrentLocation", "Trying provider=" + provider);
                 
-                // Tenta ler última localização conhecida
                 Location l = lm.getLastKnownLocation(provider);
                 Log.d("CurrentLocation", "getLastKnownLocation(" + provider + ")=" + l + " mock=" + (l != null && l.isFromMockProvider()));
                 if (l != null && !l.isFromMockProvider()) {
@@ -51,7 +49,6 @@ final class CurrentLocation {
                 }
             }
             
-            // Fallback: pede atualização única para GPS se estiver habilitado
             if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 listener = this::deliver;
                 lm.requestSingleUpdate(LocationManager.GPS_PROVIDER, listener, Looper.getMainLooper());

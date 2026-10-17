@@ -55,7 +55,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         // Igual ao release (R8, shrink, não-debuggable), assinado com a chave debug: instalável no emulador para medir
-        // RAM como no release (QA-RAM R0/R5). Não é para distribuição.
+        // RAM como no release. Não é para distribuição.
         create("qa") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
@@ -119,7 +119,7 @@ dependencies {
         exclude(group = "com.google.android.datatransport", module = "transport-backend-cct")
     }
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
-    testImplementation("junit:junit:4.13.2") // só teste JVM: zero impacto em RAM/APK
-    testImplementation("net.sf.kxml:kxml2:2.3.0") // XmlPullParser/XmlSerializer nos testes JVM do gpx (só teste)
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("net.sf.kxml:kxml2:2.3.0") // XmlPullParser/XmlSerializer nos testes JVM do gpx
     testImplementation("org.json:json:20231013") // o org.json do android.jar mockado devolve null
 }

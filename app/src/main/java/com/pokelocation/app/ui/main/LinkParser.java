@@ -5,7 +5,7 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Extrai coordenadas de links externos (F23, 03 §3.13). Java puro: testável na JVM. */
+/** Extrai coordenadas de links externos. Java puro: testável na JVM. */
 public final class LinkParser {
     private LinkParser() {}
 
@@ -39,7 +39,7 @@ public final class LinkParser {
         if (dataString == null) return false;
         String s = decode(dataString);
         String low = s.toLowerCase(Locale.ROOT);
-        // Yandex usa lng,lat em ll/pt (03 §8.3).
+        // Yandex usa lng,lat em ll/pt.
         if (low.contains("yandex.") && first(YANDEX, s, out2, true)) return true;
         Matcher la = MLAT.matcher(s), lo = MLON.matcher(s);
         if (la.find() && lo.find() && set(la.group(1), lo.group(1), out2)) return true;
@@ -49,7 +49,7 @@ public final class LinkParser {
         String key = low.contains("addr=") ? "addr=" : low.contains("loc:") ? "loc:" : low.contains("q=") ? "q=" : null;
         if (key == null) return first(R4, s, out2, false);
         if (first(key.equals("addr=") ? R1 : key.equals("loc:") ? R2 : R3, s, out2, false)) return true;
-        // Melhoria sobre o original: R1–R3 falharam (ex.: Apple "?ll=lat,lng&q=Nome") → par genérico só ANTES da chave,
+        // R1–R3 falharam (ex.: Apple "?ll=lat,lng&q=Nome") → par genérico só ANTES da chave,
         // para não ler números de um endereço em texto ("q=Rua Augusta 12, 3").
         return first(R4, s.substring(0, low.lastIndexOf(key)), out2, false);
     }

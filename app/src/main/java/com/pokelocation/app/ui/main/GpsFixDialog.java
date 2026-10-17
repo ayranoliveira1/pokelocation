@@ -11,11 +11,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pokelocation.app.R;
 import com.pokelocation.app.data.Prefs;
 
-/** "Fix GPS Location" (F19, 11 §3.4): Default / Fix 1 (A-GPS) / Fix 2 (100 ms). Não cancelável. */
+/** "Fix GPS Location": Default / Fix 1 (A-GPS) / Fix 2 (100 ms). Não cancelável. */
 public final class GpsFixDialog {
     private GpsFixDialog() {}
 
-    private static final int FAST_MS = 100, NORMAL_MS = 1000;   // desmarcar Fix 2 volta a 1000 (DECISIONS dúvida 5)
+    private static final int FAST_MS = 100, NORMAL_MS = 1000;   // desmarcar Fix 2 volta a 1000
 
     /** Grava no Close (commit) e chama onChanged só se algo mudou. Quem chama reinicia o serviço se ele estiver rodando. */
     public static void show(AppCompatActivity a, Runnable onChanged) {

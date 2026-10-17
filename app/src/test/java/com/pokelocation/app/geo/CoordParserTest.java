@@ -56,7 +56,6 @@ public class CoordParserTest {
         assertNull(CoordParser.waypoints(null));
     }
 
-    /** Obs. a da QA: o "Novo alerta" mostrava 40.755, -73.97499833333333. */
     @Test public void labelIsReadable() {
         assertEquals("40.75500, -73.97500", CoordParser.label(40.755, -73.97499833333333));
         assertEquals("-23.55052, -46.63331", CoordParser.label(-23.550520, -46.633308));

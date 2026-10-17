@@ -11,9 +11,8 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * SQLiteOpenHelper puro (WAL), schema v1 (PLAN §3.2). Lazy por processo.
- * Desvio do PLAN: Db não estende SQLiteOpenHelper (o close() estático colidiria com AutoCloseable.close());
- * o helper é a classe interna Helper. API pública idêntica.
+ * SQLiteOpenHelper puro (WAL), lazy por processo. Db não estende SQLiteOpenHelper: o close() estático colidiria
+ * com AutoCloseable.close().
  */
 public final class Db {
     public static final String NAME = "pokelocation.db";
@@ -77,10 +76,7 @@ public final class Db {
                 + "), (2,'Recreational Area','park'," + 0xFF43A047 + ")");
     }
 
-    // ---- helpers do pacote (ordem por pasta, IN, escopo de pasta) ----
-
-    /** "col IS NULL" ou "col=?" (+ arg). */
-    /** ORDER BY da distância² ao centro do bbox: com LIMIT, pega os mais próximos do centro, não os de menor id (QA N12).
+    /** ORDER BY da distância² ao centro do bbox: com LIMIT, pega os mais próximos do centro, não os de menor id.
      *  Números gerados aqui (não vêm do usuário). ponytail: graus planos e centro ingênuo no antimeridiano; suficiente para escolher o que desenhar. */
     static String nearCenter(double minLat, double maxLat, double minLng, double maxLng) {
         double cLat = (minLat + maxLat) / 2, cLng = (minLng + maxLng) / 2;
@@ -95,7 +91,6 @@ public final class Db {
 
     static String[] arr(List<String> args) { return args.toArray(new String[0]); }
 
-    /** "(?,?,…)" com os valores em args. */
     static String in(Collection<String> values, List<String> args) {
         StringBuilder sb = new StringBuilder("(");
         for (String v : values) {

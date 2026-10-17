@@ -19,7 +19,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 
-/** Backup/restore do banco (F93). Todos os métodos são BLOQUEANTES: chamar no Io. */
+/** Backup/restore do banco. Todos os métodos são BLOQUEANTES: chamar no Io. */
 final class DbBackup {
     private static final byte[] HEADER = "SQLite format 3\0".getBytes(StandardCharsets.US_ASCII);
     private static final long CHUNK = 8L << 20;

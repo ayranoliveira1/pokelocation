@@ -7,7 +7,6 @@ import com.pokelocation.app.R;
 import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.util.Perms;
 
-/** "Mock Location Required" (F07, 01 §2.1). */
 public final class MockLocationDialog {
     private MockLocationDialog() {}
 

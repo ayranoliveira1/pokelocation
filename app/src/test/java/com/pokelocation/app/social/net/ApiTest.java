@@ -151,7 +151,7 @@ public class ApiTest {
         assertEquals(1, es.size());
         assertEquals("e1", es.get(0).id);
         assertEquals("u2", es.get(0).from);
-        assertEquals("m", es.get(0).clientMsgId); // api.md §5: dedup por (from, client_msg_id)
+        assertEquals("m", es.get(0).clientMsgId); // dedup por (from, client_msg_id)
         assertArrayEquals(new byte[]{3, 9, 8}, es.get(0).payload);
         assertEquals(0, Api.parseEnvelopes("{}").size());
         java.util.List<Api.Location> ls = Api.parseLocations("{\"locations\":[{\"user_id\":\"u2\",\"friend_code\":\"AB12CD34\","
@@ -201,7 +201,7 @@ public class ApiTest {
         assertEquals("a3M=", ky.getString("signature"));
     }
 
-    /** api.md §4: até 100 por lista por PUT (acima → 400 bad_request no servidor): o app nunca monta um maior. */
+    /** Até 100 por lista por PUT (acima → 400 bad_request no servidor): o app nunca monta um maior. */
     @Test(expected = IllegalArgumentException.class) public void keysJsonRejectsMoreThan100PerList() throws JSONException {
         Api.KeyBundle b = new Api.KeyBundle();
         b.identity = new byte[33];

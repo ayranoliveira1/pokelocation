@@ -56,7 +56,6 @@ public final class Cooldown {
         return formatHms(s);
     }
 
-    /** Parte sem Context de formatElapsed (< 1 dia). */
     static String formatHms(long s) {
         long h = s / 3600, m = s / 60 % 60;
         s %= 60;
@@ -68,7 +67,6 @@ public final class Cooldown {
 
     public static boolean ready(double meters, long elapsedMs) { return elapsedMs >= cooldownMs(tier(meters)); }
 
-    /** display_distance_info && last_mocked_time != 0. */
     public static boolean visible(Context c) {
         return Prefs.getBool(c, Prefs.DISPLAY_DISTANCE_INFO) && Prefs.getLong(c, Prefs.LAST_MOCKED_TIME) != 0;
     }
@@ -78,7 +76,6 @@ public final class Cooldown {
                 formatElapsed(c, now - lastMockedTime));
     }
 
-    /** ARGB de R.color.success (pronto) ou R.color.danger. */
     public static int color(Context c, double meters, long lastMockedTime, long now) {
         return c.getColor(ready(meters, now - lastMockedTime) ? R.color.success : R.color.danger);
     }

@@ -85,14 +85,13 @@ final class RouteModel {
 
     double[] toArray() { return Arrays.copyOf(p, n * 3); }
 
-    /** Altitude do ponto médio: média (corrige o |a−b|/2 do original); a que existir; NaN se nenhuma. */
+    /** Altitude do ponto médio: média; a que existir; NaN se nenhuma. */
     static double midAlt(double a, double b) {
         if (Double.isNaN(a)) return b;
         if (Double.isNaN(b)) return a;
         return (a + b) / 2;
     }
 
-    /** Botão Start (03 §3.5 onStartClick). */
     static int startAction(boolean pick, boolean hasWaypoints, boolean teleportWalk, boolean setRoute, int startMode) {
         if (pick) return START_PICK;
         if (hasWaypoints) return START_ROUTE;
@@ -100,7 +99,7 @@ final class RouteModel {
         return START_WALK;
     }
 
-    /** Linha vermelha atual → alvo (03 §3.5). */
+    /** Linha vermelha atual → alvo. */
     static boolean showWalkLine(boolean routeOn, boolean teleportWalk, boolean resuming, int startMode) {
         return (routeOn || teleportWalk) && (resuming || startMode == 1 || teleportWalk);
     }

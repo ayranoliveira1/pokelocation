@@ -407,7 +407,7 @@ public class PogoTest {
         assertFalse(Pogo.slow(new java.io.IOException("x")));
     }
 
-    /** Item 6: sem o direto, o que antes caía nele vira "PoGo indisponível agora"; o lento e o limite têm aviso próprio. */
+    /** Sem o direto, esses viram "PoGo indisponível agora"; o lento e o limite têm aviso próprio. */
     @Test public void withoutDirectTheseAreUnavailable() {
         assertTrue(Pogo.unavailable(Pogo.fromApi(503, "pogo_disabled", "{}", 60)));
         assertTrue(Pogo.unavailable(Pogo.fromApi(409, "pogo_relogin", "{}", 60)));

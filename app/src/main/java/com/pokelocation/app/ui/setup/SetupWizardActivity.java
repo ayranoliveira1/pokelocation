@@ -30,7 +30,7 @@ import com.pokelocation.app.util.Themes;
 import com.pokelocation.app.util.Ui;
 
 /**
- * Setup Wizard (F01–F05, 07 §2.3/§3.4). Uma tela inflada por vez num host; estado em {@link Wizard};
+ * Setup Wizard. Uma tela inflada por vez num host; estado em {@link Wizard};
  * revalidação só no onResume (volta das Configurações do sistema).
  */
 public final class SetupWizardActivity extends BaseActivity {
@@ -60,7 +60,7 @@ public final class SetupWizardActivity extends BaseActivity {
 
     private Wizard wizard;
     private FrameLayout host;
-    /** Abrimos a tela de overlay do sistema: o próximo onResume trata o retorno (F03). */
+    /** Abrimos a tela de overlay do sistema: o próximo onResume trata o retorno. */
     private boolean pendingOverlay;
     private boolean adbTab;
 
@@ -166,7 +166,7 @@ public final class SetupWizardActivity extends BaseActivity {
         finish();
     }
 
-    // --- Render: uma tela por vez; a anterior sai da hierarquia ---
+    // Uma tela por vez: a anterior sai da hierarquia.
 
     private void render() {
         host.removeAllViews();

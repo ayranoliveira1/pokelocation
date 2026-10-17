@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
- * Fluxos de painel do overlay (02 §2.3–2.4, 05 §3.10, 04 §3.7) sobre ui/panel.
+ * Fluxos de painel do overlay sobre ui/panel.
  * Painéis só existem enquanto abertos (PanelHost remove e anula ao fechar); abrir um fecha os outros.
  */
 final class OverlayFlows {
@@ -50,9 +50,7 @@ final class OverlayFlows {
         PanelHost.closeAll();
     }
 
-    // ------------------------------------------------------------------ Teleport (F45)
-
-    /** Antes de abrir guarda lastMockedTime = agora (10 §3.2): o cooldown conta a partir daqui. */
+    /** Antes de abrir guarda lastMockedTime = agora: o cooldown conta a partir daqui. */
     void openTeleport(String text) {
         openTeleport(text, null);
     }
@@ -137,8 +135,6 @@ final class OverlayFlows {
         });
     }
 
-    // ------------------------------------------------------------------ Favoritos (F46)
-
     void openFavorites() {
         close();
         ItemListPanel.show(ctx, ctx.getText(R.string.favorites), Folder.FAVORITES, folder -> {
@@ -175,8 +171,6 @@ final class OverlayFlows {
             }
         } : null);
     }
-
-    // ------------------------------------------------------------------ Save (F47, F72)
 
     /** Seletor "Current Location". A posição é capturada ao abrir (o boneco pode continuar andando). */
     void openSave() {

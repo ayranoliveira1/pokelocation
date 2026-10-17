@@ -31,7 +31,6 @@ public final class Perms {
         return Settings.canDrawOverlays(c);
     }
 
-    /** true abaixo do API 33. */
     public static boolean notificationsGranted(Context c) {
         return Build.VERSION.SDK_INT < 33
                 || c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
@@ -41,7 +40,6 @@ public final class Perms {
         return Settings.Global.getInt(c.getContentResolver(), Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) != 0;
     }
 
-    /** AppOps "android:mock_location" == MODE_ALLOWED. */
     @SuppressWarnings("deprecation")
     public static boolean isMockApp(Context c) {
         try {

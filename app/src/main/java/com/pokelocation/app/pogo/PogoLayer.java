@@ -203,7 +203,7 @@ public final class PogoLayer extends Overlay implements MapPoiLayer {
                 }
                 if (l != null) apply(l);
                 if (e == null) show(PogoText.count(app, l.size(), filter, false));
-                else show(alive(now) > 0 ? PogoText.stale(app, e) : PogoText.error(app, e));   // os da última busca ficam (T29)
+                else show(alive(now) > 0 ? PogoText.stale(app, e) : PogoText.error(app, e));   // os da última busca ficam
                 if (mv != null) mv.invalidate();
                 poll();
             });

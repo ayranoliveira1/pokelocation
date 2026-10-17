@@ -18,7 +18,7 @@ import com.pokelocation.app.R;
 import com.pokelocation.app.util.Ui;
 
 /**
- * Controles dos filtros (design v3), só framework e GradientDrawable: Segmented (escolha única), ChoiceGrid (múltipla,
+ * Controles dos filtros, só framework e GradientDrawable: Segmented (escolha única), ChoiceGrid (múltipla,
  * uma linha), summaryChip (filtro ativo com "✕"), lines (ícone em Canvas) e Flow (quebra linha, só para as espécies).
  */
 final class PogoChips {

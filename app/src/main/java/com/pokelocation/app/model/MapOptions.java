@@ -10,13 +10,13 @@ import com.pokelocation.app.ipc.Intents;
 
 /** Opções do mapa (mutável). Trafega main → :overlay → :map e volta. */
 public final class MapOptions {
-    public boolean routeOptionsVisible;   // route_options_visibility
-    public int routeMode;                 // route_mode 0 stop,1 loop,2 reverse
-    public int routeStartMode;            // route_start_mode 0 teleport,1 walk
-    public boolean customMarkersEnabled;  // custom_markers_enabled
-    public int generateMode;              // generate_mode 0 random,1 circle
-    public int generateCount = 10;        // generate_marker_count
-    public double generateOffset = 50.0;  // generate_offset
+    public boolean routeOptionsVisible;
+    public int routeMode;                 // 0 stop, 1 loop, 2 reverse
+    public int routeStartMode;            // 0 teleport, 1 walk
+    public boolean customMarkersEnabled;
+    public int generateMode;              // 0 random, 1 circle
+    public int generateCount = 10;
+    public double generateOffset = 50.0;
 
     /** Defaults da tabela de Prefs. */
     public MapOptions() {}

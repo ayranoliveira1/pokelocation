@@ -14,7 +14,7 @@ import com.pokelocation.app.engine.MockEngine;
 
 /**
  * Stick 360° desenhado em software (base + knob). Cada toque vai direto para {@link MockEngine#setStick}
- * (02 §3.5): ângulo atan2(−dy,dx) em graus (0 = leste, anti-horário), magnitude |d|/raio em 0..1.
+ * com ângulo atan2(−dy,dx) em graus (0 = leste, anti-horário), magnitude |d|/raio em 0..1.
  * Hot path sem alocação: só primitivos e Paints criados no construtor.
  */
 public final class JoystickView extends View {
@@ -25,7 +25,7 @@ public final class JoystickView extends View {
     private final Paint knobPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final int primary, accent, primaryDark;
     private final float ringW;
-    private static final int SLOP_PX = 10;   // 02 §2.2: touch slop de 10 px (classic)
+    private static final int SLOP_PX = 10;   // touch slop do classic
 
     private MockEngine engine;
     private int basePx, knobPx;
@@ -181,7 +181,6 @@ public final class JoystickView extends View {
         return (float) Math.toDegrees(Math.atan2(0f - dy, dx));   // 0f − dy evita −0.0 (esquerda = 180, não −180)
     }
 
-    /** |d| / raio, limitado a 0..1. */
     static float magnitude(float dx, float dy, float radius) {
         if (radius <= 0f) return 0f;
         return (float) Math.min(1.0, Math.hypot(dx, dy) / radius);

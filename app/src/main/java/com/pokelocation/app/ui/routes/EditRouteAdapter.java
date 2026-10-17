@@ -107,8 +107,6 @@ final class EditRouteAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
     }
 
-    // ---- RecyclerView ----
-
     @Override public int getItemCount() { return pts.size() + 1; }
 
     @Override public int getItemViewType(int p) { return p == 0 ? TYPE_HEADER : TYPE_ROW; }

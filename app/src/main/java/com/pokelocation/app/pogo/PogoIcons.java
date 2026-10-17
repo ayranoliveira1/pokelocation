@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * Ícones dos Pokémon com a cadeia de fallback do site (docs/pogo/icones.md §1). Imagens da Niantic/TPC, que o nosso
+ * Ícones dos Pokémon com a cadeia de fallback do site. Imagens da Niantic/TPC, que o nosso
  * servidor busca no GitHub: nunca no APK, só baixadas sob demanda para cacheDir/pogo_icons (bytes do PNG). Um bitmap
  * por ícone, 96 px.
  */
@@ -53,7 +53,7 @@ public final class PogoIcons {
     private static final Map<String, List<Consumer<Bitmap>>> PENDING = new HashMap<>();
     /** chave → quando tentar de novo (cadeia toda 404 ou rede fora). */
     private static final Map<String, Long> FAILED = new HashMap<>();
-    /** Travas fixas por faixa de nome de arquivo (sem mapa nem remove, que deixava 2 de 3 threads juntas). */
+    /** Travas fixas por faixa de nome de arquivo (sem mapa nem remove: com eles 2 de 3 threads baixavam juntas). */
     private static final Object[] FILES = new Object[16];
 
     static {
@@ -136,7 +136,7 @@ public final class PogoIcons {
     static List<String> urls(int id, String name, String form, String costume, boolean shiny) {
         List<String> out = new ArrayList<>(5);
         if (costume != null && !costume.isEmpty() && !digits(costume)) { // id numérico do lookup/push: não é o enum do arquivo
-            // o site não tira o _NOEVOLVE e cai no 404 (icones.md §1)
+            // o site não tira o _NOEVOLVE e cai no 404
             String base = "pm" + id + ".c" + costume.replace("_NOEVOLVE", "");
             if (shiny) out.add(PM + base + ".s.icon.png");
             out.add(PM + base + ".icon.png");

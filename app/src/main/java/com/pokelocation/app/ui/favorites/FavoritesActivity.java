@@ -52,8 +52,8 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
 /**
- * Favoritos (F73–F79, F74): pastas, breadcrumb, seleção, arrasto, filtro em memória, linha de distância,
- * select_mode (§3.12) e modo "adicionar" com RouteMapView(MODE_PICK_POINT) criado e destruído sob demanda.
+ * Favoritos: pastas, breadcrumb, seleção, arrasto, filtro em memória, linha de distância,
+ * select_mode e modo "adicionar" com RouteMapView(MODE_PICK_POINT) criado e destruído sob demanda.
  */
 public class FavoritesActivity extends BaseActivity {
     private Context app;
@@ -79,7 +79,7 @@ public class FavoritesActivity extends BaseActivity {
     private int dragFrom = -1;
     private boolean barShown, itemActions = true;
 
-    // Modo adicionar (F74)
+    // Modo adicionar
     private RouteMapView map;
     private Favorite searchPlace;   // último resultado da busca, para o nome sugerido
     private Io.Task altTask;
@@ -188,8 +188,6 @@ public class FavoritesActivity extends BaseActivity {
         super.onDestroy();
     }
 
-    // ------------------------------------------------------------------ carga
-
     private static final class Loaded {
         List<Folder> folders;
         List<Favorite> favs;
@@ -197,7 +195,7 @@ public class FavoritesActivity extends BaseActivity {
         List<Folder> ancestors;
     }
 
-    /** 05 §3.1. scrollToId != null rola até o favorito depois de carregar. */
+    /** scrollToId != null rola até o favorito depois de carregar. */
     void load(String scrollToId) {
         if (loadTask != null) loadTask.cancel();
         if (adapter.isEmpty()) state.setState(StateView.LOADING);
@@ -243,8 +241,6 @@ public class FavoritesActivity extends BaseActivity {
         load(null);
     }
 
-    // ------------------------------------------------------------------ cliques
-
     boolean showItemActions() {
         return !selectMode && adapter.selectedCount() == 0;
     }
@@ -279,7 +275,7 @@ public class FavoritesActivity extends BaseActivity {
         return true;
     }
 
-    /** Pasta tocada em modo seleção: Enter Folder | Select/Deselect All Contents (05 §2.1). */
+    /** Pasta tocada em modo seleção: Enter Folder | Select/Deselect All Contents. */
     private void folderInSelection(Folder f, int pos) {
         boolean sel = adapter.selFolders.containsKey(f.id);
         CharSequence[] opts = {getString(R.string.fav_enter_folder),
@@ -296,8 +292,6 @@ public class FavoritesActivity extends BaseActivity {
     void startDrag(RecyclerView.ViewHolder h) {
         touchHelper.startDrag(h);
     }
-
-    // ------------------------------------------------------------------ toolbar / chrome
 
     @Override
     public boolean onCreateOptionsMenu(Menu m) {
@@ -331,7 +325,7 @@ public class FavoritesActivity extends BaseActivity {
                 adapter.setFilter("");
                 showListState();
                 updateChrome();
-                // A Toolbar só reexibe os outros itens depois que o collapse termina (QA nº 6): recria o menu em seguida
+                // A Toolbar só reexibe os outros itens depois que o collapse termina: recria o menu em seguida
                 toolbar.post(() -> { if (!isDestroyed()) invalidateOptionsMenu(); });
                 return true;
             }
@@ -389,7 +383,7 @@ public class FavoritesActivity extends BaseActivity {
         boolean showFab = !adding && !sel && !searching && !adapter.reorder;
         if (showFab) fab.show(); else fab.hide();
 
-        // Barra de seleção (05 §2.1): Copy/Edit com exatamente 1 favorito, Rename com exatamente 1 pasta.
+        // Barra de seleção: Copy/Edit com exatamente 1 favorito, Rename com exatamente 1 pasta.
         boolean bar = !adding && !selectMode && n > 0;
         int nFav = adapter.selFavs.size(), nFold = adapter.selFolders.size();
         selCopy.setVisibility(nFav == 1 && nFold == 0 ? View.VISIBLE : View.GONE);
@@ -425,8 +419,6 @@ public class FavoritesActivity extends BaseActivity {
         adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         updateChrome();
     }
-
-    // ------------------------------------------------------------------ back
 
     /** Ordem: mapa → busca → seleção → reorder → pasta pai → fecha. */
     private void back() {
@@ -465,8 +457,6 @@ public class FavoritesActivity extends BaseActivity {
         setResult(RESULT_OK, d);
         finish();
     }
-
-    // ------------------------------------------------------------------ ações de item
 
     private Favorite onlyFav() {
         return adapter.selFavs.size() == 1 ? adapter.selFavs.values().iterator().next() : null;
@@ -567,7 +557,7 @@ public class FavoritesActivity extends BaseActivity {
                 .show();
     }
 
-    /** Pré-contagem {itens, subpastas} → confirmação → exclusão em cascata (05 §3.4). */
+    /** Pré-contagem {itens, subpastas} → confirmação → exclusão em cascata. */
     private void confirmDeleteFolder(Folder f) {
         io(() -> FolderDao.countForDelete(app, f.id), c -> {
             int items = c[0], subs = c[1];
@@ -606,8 +596,6 @@ public class FavoritesActivity extends BaseActivity {
                 }))
                 .show();
     }
-
-    // ------------------------------------------------------------------ novo favorito (F74)
 
     private void showNewMenu() {
         CharSequence[] opts = {getString(R.string.fav_new_favorite), getString(R.string.fav_new_folder)};
@@ -679,8 +667,6 @@ public class FavoritesActivity extends BaseActivity {
         updateChrome();
     }
 
-    // ------------------------------------------------------------------ arrasto (05 §3.5)
-
     private final class DragCallback extends ItemTouchHelper.Callback {
         @Override public boolean isLongPressDragEnabled() { return adapter.reorder; }
 
@@ -722,8 +708,6 @@ public class FavoritesActivity extends BaseActivity {
             }
         }
     }
-
-    // ------------------------------------------------------------------ util
 
     /** DAO no Io; entrega só com a Activity viva; erro → toast genérico. */
     private <T> void io(Callable<T> work, Consumer<T> ok) {

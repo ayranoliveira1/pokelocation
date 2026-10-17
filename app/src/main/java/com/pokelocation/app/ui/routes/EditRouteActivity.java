@@ -23,7 +23,7 @@ import com.pokelocation.app.ui.panel.MessagePanel;
 import com.pokelocation.app.ui.panel.PanelHost;
 import com.pokelocation.app.util.Ui;
 
-/** Edição "Advanced" (F68): nome, ordem, lista lat/lng/alt editável, distância total + ETA. Entrada: extra id. */
+/** Edição "Advanced": nome, ordem, lista lat/lng/alt editável, distância total + ETA. Entrada: extra id. */
 public final class EditRouteActivity extends BaseActivity implements EditRouteAdapter.Host {
     private Route route;              // id/pasta/sort originais (sem pts)
     private EditRouteAdapter adapter;
@@ -99,16 +99,12 @@ public final class EditRouteActivity extends BaseActivity implements EditRouteAd
         });
     }
 
-    // ---- EditRouteAdapter.Host ----
-
     @Override public void onEdited() {
         dirty = true;
         invalidateOptionsMenu();
     }
 
     @Override public void onMessage(int resId) { Ui.toast(this, resId); }
-
-    // ---- menu ----
 
     @Override
     public boolean onCreateOptionsMenu(Menu m) {

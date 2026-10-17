@@ -218,7 +218,7 @@ public final class PanelHost {
         return null;
     }
 
-    /** Idempotente; removeView em try/catch; anula referências. */
+    /** Idempotente. */
     public void dismiss() {
         if (!showing && dialog == null && window == null) return;
         showing = false;
@@ -463,7 +463,7 @@ public final class PanelHost {
 
     /**
      * O BACK que só fecha o teclado. Com o teclado aberto, o IME pode ficar com o DOWN (e se fechar) e só o UP chegar
-     * aqui — por isso o reteste fechava teclado e painel juntos. É do teclado se: o DOWN não passou por nós, o teclado
+     * aqui. É do teclado se: o DOWN não passou por nós, o teclado
      * estava aberto no DOWN, ou ele fechou há menos de IME_BACK_MS (o UP chega depois da animação).
      */
     static boolean imeBack(boolean ourDown, boolean imeAtDown, long upTime, long imeHiddenAt) {

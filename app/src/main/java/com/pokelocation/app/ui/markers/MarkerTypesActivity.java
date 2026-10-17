@@ -48,8 +48,8 @@ import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
 /**
- * Tipos de marcador (F80, 05 §2.4/§3.13): lista com ícone/nome/contagem, criar/editar (nome + ícone local + cor),
- * excluir (1 e 2 só zeram os marcadores), select_mode → type_ids int[] (§3.12), editor no mapa (MarkerMapView, F81).
+ * Tipos de marcador: lista com ícone/nome/contagem, criar/editar (nome + ícone local + cor),
+ * excluir (1 e 2 só zeram os marcadores), select_mode → type_ids int[], editor no mapa (MarkerMapView).
  */
 public class MarkerTypesActivity extends BaseActivity {
     /** Paleta fixa dos tipos (azuis + cores de contraste; sem roxo). */
@@ -133,8 +133,6 @@ public class MarkerTypesActivity extends BaseActivity {
         });
     }
 
-    // ------------------------------------------------------------------ toolbar
-
     @Override
     public boolean onCreateOptionsMenu(Menu m) {
         getMenuInflater().inflate(R.menu.mk_main, m);
@@ -191,8 +189,6 @@ public class MarkerTypesActivity extends BaseActivity {
         finish();
     }
 
-    // ------------------------------------------------------------------ mapa do tipo (F81)
-
     private void openMap(MarkerType t) {
         if (mapView != null) return;
         mapView = new MarkerMapView(this, t, this::closeMap);
@@ -212,8 +208,6 @@ public class MarkerTypesActivity extends BaseActivity {
         io(() -> MarkerDao.countMarkers(app, t.id),
                 n -> adapter.replace(new MarkerType(t.id, t.name, t.icon, t.color, n)));
     }
-
-    // ------------------------------------------------------------------ CRUD de tipos
 
     private void confirmDelete(MarkerType t) {
         new MaterialAlertDialogBuilder(this)
@@ -308,7 +302,6 @@ public class MarkerTypesActivity extends BaseActivity {
         });
     }
 
-    /** Anel em volta do ícone escolhido. */
     private GradientDrawable ring(int color) {
         GradientDrawable g = new GradientDrawable();
         g.setShape(GradientDrawable.OVAL);
@@ -339,8 +332,6 @@ public class MarkerTypesActivity extends BaseActivity {
         }
     }
 
-    // ------------------------------------------------------------------ util
-
     private <T> void io(Callable<T> work, Consumer<T> ok) {
         Io.run(work, new Io.Callback<T>() {
             @Override public void onResult(T v) { if (!isDestroyed()) ok.accept(v); }
@@ -350,8 +341,6 @@ public class MarkerTypesActivity extends BaseActivity {
             }
         });
     }
-
-    // ------------------------------------------------------------------ lista
 
     private final class TypeAdapter extends RecyclerView.Adapter<TypeAdapter.VH> {
         final ArrayList<MarkerType> items = new ArrayList<>();

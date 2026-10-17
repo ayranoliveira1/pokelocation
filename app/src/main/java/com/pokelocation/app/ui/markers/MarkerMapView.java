@@ -33,7 +33,7 @@ import org.osmdroid.views.overlay.Marker;
 import java.util.List;
 
 /**
- * Editor dos marcadores de um tipo (F81, 05 §3.12 / 03 §3.16). Toque cria (ids ≥ 1e9 pelo DAO), toque no marcador abre
+ * Editor dos marcadores de um tipo. Toque cria (ids ≥ 1e9 pelo DAO), toque no marcador abre
  * Move/Delete + "lat,lng" (tocar copia; substitui a InfoWindow do osmdroid). Carga por viewport (limite 100 se o span
  * passa de 0,025°) com diff por id. O MapView nasce no 1º attach; destroy() é obrigatório.
  */
@@ -169,8 +169,6 @@ public final class MarkerMapView extends FrameLayout {
         icon = null;
     }
 
-    // ------------------------------------------------------------------ viewport
-
     private void refresh() {
         if (destroyed || mv == null) return;
         BoundingBox b = MapHelper.box(mv);
@@ -219,8 +217,6 @@ public final class MarkerMapView extends FrameLayout {
         mv.getOverlays().add(mk);
         return mk;
     }
-
-    // ------------------------------------------------------------------ edição
 
     private void addMarker(double lat, double lng) {
         final int typeId = type.id;

@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Lista da FavoritesActivity: pastas primeiro, depois favoritos. Filtro em memória sobre o backup (05 §3.2). */
+/** Lista da FavoritesActivity: pastas primeiro, depois favoritos. Filtro em memória sobre o backup. */
 final class FavAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     static final int T_FOLDER = 0, T_FAV = 1;
 
@@ -59,8 +59,6 @@ final class FavAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         inflater = LayoutInflater.from(act);
         selColor = ContextCompat.getColor(act, R.color.primary_container);
     }
-
-    // --- dados ---
 
     void setData(List<Folder> f, List<Favorite> v, Map<String, Integer> c) {
         counts = c != null ? c : Collections.emptyMap();
@@ -149,8 +147,6 @@ final class FavAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return true;
     }
 
-    // --- seleção ---
-
     int selectedCount() { return selFolders.size() + selFavs.size(); }
 
     void toggle(Object item, int pos) {
@@ -184,8 +180,6 @@ final class FavAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         selFavs.clear();
         notifyItemRangeChanged(0, getItemCount());
     }
-
-    // --- linha de distância ---
 
     /** Chamado no onResume: referência e flag; retorna se o ticker deve rodar. */
     @SuppressLint("NotifyDataSetChanged")
@@ -223,8 +217,6 @@ final class FavAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         h.line.setTextColor(Cooldown.color(c, m, lastMocked, now));
         h.line.setVisibility(View.VISIBLE);
     }
-
-    // --- adapter ---
 
     @Override public int getItemCount() { return folders.size() + favs.size(); }
 
@@ -272,8 +264,6 @@ final class FavAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             bindLine(h, f, System.currentTimeMillis());
         }
     }
-
-    // --- view holders ---
 
     abstract class BaseVH extends RecyclerView.ViewHolder {
         final MaterialCardView card;

@@ -59,10 +59,8 @@ public final class Geo {
         out2[1] = Math.toDegrees(Math.atan2(y, x));
     }
 
-    /** Graus de latitude. */
     public static double metersToLat(double meters) { return Math.toDegrees(meters / R); }
 
-    /** Graus de longitude na latitude dada. */
     public static double metersToLng(double meters, double atLat) {
         double c = Math.cos(Math.toRadians(atLat));
         return Math.toDegrees(meters / (R * Math.max(c, 1e-12)));
@@ -78,7 +76,7 @@ public final class Geo {
 
     public static double random(double min, double max) { return min + Math.random() * (max - min); }
 
-    /** 04 §3.2: sem a origem; alt NaN. mode 0 random, 1 circle (o último ponto coincide com a origem). */
+    /** Sem a origem; alt NaN. mode 0 random, 1 circle (o último ponto coincide com a origem). */
     public static double[] generate(double lat, double lng, int mode, int count, double offsetM) {
         if (count <= 0) return new double[0];
         double[] pts = new double[count * 3];

@@ -2,7 +2,7 @@ package com.pokelocation.app.engine;
 
 /**
  * Reprodução de rota, lógica pura (sem android.*). Pontos intercalados lat,lng,alt (sem cópia).
- * Modelo cur/next/dir de 10 §3.3: cur = último waypoint alcançado (-1 antes do 1º), next = próximo alvo,
+ * Modelo cur/next/dir: cur = último waypoint alcançado (-1 antes do 1º), next = próximo alvo,
  * dir = sentido (só Reverse usa -1).
  */
 public final class RoutePlayer {
@@ -36,7 +36,7 @@ public final class RoutePlayer {
     }
 
     /**
-     * ROUTE_PREV (10 §3.3): sobre cur volta mais um no sentido atual, senão volta a cur.
+     * ROUTE_PREV: sobre cur volta mais um no sentido atual, senão volta a cur.
      * Stop trava nas pontas, Loop dá a volta, Reverse reflete e inverte o sentido. Atualiza cur/next; devolve o alvo.
      */
     public int previous(boolean atCur) {

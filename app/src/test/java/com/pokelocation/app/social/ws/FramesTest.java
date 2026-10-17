@@ -58,7 +58,7 @@ public class FramesTest {
 
     private static final String GID = "11111111-2222-3333-4444-555555555555", FROM = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
-    /** Golden do api.md §6/§7: 08 · u16 0024 + group_id · u16 + msg_id · u32 + payload; do servidor, + u16 0024 + from. */
+    /** Golden do protocolo: 08 · u16 0024 + group_id · u16 + msg_id · u32 + payload; do servidor, + u16 0024 + from. */
     @Test public void groupEnvelopeGolden() throws IOException {
         java.io.ByteArrayOutputStream want = new java.io.ByteArrayOutputStream();
         want.write(new byte[]{8, 0, 0x24});

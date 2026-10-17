@@ -28,7 +28,7 @@ public class DeepLinkActivityTest {
 
     @Test
     public void paramsAreTyped() {
-        assertEquals(120.0, (Double) DeepLinkActivity.parse("offset", "120"), 0);    // F101: generate?offset=120
+        assertEquals(120.0, (Double) DeepLinkActivity.parse("offset", "120"), 0);    // generate?offset=120
         assertEquals(-23.5505123, (Double) DeepLinkActivity.parse("lat", " -23.5505123 "), 0);
         assertEquals(12f, (Float) DeepLinkActivity.parse("speed", "12"), 0);
         assertEquals(10, DeepLinkActivity.parse("marker_count", "10"));

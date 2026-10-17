@@ -15,14 +15,13 @@ public class RoutePlayerTest {
         return p;
     }
 
-    /** Sequência de waypoints alcançados com k arrives. */
     private static int[] arrivals(RoutePlayer r, int k) {
         int[] out = new int[k];
         for (int i = 0; i < k; i++) { r.arrive(); out[i] = r.cur(); }
         return out;
     }
 
-    @Test public void reverseVisitsEndsOnce() {   // F69: A,B,C,D,C,B,A,B…
+    @Test public void reverseVisitsEndsOnce() {   // A,B,C,D,C,B,A,B…
         RoutePlayer r = new RoutePlayer();
         r.start(pts(4), MockEngine.ROUTE_REVERSE);
         assertArrayEquals(new int[]{0, 1, 2, 3, 2, 1, 0, 1, 2, 3}, arrivals(r, 10));
@@ -35,7 +34,7 @@ public class RoutePlayerTest {
         assertEquals(2, r.remaining());   // chegou em A: faltam B, C
     }
 
-    @Test public void loopRemainingCountsDownPerLap() {   // QA F69: não fica fixo em n
+    @Test public void loopRemainingCountsDownPerLap() {   // não fica fixo em n
         RoutePlayer r = new RoutePlayer();
         r.start(pts(3), MockEngine.ROUTE_LOOP);
         assertEquals(3, r.remaining());
@@ -67,7 +66,7 @@ public class RoutePlayerTest {
         }
     }
 
-    @Test public void prevQaCases() {   // 10 §3.3: A-B-C-D em Stop
+    @Test public void prevQaCases() {   // A-B-C-D em Stop
         RoutePlayer r = new RoutePlayer();
         r.start(pts(4), MockEngine.ROUTE_STOP);
         arrivals(r, 3);                         // em C

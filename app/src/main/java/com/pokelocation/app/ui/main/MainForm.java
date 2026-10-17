@@ -34,7 +34,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** Estado e lógica do formulário da Main (03 §2.1, §3.2, §3.6, §3.7, §3.9, §3.12, §3.15). Só main thread. */
+/** Estado e lógica do formulário da Main. Só main thread. */
 final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.OnItemSelectedListener {
     static final int SRC_LAST = 0, SRC_CURRENT = 1, SRC_SET = 2, SRC_ROUTE = 3, SRC_RECORD = 4;
     private static final int[] RADIOS = {R.id.main_rb_last, R.id.main_rb_current, R.id.main_rb_set,
@@ -69,7 +69,7 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
     private final CurrentLocation curLoc = new CurrentLocation();
     private ValueAnimator blink;
     private boolean startWhenCurrentReady;
-    // Resultado da busca para "Add to Favorites" (F20)
+    // Resultado da busca para "Add to Favorites"
     private String favName, favAddress;
     private Coord favCoord;
 
@@ -127,7 +127,7 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
         source.setOnCheckedChangeListener(this);
     }
 
-    /** onCreate: restaura textos (F27), rádios de rota, Quick Options e o rádio de origem. */
+    /** onCreate: restaura textos, rádios de rota, Quick Options e o rádio de origem. */
     void init(int src, String savedRouteId) {
         routeId = savedRouteId;
         applyQuickOptions(Prefs.getBool(a, Prefs.OPTIONS_VISIBILITY));
@@ -138,15 +138,12 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
         refreshLast();
         syncRouteRadios();
         select(src);
-        // Sem last e com FINE: marca "Get Current Location" (03 §3.2 item 8)
+        // Sem last e com FINE: marca "Get Current Location"
         if (src == SRC_LAST && last == null && Perms.hasFine(a)) source.post(() -> select(SRC_CURRENT));
-        // Se já estiver em current e sem leitura, tenta obter agora
         if (src == SRC_CURRENT && current == null && !curLoc.active() && Perms.hasFine(a)) {
             readCurrent();
         }
     }
-
-    // ---------------------------------------------------------------- origem
 
     int source() {
         int id = source.getCheckedRadioButtonId();
@@ -179,8 +176,6 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
         a.onFormChanged();
     }
 
-    // ---------------------------------------------------------------- last / current
-
     void refreshLast() { setLast(Prefs.lastPosition(a)); }
 
     void setLast(Coord c) {
@@ -196,7 +191,7 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
 
     Coord last() { return last; }
 
-    /** Com o replay frio sem last: inicia assim que a posição real chegar (F97). */
+    /** Com o replay frio sem last: inicia assim que a posição real chegar. */
     void startWhenCurrentReady() { startWhenCurrentReady = true; }
 
     /** Leitura do GPS só com a Activity visível (checklist CURRENT). */
@@ -248,8 +243,6 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
         lng.setVisibility(View.VISIBLE);
         al.setVisibility(View.VISIBLE);
     }
-
-    // ---------------------------------------------------------------- rotas (03 §3.6)
 
     void syncRouteRadios() {
         int rm = Prefs.getInt(a, Prefs.ROUTE_MODE), sm = Prefs.getInt(a, Prefs.ROUTE_START_MODE);
@@ -335,7 +328,7 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
         });
     }
 
-    /** Retorno de Routes (F26): marca Set Route com a rota escolhida. */
+    /** Retorno de Routes: marca Set Route com a rota escolhida. */
     void selectRoute(String id) {
         routeId = id;
         for (int i = 0; i < routes.size(); i++) {
@@ -350,8 +343,6 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
     }
 
     String routeId() { return routeId; }
-
-    // ---------------------------------------------------------------- Set Location
 
     /** Preenche Set Location (mantém Record Route se marcado). */
     void fillLocation(Coord c, boolean flash) {
@@ -391,8 +382,6 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
         }
         return new Coord(tmp[0], tmp[1], al);
     }
-
-    // ---------------------------------------------------------------- Start
 
     /** Destino do rádio atual (linha de distância e CooldownSheet); null se desconhecido. */
     Coord target() {
@@ -473,8 +462,6 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
         return null;
     }
 
-    // ---------------------------------------------------------------- checkboxes (F16, 10 §2.5)
-
     void setupHide() {
         boolean drawer = "drawer".equals(Prefs.getString(a, Prefs.SETTINGS_JOYSTICK_TYPE));
         cbHide.setOnCheckedChangeListener(null);
@@ -487,14 +474,12 @@ final class MainForm implements RadioGroup.OnCheckedChangeListener, AdapterView.
         cbDrawerHide.setOnCheckedChangeListener((b, c) -> Prefs.edit(a).putBoolean(Prefs.DRAWER_HIDE_JOYSTICK, c).apply());
     }
 
-    // ---------------------------------------------------------------- UX
-
     private void applyQuickOptions(boolean show) {
         quickBody.setVisibility(show ? View.VISIBLE : View.GONE);
         quickArrow.setImageResource(show ? R.drawable.ic_expand_less : R.drawable.ic_expand_more);
     }
 
-    /** Pisca o bloco (03 §3.15): transparente → destaque → transparente, atraso 400 ms, 800 ms. */
+    /** Pisca o bloco: transparente → destaque → transparente, atraso 400 ms, 800 ms. */
     private void blink(View block) {
         if (blink != null) blink.cancel();
         int hi = a.getColor(R.color.primary_container), clear = hi & 0x00FFFFFF;

@@ -104,7 +104,7 @@ public final class PogoPanel {
         }
     }
 
-    /** O bloco de um Pokémon (design v3): disco com a foto, nome / PC · Nv · tempo / local, pílula de IV. */
+    /** O bloco de um Pokémon: disco com a foto, nome / PC · Nv · tempo / local, pílula de IV. */
     private static final class Holder {
         final ImageView photo;
         final TextView name, stats, time, place, iv;
@@ -161,7 +161,7 @@ public final class PogoPanel {
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             long now = System.currentTimeMillis();
-            // despawnados saem a cada segundo, também com uma busca em curso ou depois de uma que falhou (T29)
+            // despawnados saem a cada segundo, também com uma busca em curso ou depois de uma que falhou
             if (!fixed && mons.removeIf(m -> gone(m, now)) && task == null)
                 showStatus(stale != null && !mons.isEmpty() ? stale : PogoText.count(app, mons.size(), filter, km == WORLD));
             adapter.notifyDataSetChanged();
@@ -435,7 +435,7 @@ public final class PogoPanel {
         if (user) closeDetail();
         cancel(task);
         Io.Task t = task = new Io.Task();
-        Io.main().removeCallbacks(retry);   // a lista da busca anterior fica até esta dar certo (T29)
+        Io.main().removeCallbacks(retry);   // a lista da busca anterior fica até esta dar certo
         Io.main().removeCallbacks(auto);
         busy(true);
         if (mons.isEmpty()) status.setText(R.string.pogo_map_loading);
@@ -536,7 +536,7 @@ public final class PogoPanel {
         badge.setText(String.valueOf(n));
         badge.setVisibility(n > 0 ? View.VISIBLE : View.GONE);
         // com filtro ativo, pílula primary; sem filtro, só a borda (e sem badge). O padding vem DEPOIS do fundo: o
-        // setBackground troca o padding do view pelo do drawable (era o que encolhia o botão num círculo).
+        // setBackground troca o padding do view pelo do drawable.
         int fg = ctx.getColor(n > 0 ? R.color.on_primary : R.color.primary);
         filtersBtn.setBackground(n > 0 ? PogoChips.round(ctx, 20, ctx.getColor(R.color.primary), 0)
                 : PogoChips.round(ctx, 20, 0, ctx.getColor(R.color.outline)));
@@ -562,7 +562,6 @@ public final class PogoPanel {
         if (f.backgroundOnly) chip(ctx.getString(R.string.pogo_f_background), x -> x.backgroundOnly = false);
     }
 
-    /** remove null = o escopo: abre o sheet em vez de sumir. */
     /** Tocar no texto abre o sheet; o "×" (alvo próprio) tira só este filtro e busca de novo. remove null = o escopo. */
     private void chip(String label, Consumer<PogoFilter> remove) {
         View t = PogoChips.summaryChip(ctx, label, x -> openSheet(), remove == null ? null : x -> {

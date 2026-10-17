@@ -174,8 +174,6 @@ public final class PogoBubbles {
         PogoIcons.trim();
     }
 
-    // ------------------------------------------------------------------ janela
-
     private void sync() {
         boolean want = open && visible && !destroyed;
         if (want == shown) return;
@@ -275,8 +273,6 @@ public final class PogoBubbles {
         }
     }
 
-    // ------------------------------------------------------------------ botões da logo
-
     /**
      * Os botões numa janela própria, ao lado da logo e para o lado de dentro da tela: na janela da coluna eles a
      * alargavam, e a área vazia embaixo deles engolia o toque do jogo (janela de overlay não deixa o toque atravessar).
@@ -361,8 +357,6 @@ public final class PogoBubbles {
         Io.main().postDelayed(user, wait);
     }
 
-    // ------------------------------------------------------------------ busca
-
     private void schedule() {
         Io.main().removeCallbacks(auto);
         if (shown && task == null) Io.main().postDelayed(auto, Math.max(0, lastAt + PogoPanel.FRESH_MS - System.currentTimeMillis()));
@@ -422,8 +416,6 @@ public final class PogoBubbles {
         });
     }
 
-    // ------------------------------------------------------------------ bolhas
-
     /** Tira os despawnados, mostra os n primeiros (os mais perto) e agenda o próximo despawn; sem tick de 1 s. */
     private void render() {
         long now = System.currentTimeMillis();
@@ -478,8 +470,6 @@ public final class PogoBubbles {
         bubbles.addView(b, l);
         return b;
     }
-
-    // ------------------------------------------------------------------ card e filtros
 
     /** O card de hoje ao lado da bolha, do lado de dentro da tela; tocar de novo na mesma bolha fecha. */
     private void tap(View b) {

@@ -10,7 +10,7 @@ import com.pokelocation.app.geo.Geo;
 import com.pokelocation.app.util.Perms;
 
 /**
- * Motor de mock (10 §3.1 + 11 §5). Roda na main thread do :overlay, num único Handler reagendado por
+ * Motor de mock. Roda na main thread do :overlay, num único Handler reagendado por
  * postAtTime(alvo += intervalo). Estado em primitivos: tick e setStick não alocam.
  * Não é final só para o teste JVM sobrescrever os ganchos package-private (relógio, agenda, saída).
  */
@@ -62,7 +62,7 @@ public class MockEngineImpl implements MockEngine {
         autoSuspendActive = cfg.autoSuspend;
     }
 
-    // --- ganchos (sobrescritos no teste JVM) ---
+    // Ganchos sobrescritos no teste JVM.
     long uptime() { return SystemClock.uptimeMillis(); }
     long wallTime() { return System.currentTimeMillis(); }
     void scheduleAt(long uptimeMs) { handler.postAtTime(loop, uptimeMs); }
@@ -75,14 +75,13 @@ public class MockEngineImpl implements MockEngine {
         injector.publish(la, ln, al, sp, hs, acc, br, hb);
     }
 
-    /** Ticks sem speed após teleporte (10 §3.1 fato 1). */
+    /** Ticks sem speed após teleporte. */
     static int freezeTicks(int processMs) {
         if (processMs < 1000) return (1000 / processMs) * 3;
         if (processMs < 3000) return 3 - processMs / 1000;
         return 0;
     }
 
-    // --- ciclo de vida ---
     @Override public void setListener(Listener l) { listener = l; }
     @Override public void setSuspendedPublisher(SuspendedPublisher p) { publisher = p; }
 
@@ -99,7 +98,7 @@ public class MockEngineImpl implements MockEngine {
         registered = registerProviders();
         target = lastMockCheck = uptime();
         if (cfg.suspended) {
-            // 11 §2.3: sem injeção imediata; a primeira vem do primeiro gatilho.
+            // Sem injeção imediata; a primeira vem do primeiro gatilho.
             countdown = suspendInterval();
             notifyCountdown();
             target += 1000;
@@ -135,14 +134,14 @@ public class MockEngineImpl implements MockEngine {
         scheduleAt(target);
     }
 
-    /** 11 §2.4: passo de 1 s da contagem "Auto suspend in N s". */
+    /** Passo de 1 s da contagem "Auto suspend in N s". */
     private void countdownStep() {
         boolean moving = mag != 0f || (playing && route.active());
         if (--countdown > 0) {
             notifyCountdown();
             if (moving) tick();
         } else {
-            // fim: injeção automática; com o stick em uso o original também injeta no reinício (onTick inicial).
+            // fim: injeção automática; com o stick em uso também injeta no reinício (onTick inicial).
             if (autoSuspendActive || moving) tick();
             countdown = suspendInterval();
             notifyCountdown();
@@ -157,7 +156,6 @@ public class MockEngineImpl implements MockEngine {
         if (autoSuspendActive && listener != null) listener.onAutoSuspendCountdown(countdown);
     }
 
-    // --- tick (10 §3.1 com as correções do PLAN W1 tarefa 2) ---
     private void tick() {
         final int a = cfg.processMs, b = cfg.updateMs, c = cfg.idleMs;
         if (accUpd >= b) accUpd = 0;
@@ -237,7 +235,7 @@ public class MockEngineImpl implements MockEngine {
         }
         lat = repLat = nl;
         lng = repLng = ng;
-        // Correção do drift (10 §3.1 fato 3): ruído sobre pos.alt, nunca sobre a alt publicada anterior.
+        // Contra o drift: ruído sobre pos.alt, nunca sobre a alt publicada anterior.
         repAlt = altFromTarget ? alt : altOr0(alt) + noise(cfg.altOffsetM);
 
         hasSpeed = true;
@@ -247,7 +245,7 @@ public class MockEngineImpl implements MockEngine {
         accuracy = (float) Geo.random(cfg.minMovingAcc, cfg.maxMovingAcc);
     }
 
-    /** Snap em next e avança (04 §3.4 arrive). push = injetar já (fast forward). */
+    /** Snap em next e avança. push = injetar já (fast forward). */
     private void arrive(boolean push) {
         snapTo(route.nextIndex());
         if (route.arrive()) {
@@ -300,7 +298,6 @@ public class MockEngineImpl implements MockEngine {
     private static double noise(double range) { return Geo.random(-range, range); }
     private static double altOr0(double a) { return Double.isNaN(a) ? 0 : a; }
 
-    // --- entrada ---
     @Override
     public void setStick(float angleDeg, float magnitude) {
         boolean wasMoving = mag != 0f;
@@ -327,7 +324,6 @@ public class MockEngineImpl implements MockEngine {
         alt = repAlt = a;
     }
 
-    // --- rota ---
     @Override
     public void startRoute(double[] pts, int routeMode, boolean teleportToStart) {
         if (pts == null || pts.length < 3) return;
@@ -399,7 +395,6 @@ public class MockEngineImpl implements MockEngine {
     @Override public int nextIndex() { return route.active() ? route.nextIndex() : -1; }
     @Override public double[] routePoints() { return route.points(); }
 
-    // --- leitura ---
     @Override public double lat() { return lat; }
     @Override public double lng() { return lng; }
     @Override public double alt() { return alt; }
@@ -408,7 +403,6 @@ public class MockEngineImpl implements MockEngine {
     @Override public float accuracy() { return accuracy; }
     @Override public long lastTickTime() { return lastTick; }
 
-    // --- suspended (sem efeito fora dele) ---
     @Override
     public void injectNow() {
         if (cfg.suspended && started) tick();

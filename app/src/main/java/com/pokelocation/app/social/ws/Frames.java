@@ -5,7 +5,7 @@ import java.net.ProtocolException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Payload dos frames binários do WebSocket, espelho do wire do servidor (api.md §6): [tipo u8][campos]; inteiros
+ * Payload dos frames binários do WebSocket, espelho do wire do servidor: [tipo u8][campos]; inteiros
  * big-endian; str = u16 + UTF-8; bin = u32 + bytes. Puro, sem I/O.
  */
 public final class Frames {

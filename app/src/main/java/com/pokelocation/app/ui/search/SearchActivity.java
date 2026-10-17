@@ -47,9 +47,9 @@ import java.util.Locale;
 import java.util.function.DoubleConsumer;
 
 /**
- * Busca de endereço (F21, 05 §3.8): debounce 500 ms + token (respostas velhas descartadas), query repetida ignorada,
+ * Busca de endereço: debounce 500 ms + token (respostas velhas descartadas), query repetida ignorada,
  * até 5 resultados. Geocoder primeiro; fallback Nominatim (≥ 1 s entre chamadas). Toque → altitude (cancelável) → resultado.
- * Resultado: name, address, lat, lng, alt (§3.12).
+ * Resultado: name, address, lat, lng, alt.
  */
 public class SearchActivity extends BaseActivity {
     private static final int MAX = 5;
@@ -114,8 +114,6 @@ public class SearchActivity extends BaseActivity {
         if (altTask != null) altTask.cancel();
         super.onDestroy();
     }
-
-    // ------------------------------------------------------------------ busca
 
     private void runQuery() {
         String q = pending == null ? "" : pending.trim();
@@ -272,8 +270,6 @@ public class SearchActivity extends BaseActivity {
         return new Favorite("", name, address == null ? "" : address, lat, lng, 0, 0, null);
     }
 
-    // ------------------------------------------------------------------ escolha
-
     private void pick(Favorite p) {
         if (altTask != null) altTask.cancel();
         altTask = altitude(this, p.lat, p.lng, alt -> {
@@ -316,8 +312,6 @@ public class SearchActivity extends BaseActivity {
         d.show();
         return t;
     }
-
-    // ------------------------------------------------------------------ lista
 
     private final class Adapter extends RecyclerView.Adapter<Adapter.VH> {
         private final LayoutInflater inflater;

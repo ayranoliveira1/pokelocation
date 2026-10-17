@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * Agrupamento por pasta para as listas de import/export (06 §3.9). Lógica pura (sem android.*).
+ * Agrupamento por pasta para as listas de import/export. Lógica pura (sem android.*).
  * Lista plana = para cada pasta (DFS, ordem de aparição): [Header] + itens da pasta + subpastas; depois os itens sem pasta.
  * Nível: Header = profundidade − 1 (0-based); item = profundidade da sua pasta (0 sem pasta).
  */

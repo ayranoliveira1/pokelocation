@@ -14,7 +14,7 @@ import com.pokelocation.app.util.Ui;
 import java.util.function.Consumer;
 
 /**
- * Bottom sheet dos filtros (docs/pogo/filtros-design.md): véu 40% que fecha ao toque, folha de até 85% da altura com
+ * Bottom sheet dos filtros: véu 40% que fecha ao toque, folha de até 85% da altura com
  * cabeçalho (Filtros, Limpar, ✕) e rodapé "Mostrar resultados (N)" fixos. Edita uma cópia: ✕/véu descartam, o rodapé
  * entrega a cópia ao onApply. Quem hospeda põe view() em tela cheia e a tira no onClosed.
  */

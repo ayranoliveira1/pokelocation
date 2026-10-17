@@ -51,17 +51,16 @@ public final class Pogo {
     static final String K_LINKED = "pogo_linked", K_NAME = "name", K_TRAINERS = "trainers", K_PENDING = "pending_at",
             K_PROVIDER = "provider";
     public static final int MAX_RULES = 10;
-    /** Spec §2.1: o client_id e o redirect são os do site; o app intercepta o redirect https (§18). */
+    /** O client_id e o redirect são os do site; o app intercepta o redirect https. */
     static final String LOGIN_URL = "https://accounts.google.com/o/oauth2/v2/auth"
             + "?client_id=903959815167-q595r9hdqgjdm1lu6t1es0n2qung2qci.apps.googleusercontent.com"
             + "&redirect_uri=https://pogocoordinates.com/callback&response_type=code&scope=openid%20email%20profile"
             + "&state=login:google&access_type=online&prompt=consent";
-    /** Spec §2.1, idêntica: o Discord, ao contrário do Google, aceita WebView. */
+    /** Idêntica: o Discord, ao contrário do Google, aceita WebView. */
     static final String DISCORD_URL = "https://discord.com/oauth2/authorize?client_id=1499296458753445998"
             + "&redirect_uri=https://pogocoordinates.com/callback&response_type=code"
             + "&scope=identify%20applications.commands&integration_type=1&state=login:discord";
     private static final long PENDING_MS = 10 * 60_000L;
-    /** O lookup de treinador pode levar até 1 min (spec §14.2). */
     /** O PoGo leva 7–15 s no lookup; o nosso proxy espera até 30 s (504 upstream_timeout). */
     private static final int SLOW_MS = 30_000;
     private static final int TIMEOUT_MS = 15_000, TRAINER_TIMEOUT_MS = 60_000, MAX_BODY = 64 * 1024,
@@ -121,7 +120,7 @@ public final class Pogo {
         return sp;
     }
 
-    /** Builds de teste guardavam o JWT cifrado com a chave pl_pogo: agora o token fica no servidor. */
+    /** Apaga o JWT cifrado com a chave pl_pogo que builds de teste deixaram: o token fica no servidor. */
     private static void dropLegacy(SharedPreferences sp) {
         sp.edit().remove("jwt").apply();
         Io.run(() -> {
@@ -165,7 +164,7 @@ public final class Pogo {
         }
     }
 
-    /** POST /search (§4.1): o mundo inteiro, cap 5 anônimo / 10 logado / até 100 VIP, itens sem coordenada. */
+    /** POST /search: o mundo inteiro, cap 5 anônimo / 10 logado / até 100 VIP, itens sem coordenada. */
     public static List<Mon> search(Context c, PogoFilter f) throws IOException {
         try {
             return route(c, "POST", "/search", t -> searchBody(f, t), SEARCH_MAX, SLOW_MS, r -> results(r, false));
@@ -509,7 +508,7 @@ public final class Pogo {
         return !slow(t) && (code(t, "pogo_disabled") || code(t, "pogo_relogin") || t instanceof Error && ((Error) t).http >= 500);
     }
 
-    /** 422 ao salvar regra com shiny sem treinador ativo (T22): o mesmo aviso de "Vincular treinador". */
+    /** 422 ao salvar regra com shiny sem treinador ativo: o mesmo aviso de "Vincular treinador". */
     public static boolean trainerRequired(Throwable t) { return code(t, "trainer_required"); }
 
     /** 422: o shiny_account da regra não é um treinador ativo da conta. */
@@ -518,7 +517,7 @@ public final class Pogo {
     private static boolean code(Throwable t, String code) { return t instanceof Error && code.equals(((Error) t).error); }
 
     /**
-     * Regra de alerta (contrato §4). world = scope "world"; near usa lat/lng/radiusKm. disabledReason: por que o servidor
+     * Regra de alerta. world = scope "world"; near usa lat/lng/radiusKm. disabledReason: por que o servidor
      * a desligou (ex.: "trainer_required"); só leitura, null se ligada pelo usuário.
      */
     public static final class Rule {
@@ -589,7 +588,7 @@ public final class Pogo {
     private interface Body { JSONObject of(JSONArray trainers) throws JSONException; }
 
     /**
-     * Sempre pelo nosso servidor (o app não fala mais direto com o PoGo; sem vínculo ele usa os tokens dele). Os
+     * Sempre pelo nosso servidor (sem vínculo ele usa os tokens dele). Os
      * treinadores, que decidem o shiny no stripShiny, só com o vínculo. A resposta é lida em fluxo (JsonReader): sem
      * árvore JSONObject (lookup de até 1 MB a cada 60 s).
      */
@@ -610,7 +609,7 @@ public final class Pogo {
         }
     }
 
-    /** Nosso servidor; o timeout tem folga de 5 s sobre o dele (contrato §3). */
+    /** Nosso servidor; o timeout tem folga de 5 s sobre o dele. */
     static String proxy(Context c, String method, String path, JSONObject body, int max, int timeout) throws IOException {
         try {
             return Api.pogo(c, method, "/v1/pogo" + path, body, max, timeout + 5_000);
@@ -624,7 +623,7 @@ public final class Pogo {
         }
     }
 
-    /** upstream = o 4xx do PoGo no envelope (§1.2), lido como o erro deles; o rate_limited nosso vem sem retry_after. */
+    /** upstream = o 4xx do PoGo no envelope, lido como o erro deles; o rate_limited nosso vem sem retry_after. */
     static Error fromApi(int http, String code, String body, long ourRetryS) {
         if ("upstream".equals(code)) return error(http, body, null);
         return new Error(http, code, null, "rate_limited".equals(code) ? ourRetryS : 0);

@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * "Choose Widget Items" (F105): itens escolhidos via Favorites/Routes em select_mode, arrastar reordena,
+ * "Choose Widget Items": itens escolhidos via Favorites/Routes em select_mode, arrastar reordena,
  * deslizar ou X remove, limite de 100. Cada mudança grava widget_items_/widget_cache_&lt;id&gt; e re-renderiza o widget.
  */
 public class WidgetConfigActivity extends BaseActivity {
@@ -180,8 +180,6 @@ public class WidgetConfigActivity extends BaseActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    // --- dados ---
-
     private void onPicked(ActivityResult r, boolean routes) {
         Intent d = r.getData();
         if (r.getResultCode() != RESULT_OK || d == null) return;
@@ -268,8 +266,6 @@ public class WidgetConfigActivity extends BaseActivity {
         for (WidgetData.Item it : items) if (it.route == routes) n++;
         return n;
     }
-
-    // --- lista ---
 
     private final class Holder extends RecyclerView.ViewHolder {
         final ImageView icon;

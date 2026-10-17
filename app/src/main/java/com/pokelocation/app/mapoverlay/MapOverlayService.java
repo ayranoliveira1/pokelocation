@@ -26,8 +26,8 @@ import com.pokelocation.app.util.Themes;
 import com.pokelocation.app.util.Ui;
 
 /**
- * Mini-mapa flutuante (F51/F53), processo :map efêmero. Recebe INT_START_MAP do :overlay, devolve UM
- * INT_RETURN_FROM_MAP e para; onDestroy mata o processo (N02). Prefs só leitura. Ponte: docs/team/W2-api.md.
+ * Mini-mapa flutuante, processo :map efêmero. Recebe INT_START_MAP do :overlay, devolve UM
+ * INT_RETURN_FROM_MAP e para; onDestroy mata o processo. Prefs só leitura.
  */
 public final class MapOverlayService extends Service implements RouteMapView.Host {
     private static final String CHANNEL = "pokelocation_map";
@@ -133,8 +133,6 @@ public final class MapOverlayService extends Service implements RouteMapView.Hos
         }
     }
 
-    // ------------------------------------------------------------------ RouteMapView.Host → RETURN_FROM_MAP
-
     @Override public void onTeleportClick(Coord target) { finishWith(Intents.MAP_TELEPORT, null, -1, false); }
 
     @Override public void onStartRouteClick(double[] pts) { finishWith(Intents.MAP_START, pts, -1, false); }
@@ -192,8 +190,6 @@ public final class MapOverlayService extends Service implements RouteMapView.Hos
             @Override public void onError(Throwable t) { stopSelf(); }
         });
     }
-
-    // ------------------------------------------------------------------ ciclo de vida
 
     @Override public void onTrimMemory(int level) {
         super.onTrimMemory(level);

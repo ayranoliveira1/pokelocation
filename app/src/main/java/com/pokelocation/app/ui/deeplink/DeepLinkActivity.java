@@ -8,7 +8,7 @@ import android.os.Bundle;
 import com.pokelocation.app.ipc.Intents;
 
 /**
- * pokelocation://&lt;host&gt;?… → ação pública do OverlayService (F101). Roda em :overlay, sem UI:
+ * pokelocation://&lt;host&gt;?… → ação pública do OverlayService. Roda em :overlay, sem UI:
  * não sobe o processo main, não toca em Prefs/Db, finish() sempre.
  */
 public final class DeepLinkActivity extends Activity {
