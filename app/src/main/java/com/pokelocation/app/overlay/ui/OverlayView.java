@@ -61,7 +61,7 @@ public final class OverlayView implements View.OnClickListener {
     private final OverlayFlows flows;
     final boolean classic, secure;
     private final int sizePct;
-    final float alpha;
+    private final float alpha;
     private final Display display;           // DisplayInfo ao vivo: acompanha a rotação (o ctx temático não)
     private final Point scr = new Point();   // tela real, relida a cada place/fit
 

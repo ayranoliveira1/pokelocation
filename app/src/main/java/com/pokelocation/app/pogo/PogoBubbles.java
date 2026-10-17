@@ -50,7 +50,8 @@ public final class PogoBubbles {
     private static final String TAG = "PogoBubbles", POS = "overlay_panels", COUNT = "pogo_col_n";
     /** O servidor aceita 10 buscas/min por conta e o 429 vem sem retry_after: a busca manual espera este tanto. */
     private static final long GAP_MS = 6_000;
-    private static final float CARD_ALPHA = 0.8f;
+    /** Opacidade do card inteiro e só do círculo das bolhas e dos botões (os ícones ficam opacos): não atrapalhar o jogo. */
+    private static final float ALPHA = 0.6f;
 
     private final Context ctx, app;
     private final Host host;
@@ -80,8 +81,8 @@ public final class PogoBubbles {
     private PogoFilterSheet sheet;
     private PanelHost sheetHost;
 
-    /** alpha: a opacidade do joystick nas configurações; secure: o mesmo FLAG_SECURE das janelas dele. */
-    public PogoBubbles(Context c, boolean classic, float alpha, boolean secure, Host host) {
+    /** secure: o mesmo FLAG_SECURE das janelas do joystick. */
+    public PogoBubbles(Context c, boolean classic, boolean secure, Host host) {
         ctx = c;
         app = c.getApplicationContext();
         this.host = host;
@@ -92,7 +93,7 @@ public final class PogoBubbles {
         pos = c.getSharedPreferences(POS, Context.MODE_PRIVATE);   // só o :overlay grava
         key = classic ? "pogo_col_classic" : "pogo_col_drawer";
         n = pos.getInt(COUNT, 5) == 10 ? 10 : 5;
-        size = Ui.dp(c, 48);
+        size = c.getResources().getDimensionPixelSize(R.dimen.ov_btn);   // o botão da gaveta
         gap = Ui.dp(c, 6);
         margin = Ui.dp(c, 8);
         int primary = c.getColor(R.color.primary);
@@ -130,7 +131,6 @@ public final class PogoBubbles {
         spin.setInterpolator(new LinearInterpolator());
 
         lp = params(WindowManager.LayoutParams.WRAP_CONTENT);
-        lp.alpha = alpha;
         lp.x = pos.getInt(key + "_x", -1);
         lp.y = pos.getInt(key + "_y", -1);
         logo.setOnClickListener(v -> toggleSide());
@@ -301,8 +301,7 @@ public final class PogoBubbles {
     }
 
     private LinearLayout.LayoutParams sideLp() {
-        int d = Ui.dp(ctx, 40);
-        LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(d, d);
+        LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(size, size);
         l.gravity = Gravity.CENTER_VERTICAL;
         l.setMarginStart(gap);
         l.setMarginEnd(gap);
@@ -312,6 +311,7 @@ public final class PogoBubbles {
     private GradientDrawable round() {
         GradientDrawable g = PogoChips.round(ctx, 20, ctx.getColor(R.color.surface), ctx.getColor(R.color.outline));
         g.setShape(GradientDrawable.OVAL);
+        g.setAlpha(Math.round(ALPHA * 255));
         return g;
     }
 
@@ -457,6 +457,7 @@ public final class PogoBubbles {
         d.setShape(GradientDrawable.OVAL);
         d.setColor(ctx.getColor(R.color.surface));
         d.setStroke(Ui.dp(ctx, 1), ctx.getColor(R.color.outline));
+        d.setAlpha(Math.round(ALPHA * 255));
         b.setBackground(d);
         int p = Ui.dp(ctx, 4);
         b.setPadding(p, p, p, p);
@@ -484,7 +485,7 @@ public final class PogoBubbles {
                 host.teleport(CoordParser.text(la, ln), title);
             }, this::closeCard);
             cardLp = params(0);
-            cardLp.alpha = CARD_ALPHA;
+            cardLp.alpha = ALPHA;
             card.view.addOnLayoutChangeListener((v, l, t, r, bo, ol, ot, or, ob) -> { if (bo - t != ob - ot) fitCard(); });
         }
         cardMon = m;

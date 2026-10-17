@@ -73,7 +73,7 @@ final class OverlayFlows {
 
     /** Com login a coluna PoGo já sobe aberta e busca; o botão PoGo do joystick só abre e fecha. */
     void startPogo(boolean visible) {
-        if (pogo == null) pogo = new PogoBubbles(ctx, ov.classic, ov.alpha, ov.secure, new PogoBubbles.Host() {
+        if (pogo == null) pogo = new PogoBubbles(ctx, ov.classic, ov.secure, new PogoBubbles.Host() {
             @Override public double lat() { return ov.engine.lat(); }
 
             @Override public double lng() { return ov.engine.lng(); }
