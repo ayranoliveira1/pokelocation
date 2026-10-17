@@ -49,7 +49,7 @@ public final class Notify {
         String title = conv.title != null ? conv.title : c.getString(R.string.soc_notif_new);
         Notification.Builder b = builder(c, nm);
         Intent open = ChatActivity.conv(c, conv.id, title, conv.group);
-        b.setSmallIcon(R.drawable.ic_notification)
+        b.setSmallIcon(R.drawable.ic_notification_logo)
                 .setContentTitle(title)
                 .setContentText(body)
                 .setWhen(m.ts)
@@ -61,7 +61,7 @@ public final class Notify {
                         .getPendingIntent(conv.id.hashCode(), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
                 // o texto decifrado não aparece na tela bloqueada
                 .setVisibility(Notification.VISIBILITY_PRIVATE)
-                .setPublicVersion(builder(c, nm).setSmallIcon(R.drawable.ic_notification)
+                .setPublicVersion(builder(c, nm).setSmallIcon(R.drawable.ic_notification_logo)
                         .setContentTitle(c.getString(R.string.soc_notif_new)).build());
         try {
             nm.notify(conv.id, ID, b.build());
@@ -84,7 +84,8 @@ public final class Notify {
     }
 
     private static Notification.Builder builder(Context c, NotificationManager nm) {
-        return Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, channel(c, nm)) : legacy(c);
+        return (Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, channel(c, nm)) : legacy(c))
+                .setColor(c.getColor(R.color.primary));
     }
 
     @SuppressWarnings("deprecation")
