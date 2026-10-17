@@ -23,6 +23,7 @@ import android.widget.ImageView;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -59,7 +60,7 @@ public final class PogoFilterForm {
     private Io.Task task;
     /** null = sem o seletor de filtros salvos. */
     private List<PogoFilter.Saved> saved;
-    private boolean menu;
+    private PopupWindow popup;
     private View modal;
 
     /** focusable: liga/desliga o teclado da janela do :overlay ao editar (null no app); linkTrainer null = sem atalho. */
@@ -84,6 +85,10 @@ public final class PogoFilterForm {
 
     /** true se fechou a subtela de espécies. */
     public boolean back() {
+        if (popup != null) {
+            closeSaved();
+            return true;
+        }
         if (modal != null) {
             closeModal();
             return true;
@@ -105,6 +110,7 @@ public final class PogoFilterForm {
     }
 
     public void destroy() {
+        closeSaved();
         if (task != null) task.cancel();
         task = null;
         catalog = null;
@@ -247,9 +253,10 @@ public final class PogoFilterForm {
 
     private void changed() { if (onChanged != null) onChanged.run(); }
 
-    /** O salvo igual ao filtro atual aparece escolhido; tocar abre a lista (aplicar tudo dele ou apagar). */
+    /** O valor do select é o salvo igual ao filtro atual: mexer em qualquer filtro volta a Nenhum. */
     private void savedBar() {
-        title(R.string.pogo_saved);
+        TextView label = label(R.string.pogo_saved);
+        label.setPadding(0, pad, 0, Ui.dp(c, 4));
         String current = null;
         for (PogoFilter.Saved x : saved) if (x.filter.same(f)) current = x.name;
         int dp = Ui.dp(c, 1);
@@ -258,62 +265,94 @@ public final class PogoFilterForm {
         LinearLayout field = new LinearLayout(c);
         field.setGravity(Gravity.CENTER_VERTICAL);
         field.setBackground(box());
-        field.setPadding(12 * dp, 0, 12 * dp, 0);
+        field.setPadding(16 * dp, 0, 12 * dp, 0);
         TextView name = new TextView(c);
-        name.setText(current != null ? current : c.getString(saved.isEmpty() ? R.string.pogo_saved_none : R.string.pogo_saved_pick));
+        name.setText(current != null ? current : c.getString(R.string.pogo_saved_unset));
         name.setTextSize(16);
         name.setTextColor(c.getColor(current != null ? R.color.on_surface : R.color.on_surface_variant));
         name.setSingleLine(true);
         name.setEllipsize(TextUtils.TruncateAt.END);
         field.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
-        if (!saved.isEmpty()) {
-            TextView arrow = new TextView(c);
-            arrow.setText(menu ? "▴" : "▾");
-            arrow.setTextColor(c.getColor(R.color.on_surface_variant));
-            field.addView(arrow);
-            field.setOnClickListener(v -> {
-                menu = !menu;
-                if (menu) saved = PogoFilter.saved(c);
-                render();
-            });
-        }
+        ImageView arrow = new ImageView(c);
+        arrow.setImageResource(R.drawable.ic_expand_more);
+        arrow.setColorFilter(c.getColor(R.color.on_surface_variant));
+        field.addView(arrow, new LinearLayout.LayoutParams(24 * dp, 24 * dp));
+        field.setContentDescription(c.getString(R.string.pogo_saved) + ": " + name.getText());
+        String chosen = current;
+        field.setOnClickListener(v -> openSaved(field, chosen));
         bar.addView(field, new LinearLayout.LayoutParams(0, 52 * dp, 1));
-        TextView save = button(R.string.pogo_saved_save, v -> saveModal());
-        bar.addView(save, new LinearLayout.LayoutParams(-2, 52 * dp));
+        bar.addView(button(R.string.pogo_saved_save, v -> saveModal()), new LinearLayout.LayoutParams(-2, 52 * dp));
         body.addView(bar);
-        if (!menu) return;
+    }
+
+    /** A lista ancorada logo abaixo do campo e da largura dele: a PopupWindow também abre no :overlay, sem Activity. */
+    private void openSaved(View field, String current) {
+        saved = PogoFilter.saved(c);
+        int dp = Ui.dp(c, 1);
+        LinearLayout list = new LinearLayout(c);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(0, 8 * dp, 0, 8 * dp);
+        if (saved.isEmpty()) list.addView(item(c.getString(R.string.pogo_saved_none), R.color.on_surface_variant));
         for (PogoFilter.Saved x : saved) {
             LinearLayout row = new LinearLayout(c);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            TextView t = text(x.name);
-            body.removeView(t);
-            t.setPadding(12 * dp, 0, 0, 0);
+            TextView t = item(x.name, x.name.equals(current) ? R.color.primary : R.color.on_surface);
             t.setOnClickListener(v -> {
+                closeSaved();
                 f.set(x.filter.copy());
-                menu = false;
                 changed();
                 render();
             });
             row.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
             ImageView del = new ImageView(c);
-            del.setImageResource(R.drawable.ic_delete);
+            del.setImageResource(R.drawable.ic_close);
             del.setColorFilter(c.getColor(R.color.on_surface_variant));
             del.setScaleType(ImageView.ScaleType.CENTER);
             del.setContentDescription(c.getString(R.string.pogo_saved_delete, x.name));
             del.setOnClickListener(v -> {
-                LinearLayout card = modal(c.getString(R.string.pogo_saved_delete, x.name));
-                actions(card, R.string.delete, () -> {
-                    saved = PogoFilter.saved(c);
-                    saved.removeIf(y -> y.name.equals(x.name));
-                    PogoFilter.storeSaved(c, saved);
-                    if (saved.isEmpty()) menu = false;
-                    closeModal();
-                    render();
-                });
+                closeSaved();
+                confirmDelete(x);
             });
             row.addView(del, new LinearLayout.LayoutParams(48 * dp, 48 * dp));
-            body.addView(row);
+            list.addView(row);
         }
+        ScrollView sv = new ScrollView(c);
+        sv.addView(list);
+        closeSaved();
+        popup = new PopupWindow(sv, field.getWidth(), Math.max(1, Math.min(saved.size(), 5)) * 48 * dp + 16 * dp);
+        popup.setBackgroundDrawable(PogoChips.round(c, 4, c.getColor(R.color.surface_container), 0));
+        popup.setElevation(3 * dp);
+        popup.setOutsideTouchable(true);
+        popup.setOnDismissListener(() -> popup = null);
+        popup.showAsDropDown(field, 0, 4 * dp);
+    }
+
+    private TextView item(String s, int color) {
+        TextView t = new TextView(c);
+        t.setText(s);
+        t.setTextSize(16);
+        t.setTextColor(c.getColor(color));
+        t.setSingleLine(true);
+        t.setEllipsize(TextUtils.TruncateAt.END);
+        t.setGravity(Gravity.CENTER_VERTICAL);
+        t.setMinHeight(Ui.dp(c, 48));
+        t.setPadding(pad, 0, pad, 0);
+        return t;
+    }
+
+    private void closeSaved() {
+        if (popup != null) popup.dismiss();
+    }
+
+    private void confirmDelete(PogoFilter.Saved x) {
+        LinearLayout card = modal(c.getString(R.string.pogo_saved_delete, x.name));
+        actions(card, R.string.delete, () -> {
+            saved = PogoFilter.saved(c);
+            saved.removeIf(y -> y.name.equals(x.name));
+            PogoFilter.storeSaved(c, saved);
+            closeModal();
+            render();
+        });
     }
 
     /** Nome obrigatório e sem repetir: o Salvar só liga com um nome novo (não há substituir). */

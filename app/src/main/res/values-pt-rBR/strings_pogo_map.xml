@@ -66,7 +66,7 @@
     <string name="pogo_history_delete_confirm">Excluir esta notificação?</string>
     <string name="pogo_history_offline">Mostrando as notificações salvas · %s</string>
     <string name="pogo_saved">Filtro salvo</string>
-    <string name="pogo_saved_pick">Escolher um filtro salvo</string>
+    <string name="pogo_saved_unset">Nenhum</string>
     <string name="pogo_saved_none">Nenhum filtro salvo ainda</string>
     <string name="pogo_saved_save">Salvar filtro</string>
     <string name="pogo_saved_name">Nome</string>
