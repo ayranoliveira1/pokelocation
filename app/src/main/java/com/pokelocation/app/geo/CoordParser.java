@@ -1,6 +1,7 @@
 package com.pokelocation.app.geo;
 
 import java.math.BigDecimal;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +34,9 @@ public final class CoordParser {
 
     /** "lat, lng". */
     public static String text(double lat, double lng) { return num(lat) + ", " + num(lng); }
+
+    /** Para ler (chat, alerta): 5 casas, ~1 m; o text() tem a precisão cheia do teleporte. */
+    public static String label(double lat, double lng) { return String.format(Locale.ROOT, "%.5f, %.5f", lat, lng); }
 
     /** "lat,lng". */
     public static String snippet(double lat, double lng) { return num(lat) + "," + num(lng); }

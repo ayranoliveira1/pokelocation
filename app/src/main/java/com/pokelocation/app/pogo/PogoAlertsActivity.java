@@ -30,6 +30,7 @@ import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.tabs.TabLayout;
 import com.pokelocation.app.Io;
@@ -108,7 +109,7 @@ public final class PogoAlertsActivity extends BaseActivity {
         off.setText(R.string.pogo_notif_off);
         off.setTextColor(getColor(R.color.on_primary_container));
         banner.addView(off, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        bannerAction = new Button(this);
+        bannerAction = new MaterialButton(this, null, androidx.appcompat.R.attr.borderlessButtonStyle);
         bannerAction.setOnClickListener(v -> fixNotifications());
         banner.addView(bannerAction);
         banner.setVisibility(View.GONE);
@@ -126,7 +127,7 @@ public final class PogoAlertsActivity extends BaseActivity {
         list = new ListView(this);
         list.setDivider(null);
         lb.addView(list, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        add = new Button(this);
+        add = new MaterialButton(this);
         add.setText(R.string.pogo_alert_new);
         add.setOnClickListener(v -> openEditor());
         lb.addView(add, margins(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT), pad));
@@ -149,7 +150,7 @@ public final class PogoAlertsActivity extends BaseActivity {
         LinearLayout buttons = new LinearLayout(this);
         buttons.setGravity(Gravity.END);
         buttons.setPadding(pad, 0, pad, pad);
-        Button cancel = new Button(this), save = new Button(this);
+        Button cancel = new MaterialButton(this, null, androidx.appcompat.R.attr.borderlessButtonStyle), save = new MaterialButton(this);
         cancel.setText(R.string.cancel);
         cancel.setOnClickListener(v -> closeEditor());
         save.setText(R.string.save);
@@ -307,7 +308,7 @@ public final class PogoAlertsActivity extends BaseActivity {
         String s = r.world ? getString(R.string.pogo_panel_world) : getString(R.string.pogo_chip_near, r.radiusKm);
         // o escopo já está no texto ("Perto · 2 km"); o activeCount também o conta
         int n = r.filter == null ? 0 : r.filter.activeCount() - (r.filter.km > 0 ? 1 : 0);
-        return n > 0 ? s + " · " + getString(R.string.pogo_alert_filters, n) : s;
+        return n > 0 ? s + " · " + getResources().getQuantityString(R.plurals.pogo_alert_filters, n, n) : s;
     }
 
     private void setEnabled(Pogo.Rule r, boolean on, View sw) {
@@ -361,7 +362,7 @@ public final class PogoAlertsActivity extends BaseActivity {
                 () -> startActivity(new Intent(this, PogoActivity.class)));
         formBox.addView(form.view());
         name.setText("");
-        center.setText(Double.isNaN(lat) ? "" : getString(R.string.pogo_alert_center, CoordParser.text(lat, lng)));
+        center.setText(Double.isNaN(lat) ? "" : getString(R.string.pogo_alert_center, CoordParser.label(lat, lng)));
         listBox.setVisibility(View.GONE);
         editor.setVisibility(View.VISIBLE);
     }

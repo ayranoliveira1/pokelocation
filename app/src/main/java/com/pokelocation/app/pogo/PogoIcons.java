@@ -53,7 +53,13 @@ public final class PogoIcons {
     private static final Map<String, List<Consumer<Bitmap>>> PENDING = new HashMap<>();
     /** chave → quando tentar de novo (cadeia toda 404 ou rede fora). */
     private static final Map<String, Long> FAILED = new HashMap<>();
-    private static final int OK = 0, NOT_FOUND = 1, SKIP = 2; // SKIP: nem 200 nem 404 (429, 5xx), vai para a próxima URL
+    /** Travas fixas por faixa de nome de arquivo (sem mapa nem remove, que deixava 2 de 3 threads juntas). */
+    private static final Object[] FILES = new Object[16];
+
+    static {
+        for (int i = 0; i < FILES.length; i++) FILES[i] = new Object();
+    }
+    private static final int OK = 0, NOT_FOUND = 1, SKIP = 2, HIT = 3; // SKIP: nem 200 nem 404 (429, 5xx), vai para a próxima URL
 
     private PogoIcons() {}
 
@@ -187,18 +193,19 @@ public final class PogoIcons {
             File f = new File(dir, fileName(url)), miss = new File(dir, f.getName() + ".404");
             if (miss.exists() && System.currentTimeMillis() - miss.lastModified() < MISS_MS) continue;
             try {
-                boolean hit = f.exists();
-                if (!hit) {
-                    int got = download(c, url, f, miss);
-                    if (got == NOT_FOUND) continue;
-                    if (got == SKIP) {
-                        soft = true;
-                        continue;
-                    }
+                int got = onePerFile(f.getName(), () -> {
+                    if (f.exists()) return HIT;   // outra chave da mesma imagem (o fallback u25.png) acabou de baixar
+                    if (miss.exists() && System.currentTimeMillis() - miss.lastModified() < MISS_MS) return NOT_FOUND;
+                    return download(c, url, f, miss);
+                });
+                if (got == NOT_FOUND) continue;
+                if (got == SKIP) {
+                    soft = true;
+                    continue;
                 }
                 Bitmap b = decode(f.getPath());
                 if (b != null) {
-                    if (hit) f.setLastModified(System.currentTimeMillis()); // o sweep apaga pelo uso, não pela data do download
+                    if (got == HIT) f.setLastModified(System.currentTimeMillis()); // o sweep apaga pelo uso, não pela data do download
                     return b;
                 }
                 f.delete();
@@ -210,6 +217,18 @@ public final class PogoIcons {
         }
         failed(key, soft ? System.currentTimeMillis() + RETRY_MS : Long.MAX_VALUE);
         return null;
+    }
+
+    interface Work { int run() throws IOException; }
+
+    /**
+     * Uma trava por arquivo: o PENDING junta pelo Pokémon, mas chaves diferentes caem no mesmo fallback (o shiny e o
+     * normal no u25.png) e as 4 threads o baixavam juntas. Quem chega depois espera e acha o arquivo no disco.
+     */
+    static int onePerFile(String name, Work work) throws IOException {
+        synchronized (FILES[(name.hashCode() & 0x7FFFFFFF) % FILES.length]) {
+            return work.run();
+        }
     }
 
     private static void failed(String key, long until) {

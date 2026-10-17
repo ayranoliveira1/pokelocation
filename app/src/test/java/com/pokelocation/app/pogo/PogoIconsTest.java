@@ -94,4 +94,33 @@ public class PogoIconsTest {
         assertTrue(contains(full, new int[]{9, 14, 118, 113}));
         assertEquals(Arrays.toString(new int[]{0, 0, 96}), Arrays.toString(PogoIcons.square(96, 96, null)));   // tudo transparente
     }
+
+    /** Obs. d da QA: duas chaves no mesmo fallback (u25.png) baixavam juntas; agora uma espera a outra. */
+    @Test public void sameFileIsFetchedOneAtATime() throws Exception {
+        java.util.concurrent.atomic.AtomicInteger inside = new java.util.concurrent.atomic.AtomicInteger(), most =
+                new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        Runnable fetch = () -> {
+            try {
+                go.await();
+                PogoIcons.onePerFile("u25.png", () -> {
+                    most.accumulateAndGet(inside.incrementAndGet(), Math::max);
+                    try {
+                        Thread.sleep(50);   // o download
+                    } catch (InterruptedException e) {
+                        throw new java.io.IOException(e);
+                    }
+                    inside.decrementAndGet();
+                    return 0;
+                });
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        };
+        Thread[] all = {new Thread(fetch), new Thread(fetch), new Thread(fetch)};   // 3: a trava removida deixava 2 juntas
+        for (Thread t : all) t.start();
+        go.countDown();
+        for (Thread t : all) t.join();
+        assertEquals(1, most.get());
+    }
 }

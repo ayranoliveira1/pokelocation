@@ -41,7 +41,10 @@
     <string name="pogo_alert_none">No alerts yet</string>
     <string name="pogo_alert_limit">Limit of %d alerts reached</string>
     <string name="pogo_alert_relogin">Sign in to PoGo Coordinates again</string>
-    <string name="pogo_alert_filters">%d filters</string>
+    <plurals name="pogo_alert_filters">
+        <item quantity="one">%d filter</item>
+        <item quantity="other">%d filters</item>
+    </plurals>
     <string name="pogo_alert_no_center">No location: choose World</string>
     <string name="pogo_alert_delete">Delete \"%s\"?</string>
     <string name="pogo_notif_off">Notifications off — you won\'t get alerts</string>
