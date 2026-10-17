@@ -8,8 +8,6 @@ import android.app.Person;
 import android.app.TaskStackBuilder;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ShortcutInfo;
-import android.content.pm.ShortcutManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -28,7 +26,7 @@ import com.pokelocation.app.util.Shortcuts;
 import com.pokelocation.app.util.Ui;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,7 +92,7 @@ public final class Notify {
                                         String body, long ts, Intent open) {
         Icon face = avatar(c, title);
         b.setLargeIcon(face);
-        if (Build.VERSION.SDK_INT < 30 || !Shortcuts.publish(c, shortcutId(conv.id), title, Intents.main(c), open)) {
+        if (Build.VERSION.SDK_INT < 30 || !Shortcuts.publish(c, shortcutId(conv.id), title, null, Intents.main(c), open)) {
             return false;
         }
         Person from = new Person.Builder().setKey(who).setName(who).setIcon(conv.group ? avatar(c, who) : face).build();
@@ -111,8 +109,6 @@ public final class Notify {
     }
 
     static String shortcutId(String convId) { return SHORTCUT + convId; }
-
-    static boolean chatShortcut(String id) { return id.startsWith(SHORTCUT); }
 
     private static Icon avatar(Context c, String name) {
         String initial = ConvRow.initial(name);
@@ -190,19 +186,6 @@ public final class Notify {
     public static void cancelAll(Context c) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         for (StatusBarNotification n : nm.getActiveNotifications()) if (n.getId() == ID) nm.cancel(n.getTag(), ID);
-        forgetShortcuts(c);
-    }
-
-    /** Logout: os nomes dos amigos não ficam nos atalhos de conversa (nem nos guardados pelas notificações). */
-    private static void forgetShortcuts(Context c) {
-        if (Build.VERSION.SDK_INT < 30) return;
-        try {
-            ShortcutManager sm = c.getSystemService(ShortcutManager.class);
-            List<String> ids = new ArrayList<>();
-            for (ShortcutInfo s : sm.getShortcuts(ShortcutManager.FLAG_MATCH_DYNAMIC | ShortcutManager.FLAG_MATCH_CACHED))
-                if (chatShortcut(s.getId())) ids.add(s.getId());
-            sm.removeLongLivedShortcuts(ids);
-        } catch (RuntimeException ignored) {
-        }
+        Shortcuts.prune(c, SHORTCUT, Collections.emptySet()); // logout: os nomes dos amigos não ficam nos atalhos
     }
 }

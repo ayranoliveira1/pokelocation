@@ -12,6 +12,7 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Bundle;
+import android.service.notification.StatusBarNotification;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -26,9 +27,11 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -85,7 +88,8 @@ public final class PogoAlert {
                 .setContentIntent(TaskStackBuilder.create(c).addNextIntent(Intents.main(c))
                         .addNextIntent(PogoAlertsActivity.intent(c).putExtra(EXTRA, data))
                         .getPendingIntent(String.valueOf(tag).hashCode(), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
-        boolean conversation = conversation(c, b, photo, title, where);
+        String shortcut = shortcutId(tag);
+        boolean conversation = conversation(c, b, shortcut, photo, title, where);
         if (!conversation) b.setCustomContentView(content(c, photo, title, where, false))
                 .setCustomBigContentView(content(c, photo, title, where, true))
                 .setStyle(new Notification.DecoratedCustomViewStyle());
@@ -97,24 +101,44 @@ public final class PogoAlert {
         } catch (RuntimeException ignored) {
             // sem POST_NOTIFICATIONS
         } finally {
-            if (conversation) Shortcuts.release(c, SHORTCUT);
+            if (conversation) {
+                Shortcuts.release(c, shortcut);
+                Set<String> keep = shown(nm, shortcut);
+                if (keep != null) Shortcuts.prune(c, SHORTCUT, keep);
+            }
         }
     }
 
+    /** Um atalho por aviso: o rótulo dele é o título que o SystemUI mostra. O prefixo também pega o atalho único da 1.2.0. */
+    static String shortcutId(String tag) { return SHORTCUT + ':' + tag; }
+
+    /** Atalhos das notificações à vista; o recém-postado pode ainda não constar (o notify é assíncrono). */
+    private static Set<String> shown(NotificationManager nm, String posted) {
+        Set<String> ids = new HashSet<>();
+        ids.add(posted);
+        try {
+            for (StatusBarNotification n : nm.getActiveNotifications()) ids.add(n.getNotification().getShortcutId());
+        } catch (RuntimeException e) {
+            return null;
+        }
+        return ids;
+    }
+
     /**
-     * 30+: conversa, para a foto ocupar o círculo grande no lugar do ícone pequeno. O SystemUI troca o título da conversa
-     * pelo rótulo do atalho, então o aviso vai como conversa em grupo com o Pokémon de remetente (nome = título); o atalho
-     * vai sem ícone para o círculo ser o largeIcon de cada aviso. false = fica o layout próprio.
+     * 30+: conversa, para a foto ocupar o círculo grande no lugar do ícone pequeno. O SystemUI (e o pop-up do Samsung)
+     * troca o título pelo rótulo do atalho, por isso o atalho é do aviso. 1:1 com o Pokémon de remetente: em grupo o
+     * expandido repete a foto ao lado da mensagem. Sem foto o atalho vai sem ícone (atalho não aceita tint) e o círculo
+     * fica o do remetente. false = fica o layout próprio.
      */
-    private static boolean conversation(Context c, Notification.Builder b, Bitmap photo, String title, String where) {
+    private static boolean conversation(Context c, Notification.Builder b, String shortcut, Bitmap photo, String title,
+                                        String where) {
         if (Build.VERSION.SDK_INT < 30) return false;
-        String label = c.getString(R.string.pogo_alerts_channel);
-        if (!Shortcuts.publish(c, SHORTCUT, label, Intents.main(c), PogoAlertsActivity.intent(c))) return false;
-        Icon face = photo != null ? Icon.createWithBitmap(photo)
-                : Icon.createWithResource(c, R.drawable.pogo_ic_pokemon).setTint(c.getColor(R.color.primary));
+        Icon face = photo != null ? Icon.createWithBitmap(photo) : null;
+        if (!Shortcuts.publish(c, shortcut, title, face, Intents.main(c), PogoAlertsActivity.intent(c))) return false;
+        if (face == null) face = Icon.createWithResource(c, R.drawable.pogo_ic_pokemon).setTint(c.getColor(R.color.primary));
         Person mon = new Person.Builder().setName(title).setIcon(face).build();
-        b.setShortcutId(SHORTCUT).setLargeIcon(face).setStyle(new Notification.MessagingStyle(
-                new Person.Builder().setName(label).build()).setConversationTitle(label).setGroupConversation(true)
+        b.setShortcutId(shortcut).setLargeIcon(face).setStyle(new Notification.MessagingStyle(
+                new Person.Builder().setName(c.getString(R.string.app_name)).build())
                 .addMessage(new Notification.MessagingStyle.Message(where != null ? where : "", System.currentTimeMillis(), mon)));
         return true;
     }
