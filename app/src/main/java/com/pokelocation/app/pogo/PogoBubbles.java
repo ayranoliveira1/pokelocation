@@ -50,7 +50,7 @@ public final class PogoBubbles {
     private static final String TAG = "PogoBubbles", POS = "overlay_panels", COUNT = "pogo_col_n";
     /** O servidor aceita 10 buscas/min por conta e o 429 vem sem retry_after: a busca manual espera este tanto. */
     private static final long GAP_MS = 6_000;
-    /** Opacidade do card inteiro e só do círculo das bolhas e dos botões (os ícones ficam opacos): não atrapalhar o jogo. */
+    /** Opacidade do card sobre o jogo, para não atrapalhar. */
     private static final float ALPHA = 0.8f;
 
     private final Context ctx, app;
@@ -311,7 +311,6 @@ public final class PogoBubbles {
     private GradientDrawable round() {
         GradientDrawable g = PogoChips.round(ctx, 20, ctx.getColor(R.color.surface), ctx.getColor(R.color.outline));
         g.setShape(GradientDrawable.OVAL);
-        g.setAlpha(Math.round(ALPHA * 255));
         return g;
     }
 
@@ -457,7 +456,6 @@ public final class PogoBubbles {
         d.setShape(GradientDrawable.OVAL);
         d.setColor(ctx.getColor(R.color.surface));
         d.setStroke(Ui.dp(ctx, 1), ctx.getColor(R.color.outline));
-        d.setAlpha(Math.round(ALPHA * 255));
         b.setBackground(d);
         int p = Ui.dp(ctx, 4);
         b.setPadding(p, p, p, p);
