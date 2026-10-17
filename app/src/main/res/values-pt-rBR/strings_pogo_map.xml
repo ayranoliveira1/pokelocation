@@ -65,6 +65,14 @@
     <string name="pogo_history_clear_confirm">Apagar todas as notificações? Não dá para desfazer.</string>
     <string name="pogo_history_delete_confirm">Excluir esta notificação?</string>
     <string name="pogo_history_offline">Mostrando as notificações salvas · %s</string>
+    <string name="pogo_saved">Filtro salvo</string>
+    <string name="pogo_saved_pick">Escolher um filtro salvo</string>
+    <string name="pogo_saved_none">Nenhum filtro salvo ainda</string>
+    <string name="pogo_saved_save">Salvar filtro</string>
+    <string name="pogo_saved_name">Nome</string>
+    <string name="pogo_saved_taken">Já existe um filtro com esse nome</string>
+    <string name="pogo_saved_full">Dá para salvar até %d filtros. Apague um para salvar outro.</string>
+    <string name="pogo_saved_delete">Excluir o filtro “%s”?</string>
     <string name="pogo_bubbles_logo">Lista de Pokémon</string>
     <string name="pogo_bubbles_count">Pokémon na coluna: %d</string>
     <string name="pogo_unavailable">PoGo indisponível agora, tente de novo</string>

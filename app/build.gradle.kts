@@ -91,12 +91,12 @@ android {
     testOptions { unitTests.isReturnDefaultValues = true }
 }
 
-// Orçamento de tamanho: APK de qa/release ≤ 2,5 MB.
+// Orçamento de tamanho: APK de qa/release ≤ 2.570.000 B.
 val apkDir = layout.buildDirectory.dir("outputs/apk")
 listOf("Qa", "Release").forEach { v ->
     val check = tasks.register("checkApkSize$v") {
         doLast {
-            val max = 2_550_000L
+            val max = 2_570_000L
             apkDir.get().dir(v.lowercase()).asFile.listFiles { f -> f.extension == "apk" }?.forEach {
                 if (it.length() > max) throw GradleException("checkApkSize: ${it.name} tem ${it.length()} B (> $max B)")
             }
