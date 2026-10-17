@@ -51,7 +51,7 @@ public final class PogoBubbles {
     /** O servidor aceita 10 buscas/min por conta e o 429 vem sem retry_after: a busca manual espera este tanto. */
     private static final long GAP_MS = 6_000;
     /** Opacidade do card inteiro e só do círculo das bolhas e dos botões (os ícones ficam opacos): não atrapalhar o jogo. */
-    private static final float ALPHA = 0.6f;
+    private static final float ALPHA = 0.8f;
 
     private final Context ctx, app;
     private final Host host;
