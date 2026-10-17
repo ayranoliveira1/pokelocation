@@ -43,6 +43,7 @@ import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.util.Perms;
 import com.pokelocation.app.util.Ui;
 
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -626,6 +627,7 @@ public final class PogoAlertsActivity extends BaseActivity {
         if (Pogo.relogin(t)) return getString(R.string.pogo_alert_relogin);
         if (Pogo.trainerRequired(t)) return getString(R.string.pogo_no_trainer);
         if (Pogo.shinyAccountUnavailable(t)) return getString(R.string.pogo_alert_bad_account);
+        if (t instanceof SocketTimeoutException) return getString(R.string.soc_err_network);   // regras e histórico são do nosso servidor, não do PoGo
         return PogoText.error(this, t);
     }
 
