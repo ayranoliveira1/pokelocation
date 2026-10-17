@@ -1,6 +1,7 @@
 package com.pokelocation.app.pogo;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -65,20 +66,32 @@ public class PogoIconsTest {
         assertEquals(PM + "pm646.fNORMAL.icon.png", PogoIcons.urls(646, "Kyurem", "0", null, false).get(0));
     }
 
-    /** Os PNGs do PokeMiners têm margem transparente (o Pikachu ocupa 36% × 40% de 256 px): o recorte quadrado o centraliza. */
-    @Test public void squareAroundTheOpaquePartWithAThinMargin() {
-        int[] pika = PogoIcons.square(256, 256, new int[]{100, 124, 193, 228});   // medido no pm25.icon.png
-        assertEquals(110, pika[2]);                // 104 de altura + 3% de cada lado
-        assertEquals(91, pika[0]);                 // centrado em x: (100 + 193) / 2 − 55
-        assertEquals(121, pika[1]);                // centrado em y: (124 + 228) / 2 − 55
-        int[] full = PogoIcons.square(128, 128, new int[]{9, 14, 118, 113});   // UICONS: já ocupa quase tudo
+    /** Caixas opacas medidas em PNGs reais do PokeMiners (256 px): eles já vêm em escala entre as espécies. */
+    private static final int[] CATERPIE = {99, 147, 146, 224}, PIKACHU = {100, 124, 193, 228}, DRAGONITE = {65, 10, 215, 190},
+            KYOGRE = {2, 76, 243, 169};
+
+    private static float share(int[] box, int[] sq) {
+        return (float) Math.max(box[2] - box[0], box[3] - box[1]) / sq[2];
+    }
+
+    private static boolean contains(int[] sq, int[] box) {
+        return sq[0] <= box[0] && sq[1] <= box[1] && sq[0] + sq[2] >= box[2] && sq[1] + sq[2] >= box[3];
+    }
+
+    /** Pequeno segue menor que médio, que segue menor que grande; os médios crescem; nenhum é cortado. */
+    @Test public void sameZoomKeepsSpeciesProportional() {
+        int[] cat = PogoIcons.square(256, 256, CATERPIE), pika = PogoIcons.square(256, 256, PIKACHU);
+        int[] dragon = PogoIcons.square(256, 256, DRAGONITE), kyogre = PogoIcons.square(256, 256, KYOGRE);
+        assertEquals(cat[2], pika[2]);                                   // o mesmo zoom: a proporção entre eles fica
+        assertTrue(share(CATERPIE, cat) < share(PIKACHU, pika));
+        assertTrue(share(PIKACHU, pika) < share(DRAGONITE, dragon));
+        assertTrue(share(PIKACHU, pika) > 104f / 256 * 1.4f);              // o médio cresce (era 41% do ícone)
+        for (int[][] c : new int[][][]{{CATERPIE, cat}, {PIKACHU, pika}, {DRAGONITE, dragon}, {KYOGRE, kyogre}})
+            assertTrue(contains(c[1], c[0]));                             // ninguém cortado
+        assertEquals(255, kyogre[2]);                                    // o maior: só a folga, quase sem zoom
+        int[] full = PogoIcons.square(128, 128, new int[]{9, 14, 118, 113});   // UICONS: já vem quase cheio
         assertEquals(116, full[2]);
-        assertEquals(5, full[0]);
-        assertEquals(5, full[1]);
-        int[] edge = PogoIcons.square(256, 256, new int[]{0, 0, 250, 40});     // largo e no canto: preso dentro da imagem
-        assertEquals(256, edge[2]);
-        assertEquals(0, edge[0]);
-        assertEquals(0, edge[1]);
-        assertEquals(Arrays.toString(new int[]{0, 0, 96}), Arrays.toString(PogoIcons.square(96, 96, null)));   // tudo transparente: inteira
+        assertTrue(contains(full, new int[]{9, 14, 118, 113}));
+        assertEquals(Arrays.toString(new int[]{0, 0, 96}), Arrays.toString(PogoIcons.square(96, 96, null)));   // tudo transparente
     }
 }

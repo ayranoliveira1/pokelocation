@@ -37,6 +37,8 @@ public final class PogoIcons {
     static final String PM = "/v1/pogo/icon/pm/", UICONS = "/v1/pogo/icon/u/";
     /** Decodifica em até ~256 px (256 KB passageiros): o recorte da margem precisa da resolução cheia do PNG. */
     private static final int TRIM_PX = 256;
+    /** O mesmo zoom para todas as espécies (só os grandes ganham menos, para não cortar); ajuste aqui. */
+    private static final float MAX_ZOOM = 1.5f;
     /** 96 px exatos (36 KB): 4 MB guardam ~110 ícones, mais que as espécies distintas de um lookup de 100. */
     private static final int TARGET_PX = 96, MEM_BYTES = 4 << 20, MAX_BYTES = 256 * 1024, TIMEOUT_MS = 10_000;
     private static final long DISK_MAX = 8L << 20, MISS_MS = 7L * 24 * 3600_000, RETRY_MS = 60_000;
@@ -277,13 +279,16 @@ public final class PogoIcons {
     }
 
     /**
-     * {x, y, lado} do quadrado centrado na parte opaca, com 3% de folga de cada lado e preso na imagem: o Pokémon ocupa
-     * o ícone quase todo, sem a margem transparente dos PNGs. Quadrado porque o mapa estica o ícone num quadrado.
+     * {x, y, lado} do quadrado centrado na parte opaca e preso na imagem. Os PNGs do PokeMiners já vêm em escala
+     * (Weedle 29% da imagem, Kyogre 99%): todos ganham o mesmo zoom de MAX_ZOOM, e quem não cabe nele ganha só o que
+     * cabe com 3% de folga. Assim o pequeno segue menor que o grande e nenhum é cortado. Quadrado porque o mapa estica o
+     * ícone num quadrado.
      */
     static int[] square(int w, int h, int[] box) {
         int max = Math.min(w, h);
         if (box == null) return new int[]{(w - max) / 2, (h - max) / 2, max};
-        int side = Math.min(max, Math.round(Math.max(box[2] - box[0], box[3] - box[1]) * 1.06f));
+        int fit = Math.round(Math.max(box[2] - box[0], box[3] - box[1]) * 1.06f);
+        int side = Math.min(max, Math.max(Math.round(max / MAX_ZOOM), fit));
         int x = (box[0] + box[2]) / 2 - side / 2, y = (box[1] + box[3]) / 2 - side / 2;
         return new int[]{Math.max(0, Math.min(x, w - side)), Math.max(0, Math.min(y, h - side)), side};
     }
