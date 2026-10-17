@@ -10,6 +10,8 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.RemoteViews;
 
 import com.pokelocation.app.R;
 import com.pokelocation.app.ipc.Intents;
@@ -63,11 +65,14 @@ public final class PogoAlert {
         for (Map.Entry<String, String> x : d.entrySet()) data.putString(x.getKey(), x.getValue());
         Pogo.Mon mon = mon(d);
         Bitmap photo = mon.id > 0 ? PogoIcons.now(c, mon, 3_000) : null; // sem foto em 3 s: sai sem, nunca atrasada
-        if (photo != null) b.setLargeIcon(photo);
+        String title = title(d.get("n"), d.get("iv"), d.get("cp"), despawn, System.currentTimeMillis(),
+                "1".equals(d.get("s")));
         b.setGroup(GROUP).setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(title(d.get("n"), d.get("iv"), d.get("cp"), despawn, System.currentTimeMillis(),
-                        "1".equals(d.get("s"))))
+                .setContentTitle(title)
                 .setContentText(d.get("r"))
+                .setCustomContentView(content(c, photo, title, d.get("r"), false))
+                .setCustomBigContentView(content(c, photo, title, d.get("r"), true))
+                .setStyle(new Notification.DecoratedCustomViewStyle())
                 .setAutoCancel(true)
                 .setContentIntent(TaskStackBuilder.create(c).addNextIntent(Intents.main(c))
                         .addNextIntent(PogoAlertsActivity.intent(c).putExtra(EXTRA, data))
@@ -80,6 +85,19 @@ public final class PogoAlert {
         } catch (RuntimeException ignored) {
             // sem POST_NOTIFICATIONS
         }
+    }
+
+    private static RemoteViews content(Context c, Bitmap photo, String title, String text, boolean big) {
+        RemoteViews rv = new RemoteViews(c.getPackageName(), R.layout.pogo_alert_notif);
+        if (photo != null) {
+            rv.setImageViewBitmap(R.id.pogo_notif_photo, photo);
+            rv.setViewVisibility(R.id.pogo_notif_photo, View.VISIBLE);
+            rv.setViewVisibility(R.id.pogo_notif_placeholder, View.GONE);
+        }
+        rv.setTextViewText(R.id.pogo_notif_title, title);
+        rv.setTextViewText(R.id.pogo_notif_text, text);
+        if (big) rv.setInt(R.id.pogo_notif_text, "setMaxLines", 4);
+        return rv;
     }
 
     /** Resumo do grupo: o toque abre as Notificações; não toca sozinho (quem avisa é cada alerta). */
