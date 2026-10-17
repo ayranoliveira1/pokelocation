@@ -406,4 +406,13 @@ public class PogoTest {
         assertFalse(Pogo.slow(Pogo.fromApi(502, "upstream_unavailable", "{}", 60)));
         assertFalse(Pogo.slow(new java.io.IOException("x")));
     }
+
+    /** Item 6: com a conta PokeLocation tudo vai pelo servidor (tokens dele sem vínculo); os treinadores, só com vínculo. */
+    @Test public void accountGoesThroughTheServer() throws Exception {
+        JSONArray t = new JSONArray().put(new JSONObject().put("trainer_code", "111122223333"));
+        assertNull(Pogo.serverTrainers(false, false, t));   // sem conta: direto e anônimo
+        assertNull(Pogo.serverTrainers(false, true, t));
+        assertEquals(0, Pogo.serverTrainers(true, false, t).length());   // vínculo morto ou nunca feito: sem shiny
+        assertEquals(t, Pogo.serverTrainers(true, true, t));
+    }
 }

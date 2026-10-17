@@ -32,6 +32,7 @@ import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
 import com.pokelocation.app.geo.Cooldown;
 import com.pokelocation.app.geo.Geo;
+import com.pokelocation.app.social.Session;
 import com.pokelocation.app.util.Ui;
 
 import java.util.ArrayList;
@@ -373,7 +374,7 @@ public final class PogoPanel {
 
     private String key(PogoFilter sent, int k) {
         return sent.stored() + (k == WORLD ? "|w" : "|" + Math.round(lat * 1000) + "," + Math.round(lng * 1000))
-                + "|" + Pogo.loggedIn(app);
+                + "|" + Session.loggedIn(app) + Pogo.loggedIn(app);   // a rota e o shiny dependem dos dois
     }
 
     /** O tick de 1 s e a auto-atualização de 5 min só rodam com a lista/painel visível e a tela ligada. */

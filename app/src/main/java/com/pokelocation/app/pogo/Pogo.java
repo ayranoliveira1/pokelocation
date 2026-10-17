@@ -147,9 +147,6 @@ public final class Pogo {
         return at != 0 && at != sDeadLink && Session.loggedIn(c);
     }
 
-    /** Alertas rodam no servidor com o vínculo PoGo e chegam por FCM da conta PokeLocation. */
-    public static boolean canAlert(Context c) { return loggedIn(c); }
-
     public static List<Mon> lookup(Context c, double n, double w, double s, double e, PogoFilter f) throws IOException {
         try {
             return route(c, "POST", "/map/lookup", "/lookup", t -> {
@@ -561,15 +558,22 @@ public final class Pogo {
 
     private interface Body { JSONObject of(JSONArray trainers) throws JSONException; }
 
+    /** null = direto; senão os treinadores que vão ao servidor (vazio sem vínculo: o stripShiny tira o shiny). */
+    static JSONArray serverTrainers(boolean account, boolean linked, JSONArray trainers) {
+        return !account ? null : linked ? trainers : new JSONArray();
+    }
+
     /**
-     * Vinculado: pelo servidor; com pogo_relogin/pogo_disabled cai para o direto anônimo na mesma chamada. A resposta é
-     * lida em fluxo (JsonReader): sem árvore JSONObject e, no direto, sem a String inteira (lookup de até 1 MB a cada 60 s).
+     * Com a conta PokeLocation: pelo servidor, que sem vínculo usa os tokens dele; com pogo_relogin/pogo_disabled cai para
+     * o direto anônimo na mesma chamada. A resposta é lida em fluxo (JsonReader): sem árvore JSONObject e, no direto, sem
+     * a String inteira (lookup de até 1 MB a cada 60 s).
      */
     private static <T> T route(Context c, String method, String direct, String proxied, Body body, int max, int timeout,
                                Pull<T> pull) throws IOException, JSONException {
-        if (loggedIn(c)) {
+        JSONArray t = serverTrainers(Session.loggedIn(c), loggedIn(c), trainers(c));
+        if (t != null) {
             try {
-                return json(new StringReader(proxy(c, method, proxied, body.of(trainers(c)), max, timeout)), pull);
+                return json(new StringReader(proxy(c, method, proxied, body.of(t), max, timeout)), pull);
             } catch (Error e) {
                 if (!"pogo_relogin".equals(e.error) && !"pogo_disabled".equals(e.error)) throw e;
             }

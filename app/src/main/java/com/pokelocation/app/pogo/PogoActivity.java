@@ -154,7 +154,8 @@ public final class PogoActivity extends BaseActivity {
     }
 
     private void render() {
-        int screen = screen(busy, Session.loggedIn(this), Pogo.loggedIn(this));
+        boolean account = Session.loggedIn(this);
+        int screen = screen(busy, account, Pogo.loggedIn(this));
         boolean linked = screen == LINKED;
         icon.setVisibility(linked ? View.GONE : View.VISIBLE);
         avatar.setVisibility(linked ? View.VISIBLE : View.GONE);
@@ -182,7 +183,7 @@ public final class PogoActivity extends BaseActivity {
         list.removeAllViews();
         row(getString(R.string.pogo_map_layer), null,
                 v -> startActivity(PogoListActivity.intent(this, Double.NaN, Double.NaN)));
-        if (linked && Pogo.canAlert(this)) row(getString(R.string.pogo_alerts), null, v -> startActivity(PogoAlertsActivity.intent(this)));
+        if (account) row(getString(R.string.pogo_alerts), null, v -> startActivity(PogoAlertsActivity.intent(this)));
         row(getString(R.string.pogo_filters), getString(R.string.pogo_filters_summary),
                 v -> startActivity(new Intent(this, PogoFiltersActivity.class)));
     }
