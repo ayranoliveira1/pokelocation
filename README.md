@@ -15,18 +15,23 @@ bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
 
 ## Versões
 
-### v1.2: integração com o PoGo Coordinates (com login)
+### v1.2: integração com o PoGo Coordinates (com a conta PokeLocation)
+
+Tudo do PoGo exige a conta PokeLocation e passa pelo nosso servidor; sem a conta, nada dele aparece no app.
 
 - **Camada PoGo** no mapa principal e no mini-mapa, com card de detalhe e foto do Pokémon.
-- **Lista no joystick** com filtros (espécies com fotos, IV, shiny, Mundo ou perto), lista mantida entre aberturas,
-  botão **Atualizar** e atualização sozinha a cada 5 min.
-- **Login do PoGo** pelo servidor e **alertas por push** com foto. Busca e alertas sem shiny funcionam sem vincular
-  conta do PoGo; alerta de shiny só com treinador vinculado.
-- **PoGo lento:** aviso próprio quando o PoGo Coordinates demora a responder.
-- **Voltar nos painéis do joystick:** o primeiro fecha o teclado, o segundo fecha o painel; tocar no jogo devolve o
-  foco.
+- **Coluna de bolhas no joystick:** um ícone por Pokémon, arrastável pela logo; a logo abre **Atualizar**, **Filtros**
+  e a quantidade (**5** ou **10**). Atualiza sozinha a cada 5 min; tocar numa bolha abre o card semitransparente ao
+  lado, com **Teleportar**.
+- **Filtros** com espécies e fotos, IV, shiny e escopo **Mundo** ou **Perto**.
+- **Alertas por push** com foto e a tela **Alertas** em duas abas: **Notificações** (os Pokémon já avisados, sem
+  repetir o mesmo; os que sumiram ficam marcados como expirados) e **Meus alertas**. Alertas sem shiny funcionam sem
+  vincular conta do PoGo; os de shiny pedem treinador vinculado.
+- **Conta e PoGo redesenhadas:** treinador vinculado com nível e time, e login do PoGo num botão só (Google ou
+  Discord).
+- **Mapa sempre na posição atual** ao voltar ao app, depois de teleportar, andar ou seguir uma rota com o joystick.
 
-Precisa do servidor v1.1. Tudo das versões anteriores continua igual.
+Precisa do servidor v1.1 atualizado. Tudo das versões anteriores continua igual.
 
 ### v1.1: amigos e chat (opcional, com login)
 
