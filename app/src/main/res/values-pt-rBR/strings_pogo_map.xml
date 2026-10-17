@@ -61,6 +61,9 @@
     <string name="pogo_notified_none">Nenhum Pokémon notificado ainda. Crie um alerta em Meus alertas.</string>
     <string name="pogo_notified_expired">Expirado</string>
     <string name="pogo_notified_gone">Este Pokémon já sumiu</string>
+    <string name="pogo_history_clear">Limpar histórico</string>
+    <string name="pogo_history_clear_confirm">Apagar todas as notificações? Não dá para desfazer.</string>
+    <string name="pogo_history_offline">Mostrando as notificações salvas · %s</string>
     <string name="pogo_bubbles_logo">Lista de Pokémon</string>
     <string name="pogo_bubbles_count">Pokémon na coluna: %d</string>
     <string name="pogo_unavailable">PoGo indisponível agora, tente de novo</string>

@@ -13,6 +13,8 @@ import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -41,12 +43,15 @@ import com.pokelocation.app.util.Perms;
 import com.pokelocation.app.util.Ui;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
- * Alertas de Pokémon em duas abas. Notificações: os Pokémon já avisados (PogoAlert), no PogoPanel com lista fixa.
+ * Alertas de Pokémon em duas abas. Notificações: o histórico do servidor (paginado; sem rede, o salvo pelo PogoAlert),
+ * no PogoPanel com lista fixa.
  * Meus alertas: as regras do nosso servidor, que manda o push, com liga/desliga e excluir; "Novo alerta" troca a lista
  * pelo PogoFilterForm (a "Área" dele é o escopo) + nome. Sem edição: excluir e criar outro.
  */
@@ -69,6 +74,12 @@ public final class PogoAlertsActivity extends BaseActivity {
     private PogoPanel panel;
     private boolean resumed;
     private Map<String, String> pushed;
+    private MenuItem clear;
+    private Io.Task page;
+    /** Cursor da próxima página; null = acabou. stuck: a última página falhou, só um reload tenta de novo. */
+    private String next;
+    private boolean stuck;
+    private final Consumer<Pogo.Mon> live = m -> Io.main().post(() -> { if (!isDestroyed()) panel.addFixed(0, Collections.singletonList(m)); });
     private final ActivityResultLauncher<String> notifPerm = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
                 if (!granted && Build.VERSION.SDK_INT >= 33
@@ -165,6 +176,13 @@ public final class PogoAlertsActivity extends BaseActivity {
 
             @Override public void close() { finish(); }
         });
+        panel.history(new PogoPanel.History() {
+            @Override public void more() { loadMore(); }
+
+            @Override public void reload() { reloadHistory(); }
+
+            @Override public void delete(Pogo.Mon m, int at) { deleteNotified(m, at); }
+        });
         FrameLayout content = new FrameLayout(this);
         content.addView(panel.view);
         content.addView(listBox);
@@ -183,7 +201,10 @@ public final class PogoAlertsActivity extends BaseActivity {
         };
         list.setAdapter(adapter);
         tabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override public void onTabSelected(TabLayout.Tab tab) { showTab(); }
+            @Override public void onTabSelected(TabLayout.Tab tab) {
+                showTab();
+                invalidateOptionsMenu();
+            }
             @Override public void onTabUnselected(TabLayout.Tab tab) {}
             @Override public void onTabReselected(TabLayout.Tab tab) {}
         });
@@ -203,13 +224,140 @@ public final class PogoAlertsActivity extends BaseActivity {
         super.onStart();
         if (Pogo.closed(this)) return;   // a sessão caiu com a tela na pilha: fecha sem ler
         Context app = getApplicationContext();
+        PogoAlert.sLive = live;
         Io.run(() -> PogoAlert.load(app), new Io.Callback<List<Pogo.Mon>>() {
             @Override public void onResult(List<Pogo.Mon> l) {
                 if (isDestroyed()) return;
                 panel.showFixed(l, getString(R.string.pogo_notified_none));
                 if (pushed != null && pushed.get("rc") != null) panel.showMon(PogoAlert.mon(pushed));   // toque no push
                 pushed = null;
+                reloadHistory();
             }
+        });
+        if (!Pogo.loggedIn(this)) Io.run(() -> Pogo.me(app), new Io.Callback<Boolean>() {
+            @Override public void onResult(Boolean asked) {
+                if (asked && form != null && !isDestroyed()) form.render();
+            }
+        });
+    }
+
+    @Override
+    protected void onStop() {
+        if (PogoAlert.sLive == live) PogoAlert.sLive = null;   // o toque no aviso abre outra instância, que já se registrou
+        super.onStop();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu m) {
+        if (tabs == null) return false;   // Pogo.closed no onCreate: a tela já está fechando
+        clear = m.add(R.string.pogo_history_clear).setIcon(R.drawable.ic_delete)
+                .setOnMenuItemClickListener(i -> {
+                    confirmClear();
+                    return true;
+                });
+        clear.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu m) {
+        if (clear != null) clear.setVisible(tabs.getSelectedTabPosition() == 0);
+        return true;
+    }
+
+    /** A primeira página do servidor substitui a lista; sem rede, a lista salva fica com o aviso. */
+    private void reloadHistory() {
+        if (page != null) page.cancel();
+        panel.refreshing(true);
+        Context app = getApplicationContext();
+        page = Io.run(() -> {
+            Pogo.Page p = Pogo.history(app, null);
+            PogoAlert.cache(app, p.log);
+            return p;
+        }, new Io.Callback<Pogo.Page>() {
+            @Override public void onResult(Pogo.Page p) {
+                page = null;
+                if (isDestroyed()) return;
+                next = p.next;
+                stuck = false;
+                panel.refreshing(false);
+                panel.note(null);
+                panel.showFixed(p.mons, getString(R.string.pogo_notified_none));
+            }
+
+            @Override public void onError(Throwable t) {
+                page = null;
+                if (isDestroyed()) return;
+                panel.refreshing(false);
+                panel.note(getString(R.string.pogo_history_offline, error(t)));
+            }
+        });
+    }
+
+    private void loadMore() {
+        if (page != null || next == null || stuck) return;
+        String before = next;
+        Context app = getApplicationContext();
+        page = Io.run(() -> Pogo.history(app, before), new Io.Callback<Pogo.Page>() {
+            @Override public void onResult(Pogo.Page p) {
+                page = null;
+                if (isDestroyed()) return;
+                next = p.next;
+                panel.addFixed(-1, p.mons);
+            }
+
+            @Override public void onError(Throwable t) {
+                page = null;
+                stuck = true;
+                Ui.toast(app, error(t));
+            }
+        });
+    }
+
+    /** Sem id (aviso de antes do histórico no servidor) só sai da tela. */
+    private void deleteNotified(Pogo.Mon m, int at) {
+        if (m.historyId == null) return;
+        Context app = getApplicationContext();
+        Io.run(() -> {
+            Pogo.deleteHistory(app, m.historyId);
+            PogoAlert.drop(app, m.historyId);
+            return Boolean.TRUE;
+        }, new Io.Callback<Boolean>() {
+            @Override public void onResult(Boolean ok) {}
+
+            @Override public void onError(Throwable t) {
+                Ui.toast(app, error(t));
+                if (!isDestroyed()) panel.addFixed(at, Collections.singletonList(m));
+            }
+        });
+    }
+
+    private void confirmClear() {
+        new MaterialAlertDialogBuilder(this)
+                .setMessage(R.string.pogo_history_clear_confirm)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.pogo_history_clear, (d, w) -> clearHistory())
+                .show();
+    }
+
+    private void clearHistory() {
+        if (page != null) page.cancel();
+        page = null;
+        panel.refreshing(false);
+        Context app = getApplicationContext();
+        Io.run(() -> {
+            Pogo.deleteHistory(app, null);
+            PogoAlert.forget(app);
+            return Boolean.TRUE;
+        }, new Io.Callback<Boolean>() {
+            @Override public void onResult(Boolean ok) {
+                if (isDestroyed()) return;
+                next = null;
+                panel.note(null);
+                panel.showFixed(Collections.emptyList(), getString(R.string.pogo_notified_none));
+            }
+
+            @Override public void onError(Throwable t) { Ui.toast(app, error(t)); }
         });
     }
 

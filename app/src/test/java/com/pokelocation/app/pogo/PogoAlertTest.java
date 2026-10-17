@@ -187,4 +187,23 @@ public class PogoAlertTest {
         assertEquals("rcB", l.get(0).reveal);
         assertEquals("rcA", l.get(1).reveal);
     }
+
+    @Test public void serverPageBecomesTheLocalLog() throws Exception {
+        Pogo.Page p = Pogo.page(new JSONObject("{\"items\":[{\"id\":\"9\",\"created_at\":1,\"data\":{\"n\":\"Dratini\",\"rc\":\"b\"}},"
+                + "{\"id\":\"7\",\"created_at\":0,\"data\":{\"n\":\"Rattata\",\"rc\":\"a\"}}],\"next\":\"7\"}"));
+        assertEquals("7", p.next);
+        assertEquals("9", p.mons.get(0).historyId);
+        assertEquals("Dratini", p.mons.get(0).name);
+        assertEquals("7", p.mons.get(1).historyId);
+        assertEquals("7", p.log.getJSONObject(0).getString("h"));
+        assertNull(Pogo.page(new JSONObject("{\"items\":[],\"next\":null}")).next);
+    }
+
+    @Test public void dropRemovesOnlyThatHistoryItem() throws Exception {
+        JSONArray log = new JSONArray("[{\"h\":\"1\",\"n\":\"A\"},{\"n\":\"old\"},{\"h\":\"2\",\"n\":\"B\"}]");
+        PogoAlert.drop(log, "1");
+        assertEquals(2, log.length());
+        assertEquals("old", log.getJSONObject(0).getString("n"));
+        assertEquals("2", log.getJSONObject(1).getString("h"));
+    }
 }

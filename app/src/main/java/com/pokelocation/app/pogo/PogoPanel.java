@@ -7,25 +7,33 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.content.res.ColorStateList;
+import android.graphics.Canvas;
+import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.os.PowerManager;
 import android.os.Process;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator;
-import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.core.view.ViewCompat;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import com.pokelocation.app.App;
 import com.pokelocation.app.Io;
@@ -57,6 +65,13 @@ public final class PogoPanel {
         default void cover(View v, Runnable onBack) {}
     }
 
+    public interface History {
+        void more();
+        void reload();
+        /** at: onde estava, para voltar com addFixed se o servidor recusar. */
+        void delete(Pogo.Mon m, int at);
+    }
+
     private static final String TAG = "PogoPanel";
     static final int WORLD = 0;
     private static final double M_PER_DEG = 111_320;
@@ -77,7 +92,8 @@ public final class PogoPanel {
     private final int goLabel;
     private final Host host;
     private final List<Pogo.Mon> mons = new ArrayList<>();
-    private final ListView list;
+    private final RecyclerView list;
+    private final View pull;
     private final ViewGroup detail;
     private final View frame;
     private final TextView status;
@@ -85,7 +101,7 @@ public final class PogoPanel {
     private final LinearLayout chips;          // faixa de resumo: uma linha, rola na horizontal
     private final LinearLayout filtersBtn;
     private final TextView filtersText, badge;
-    private final BaseAdapter adapter;
+    private final RecyclerView.Adapter<RecyclerView.ViewHolder> adapter;
     private final Consumer<Bitmap> onIcon;
     // Memo por Pokémon da busca atual (o tick de 1 s não refaz título, números nem distância); limpo a cada busca.
     private final IdentityHashMap<Pogo.Mon, Row> rows = new IdentityHashMap<>();
@@ -157,14 +173,20 @@ public final class PogoPanel {
     private boolean destroyed, loaded;
     /** Lista dada (as notificações): sem busca, e o que despawnou fica, marcado como expirado. */
     private boolean fixed;
+    private History history;
+    private String empty, note;
+    private boolean refreshing;
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
             long now = System.currentTimeMillis();
             // despawnados saem a cada segundo, também com uma busca em curso ou depois de uma que falhou
-            if (!fixed && mons.removeIf(m -> gone(m, now)) && task == null)
-                showStatus(stale != null && !mons.isEmpty() ? stale : PogoText.count(app, mons.size(), filter, km == WORLD));
-            adapter.notifyDataSetChanged();
+            if (!fixed && mons.removeIf(m -> gone(m, now))) {
+                if (task == null) showStatus(stale != null && !mons.isEmpty() ? stale : PogoText.count(app, mons.size(), filter, km == WORLD));
+                adapter.notifyDataSetChanged();
+            } else {
+                redraw();
+            }
             Io.main().postDelayed(this, 1000);
         }
     };
@@ -184,65 +206,31 @@ public final class PogoPanel {
         status = view.findViewById(R.id.pogo_status);
         close = view.findViewById(R.id.pogo_close);
         frame.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        adapter = new BaseAdapter() {
-            @Override public int getCount() { return mons.size(); }
-            @Override public Object getItem(int i) { return mons.get(i); }
-            @Override public long getItemId(int i) { return i; }
+        pull = view.findViewById(R.id.pogo_pull);
+        list.setLayoutManager(new LinearLayoutManager(c));
+        ((SimpleItemAnimator) list.getItemAnimator()).setSupportsChangeAnimations(false);
+        adapter = new RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+            @Override public int getItemCount() { return mons.size(); }
 
-            /** O tick de 1 s rebinda os blocos visíveis: só o tempo e o local são refeitos; o resto, quando muda o Pokémon. */
-            @Override public View getView(int i, View row, ViewGroup parent) {
-                if (row == null) row = newRow();
-                Holder h = (Holder) row.getTag();
-                Pogo.Mon m = mons.get(i);
-                Row r = rows.get(m);
-                if (r == null) {
-                    r = new Row(PogoText.title(m), PogoText.cpLevel(ctx, m), distance(m),
-                            m.iv >= 0 ? (int) m.iv + "%" : null);
-                    rows.put(m, r);
-                }
-                if (h.mon != m) {
-                    h.mon = m;
-                    h.name.setText(r.title);
-                    h.stats.setText(r.stats);
-                    h.photo.setImageBitmap(photo(m, r));
-                    h.iv.setVisibility(r.iv == null ? View.GONE : View.VISIBLE);
-                    if (r.iv != null) {
-                        h.iv.setText(r.iv);
-                        int strong = PogoText.ivPill(m);
-                        h.ivBg.setColor(strong != 0 ? strong : ctx.getColor(R.color.pogo_surface_variant));
-                        h.iv.setTextColor(strong == PogoText.PILL_RED ? 0xFFFFFFFF : strong == PogoText.PILL_ORANGE ? 0xFF1A1C1E
-                                : ctx.getColor(R.color.on_surface));
-                    }
-                } else if (r.photo == null && photo(m, r) != null) {
-                    h.photo.setImageBitmap(r.photo);
-                }
-                StringBuilder s = line;
-                s.setLength(0);
-                long left = m.despawnMs - System.currentTimeMillis();
-                if (m.despawnMs > 0 && left > 0) PogoText.clock(s.append(r.stats.isEmpty() ? "" : " · "), left);
-                else if (fixed && m.despawnMs > 0) s.append(r.stats.isEmpty() ? "" : " · ").append(ctx.getString(R.string.pogo_notified_expired));
-                h.time.setText(s);
-                row.setAlpha(fixed && m.despawnMs > 0 && left <= 0 ? 0.5f : 1f);
-                boolean warn = left > 0 && left < 3 * 60_000;
-                if (warn != h.warn) {
-                    h.warn = warn;
-                    h.time.setTextColor(ctx.getColor(warn ? R.color.pogo_warn : R.color.on_surface_variant));
-                }
-                s.setLength(0);
-                rowPlace(s, m, r);
-                h.place.setText(s);
-                h.place.setVisibility(s.length() == 0 ? View.GONE : View.VISIBLE);
-                return row;
+            @NonNull @Override public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int type) {
+                View row = newRow();
+                RecyclerView.ViewHolder vh = new RecyclerView.ViewHolder(row) {};
+                row.setOnClickListener(x -> {
+                    int at = vh.getBindingAdapterPosition();
+                    if (at != RecyclerView.NO_POSITION) click(mons.get(at));
+                });
+                if (history != null) ViewCompat.addAccessibilityAction(row, ctx.getString(R.string.delete), (x, a) -> {
+                    remove(vh.getBindingAdapterPosition());
+                    return true;
+                });
+                return vh;
             }
+
+            @Override public void onBindViewHolder(@NonNull RecyclerView.ViewHolder vh, int i) { bind(vh.itemView, mons.get(i)); }
         };
         list.setAdapter(adapter);
-        onIcon = b -> { if (b != null && !destroyed) adapter.notifyDataSetChanged(); };
-        onPlace = () -> { if (!destroyed) adapter.notifyDataSetChanged(); };
-        list.setOnItemClickListener((parent, row, pos, id) -> {
-            Pogo.Mon m = mons.get(pos);
-            if (fixed && PogoText.gone(m.despawnMs, System.currentTimeMillis())) Ui.toast(ctx, R.string.pogo_notified_gone);
-            else openDetail(m);
-        });
+        onIcon = b -> { if (b != null && !destroyed) redraw(); };
+        onPlace = () -> { if (!destroyed) redraw(); };
 
         HorizontalScrollView strip = new HorizontalScrollView(c);
         strip.setHorizontalScrollBarEnabled(false);
@@ -295,9 +283,12 @@ public final class PogoPanel {
         LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(c, 40));
         flp.setMarginEnd(Ui.dp(c, 8));
         chips.addView(filtersBtn, flp);
-        list.setDivider(new ColorDrawable(0));   // blocos separados por 8dp, não por divisória
-        list.setDividerHeight(Ui.dp(c, 8));
-        list.setSelector(new ColorDrawable(0));  // o ripple é do próprio bloco
+        int gap = Ui.dp(c, 8);
+        list.addItemDecoration(new RecyclerView.ItemDecoration() {
+            @Override public void getItemOffsets(@NonNull Rect out, @NonNull View v, @NonNull RecyclerView p, @NonNull RecyclerView.State st) {
+                out.top = p.getChildAdapterPosition(v) > 0 ? gap : 0;
+            }
+        });
         int m16 = Ui.dp(c, 16);
         list.setPadding(m16, Ui.dp(c, 8), m16, Ui.dp(c, 8));
         list.setClipToPadding(false);
@@ -343,14 +334,120 @@ public final class PogoPanel {
 
     public void showFixed(List<Pogo.Mon> l, String empty) {
         fixed = loaded = true;
+        this.empty = empty;
         view.findViewById(R.id.pogo_chips).setVisibility(View.GONE);
         mons.clear();
         rows.clear();
         mons.addAll(l);
         adapter.notifyDataSetChanged();
-        showStatus(l.isEmpty() ? empty : "");
-        status.setVisibility(l.isEmpty() ? View.VISIBLE : View.GONE);
+        fixedStatus();
         running();
+    }
+
+    /** at -1 = no fim. Entrando no topo com a lista no topo, o novo fica à vista. */
+    public void addFixed(int at, List<Pogo.Mon> l) {
+        if (at < 0 || at > mons.size()) at = mons.size();
+        boolean top = at == 0 && !list.canScrollVertically(-1);
+        mons.addAll(at, l);
+        adapter.notifyItemRangeInserted(at, l.size());
+        if (top) list.scrollToPosition(0);
+        fixedStatus();
+    }
+
+    public void note(String s) {
+        note = s;
+        fixedStatus();
+    }
+
+    public void refreshing(boolean on) {
+        refreshing = on;
+        pull.setVisibility(on ? View.VISIBLE : View.GONE);
+    }
+
+    private void fixedStatus() {
+        String s = note != null ? note : mons.isEmpty() ? empty : "";
+        showStatus(s);
+        status.setVisibility(TextUtils.isEmpty(s) ? View.GONE : View.VISIBLE);
+    }
+
+    /** Só para a lista fixa; chamar antes do showFixed (a ação de acessibilidade "Excluir" entra ao criar cada bloco). */
+    public void history(History h) {
+        history = h;
+        new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.START | ItemTouchHelper.END) {
+            final Drawable bin = ctx.getDrawable(R.drawable.ic_delete).mutate();
+            final GradientDrawable bg = PogoChips.round(ctx, 16, ctx.getColor(R.color.danger), 0);
+
+            {
+                bin.setTint(ctx.getColor(R.color.surface));
+            }
+
+            @Override public boolean onMove(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder a, @NonNull RecyclerView.ViewHolder b) {
+                return false;
+            }
+
+            @Override public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int dir) { remove(vh.getBindingAdapterPosition()); }
+
+            @Override public void onChildDraw(@NonNull Canvas cv, @NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh,
+                                              float dx, float dy, int state, boolean active) {
+                View v = vh.itemView;
+                if (dx != 0) {
+                    int l = v.getLeft(), r = v.getRight(), t = v.getTop(), b = v.getBottom(), m = Ui.dp(ctx, 24);
+                    int size = bin.getIntrinsicWidth(), y = (t + b - size) / 2, x = dx > 0 ? l + m : r - m - size;
+                    cv.save();
+                    cv.clipRect(dx > 0 ? l : r + dx, t, dx > 0 ? l + dx : r, b);
+                    bg.setBounds(l, t, r, b);
+                    bg.draw(cv);
+                    bin.setBounds(x, y, x + size, y + size);
+                    bin.draw(cv);
+                    cv.restore();
+                }
+                super.onChildDraw(cv, rv, vh, dx, dy, state, active);
+            }
+        }).attachToRecyclerView(list);
+        list.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                if (dy > 0 && ((LinearLayoutManager) rv.getLayoutManager()).findLastVisibleItemPosition() >= mons.size() - 5) h.more();
+            }
+        });
+        int reach = Ui.dp(ctx, 72);
+        list.addOnItemTouchListener(new RecyclerView.SimpleOnItemTouchListener() {
+            float y0 = -1;
+
+            @Override public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
+                switch (e.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        y0 = refreshing || rv.canScrollVertically(-1) ? -1 : e.getY();
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        if (y0 >= 0) pull.setVisibility(e.getY() - y0 > reach ? View.VISIBLE : View.GONE);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (y0 >= 0 && e.getY() - y0 > reach) h.reload();
+                        else if (y0 >= 0) pull.setVisibility(View.GONE);
+                        y0 = -1;
+                        break;
+                    case MotionEvent.ACTION_CANCEL:
+                        if (y0 >= 0) pull.setVisibility(View.GONE);
+                        y0 = -1;
+                        break;
+                }
+                return false;
+            }
+        });
+    }
+
+    private void remove(int at) {
+        if (at < 0 || at >= mons.size()) return;
+        Pogo.Mon m = mons.remove(at);
+        rows.remove(m);
+        adapter.notifyItemRemoved(at);
+        fixedStatus();
+        history.delete(m, at);
+    }
+
+    /** Com payload o RecyclerView rebinda os mesmos blocos (sem trocar o ViewHolder): não desfaz um arrasto em curso. */
+    private void redraw() {
+        adapter.notifyItemRangeChanged(0, mons.size(), Boolean.TRUE);
     }
 
     /** true = o BACK fechou o card. */
@@ -421,7 +518,7 @@ public final class PogoPanel {
         sheet = null;
         mons.clear();
         rows.clear();
-        list.setAdapter(null);   // solta os scraps do ListView (blocos com as fotos)
+        list.setAdapter(null);   // solta os blocos guardados (com as fotos)
     }
 
     /** Na volta da conta PoGo (vincular treinador) o sheet aberto remonta o shiny. */
@@ -618,6 +715,54 @@ public final class PogoPanel {
         return r.photo = b;
     }
 
+    /** O tick de 1 s rebinda os blocos visíveis: só o tempo e o local são refeitos; o resto, quando muda o Pokémon. */
+    private void bind(View row, Pogo.Mon m) {
+        Holder h = (Holder) row.getTag();
+        Row r = rows.get(m);
+        if (r == null) {
+            r = new Row(PogoText.title(m), PogoText.cpLevel(ctx, m), distance(m),
+                    m.iv >= 0 ? (int) m.iv + "%" : null);
+            rows.put(m, r);
+        }
+        if (h.mon != m) {
+            h.mon = m;
+            h.name.setText(r.title);
+            h.stats.setText(r.stats);
+            h.photo.setImageBitmap(photo(m, r));
+            h.iv.setVisibility(r.iv == null ? View.GONE : View.VISIBLE);
+            if (r.iv != null) {
+                h.iv.setText(r.iv);
+                int strong = PogoText.ivPill(m);
+                h.ivBg.setColor(strong != 0 ? strong : ctx.getColor(R.color.pogo_surface_variant));
+                h.iv.setTextColor(strong == PogoText.PILL_RED ? 0xFFFFFFFF : strong == PogoText.PILL_ORANGE ? 0xFF1A1C1E
+                        : ctx.getColor(R.color.on_surface));
+            }
+        } else if (r.photo == null && photo(m, r) != null) {
+            h.photo.setImageBitmap(r.photo);
+        }
+        StringBuilder s = line;
+        s.setLength(0);
+        long left = m.despawnMs - System.currentTimeMillis();
+        if (m.despawnMs > 0 && left > 0) PogoText.clock(s.append(r.stats.isEmpty() ? "" : " · "), left);
+        else if (fixed && m.despawnMs > 0) s.append(r.stats.isEmpty() ? "" : " · ").append(ctx.getString(R.string.pogo_notified_expired));
+        h.time.setText(s);
+        row.setAlpha(fixed && m.despawnMs > 0 && left <= 0 ? 0.5f : 1f);
+        boolean warn = left > 0 && left < 3 * 60_000;
+        if (warn != h.warn) {
+            h.warn = warn;
+            h.time.setTextColor(ctx.getColor(warn ? R.color.pogo_warn : R.color.on_surface_variant));
+        }
+        s.setLength(0);
+        rowPlace(s, m, r);
+        h.place.setText(s);
+        h.place.setVisibility(s.length() == 0 ? View.GONE : View.VISIBLE);
+    }
+
+    private void click(Pogo.Mon m) {
+        if (fixed && PogoText.gone(m.despawnMs, System.currentTimeMillis())) Ui.toast(ctx, R.string.pogo_notified_gone);
+        else openDetail(m);
+    }
+
     /** O bloco é montado em código (sem layout): fundo tile raio 16dp com ripple, 72dp de altura mínima, padding 12dp. */
     private View newRow() {
         Context c = ctx;
@@ -629,6 +774,7 @@ public final class PogoPanel {
         row.setBackground(new RippleDrawable(ColorStateList.valueOf((on & 0x00FFFFFF) | 0x1F000000),
                 PogoChips.round(c, 16, c.getColor(R.color.pogo_tile), 0), null));
         row.setPadding(p, p, p, p);
+        row.setLayoutParams(new RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         FrameLayout disc = new FrameLayout(c);
         GradientDrawable d = new GradientDrawable();
         d.setShape(GradientDrawable.OVAL);

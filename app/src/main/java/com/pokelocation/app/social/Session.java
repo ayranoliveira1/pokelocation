@@ -12,6 +12,7 @@ import android.util.Base64;
 import com.pokelocation.app.App;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
+import com.pokelocation.app.pogo.Pogo;
 import com.pokelocation.app.pogo.PogoAlert;
 import com.pokelocation.app.social.chat.Chat;
 import com.pokelocation.app.social.chat.Live;
@@ -79,6 +80,7 @@ public final class Session {
         if (!sp(c).edit().putBoolean(IN, true).commit()) throw new IOException("prefs");
         SignalLoader.kick(c);
         Chat.broadcastUnread(c, 0); // joystick ligado desde antes do logout: o botão do chat volta
+        Pogo.signedIn(c);
     }
 
     /**

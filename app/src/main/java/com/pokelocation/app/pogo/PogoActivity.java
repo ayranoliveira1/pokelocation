@@ -94,7 +94,7 @@ public final class PogoActivity extends BaseActivity {
     protected void onStart() {
         super.onStart();
         if (Pogo.closed(this)) return;
-        if (task == null && Pogo.loggedIn(this)) run(null, null);
+        if (task == null) run(null, null);
         render(); // volta do Login (RETURN_BACK) ou logout do social em outra tela
     }
 

@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Push de regra de alerta (FCM {"t":"p", n, iv, cp, d, r, rc, e, s; opcionais la, lo, l, v, lv}): dados públicos do
@@ -42,6 +43,8 @@ public final class PogoAlert {
     private static final String FILE = "pogo_alerts", SEEN = "seen", LOG = "log";
     static final int MAX_LOG = 50, MAX_SEEN = 1000;
     private static final long KEEP = 60 * 60_000L, KEEP_UNKNOWN = 2 * KEEP;
+    /** A aba Notificações à vista: o aviso entra no topo dela na hora (chamado na thread do FCM). */
+    static volatile Consumer<Pogo.Mon> sLive;
 
     private PogoAlert() {}
 
@@ -64,10 +67,12 @@ public final class PogoAlert {
         Bundle data = new Bundle();
         for (Map.Entry<String, String> x : d.entrySet()) data.putString(x.getKey(), x.getValue());
         Pogo.Mon mon = mon(d);
+        Consumer<Pogo.Mon> live = sLive;
+        if (live != null) live.accept(mon);
         Bitmap photo = mon.id > 0 ? PogoIcons.now(c, mon, 3_000) : null; // sem foto em 3 s: sai sem, nunca atrasada
         String title = title(d.get("n"), d.get("iv"), d.get("cp"), despawn, System.currentTimeMillis(),
                 "1".equals(d.get("s")));
-        b.setGroup(GROUP).setSmallIcon(R.drawable.ic_notification)
+        b.setGroup(GROUP).setSmallIcon(R.drawable.ic_notification_logo).setColor(c.getColor(R.color.primary))
                 .setContentTitle(title)
                 .setContentText(d.get("r"))
                 .setCustomContentView(content(c, photo, title, d.get("r"), false))
@@ -106,8 +111,8 @@ public final class PogoAlert {
         // < 26 sem GROUP_ALERT_CHILDREN: sem os defaults do legacy, senão cada alerta soaria 2×
         Notification.Builder s = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CHANNEL) : new Notification.Builder(c);
         if (Build.VERSION.SDK_INT >= 26) s.setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN);
-        return s.setOnlyAlertOnce(true).setGroup(GROUP).setGroupSummary(true).setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(c.getString(R.string.pogo_alerts_channel)).setAutoCancel(true)
+        return s.setOnlyAlertOnce(true).setGroup(GROUP).setGroupSummary(true).setSmallIcon(R.drawable.ic_notification_logo)
+                .setColor(c.getColor(R.color.primary)).setContentTitle(c.getString(R.string.pogo_alerts_channel)).setAutoCancel(true)
                 .setContentIntent(TaskStackBuilder.create(c).addNextIntent(Intents.main(c))
                         .addNextIntent(PogoAlertsActivity.intent(c))
                         .getPendingIntent(SUMMARY.hashCode(), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT))
@@ -132,6 +137,7 @@ public final class PogoAlert {
         m.lng = num(d.get("lo"), Double.NaN);
         if (Double.isNaN(m.lng)) m.lat = Double.NaN;
         m.location = blank(d.get("l"));
+        m.historyId = blank(d.get("h"));
         if (m.location == null && Double.isNaN(m.lat)) m.location = blank(d.get("r"));
         return m;
     }
@@ -149,9 +155,28 @@ public final class PogoAlert {
         return mons(array(prefs(c).getString(LOG, null)));
     }
 
-    /** Logout: a lista é da conta; o seen fica (ids públicos que vencem sozinhos) para nunca repetir um aviso. */
+    /** Logout e Limpar histórico: a lista é da conta; o seen fica (ids públicos que vencem sozinhos) para nunca repetir um aviso. */
     public static synchronized void forget(Context c) {
         prefs(c).edit().remove(LOG).apply();
+    }
+
+    /** A primeira página do servidor vira a lista local: é o que a aba mostra sem rede. */
+    static synchronized void cache(Context c, JSONArray log) {
+        prefs(c).edit().putString(LOG, log.toString()).apply();
+    }
+
+    static synchronized void drop(Context c, String h) {
+        SharedPreferences sp = prefs(c);
+        JSONArray log = array(sp.getString(LOG, null));
+        drop(log, h);
+        sp.edit().putString(LOG, log.toString()).apply();
+    }
+
+    static void drop(JSONArray log, String h) {
+        for (int i = log.length() - 1; i >= 0; i--) {
+            JSONObject x = log.optJSONObject(i);
+            if (x != null && h.equals(x.optString("h"))) log.remove(i);
+        }
     }
 
     /** false = este spawn já foi avisado: nem notifica nem entra de novo na lista. Grava antes de notificar. */
