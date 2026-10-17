@@ -26,6 +26,13 @@ public class PogoAlertTest {
         return push("t", "p", "n", "Dratini", "rc", "rc" + e, "e", e, "d", String.valueOf(despawn), "r", "Raros");
     }
 
+    @Test public void notificationTextIsTheLocationNeverTheRuleName() {
+        assertEquals("Paris, France", PogoAlert.where(push("r", "Raros", "l", "Paris, France", "la", "1", "lo", "2")));
+        assertEquals("-23.55052, -46.63331", PogoAlert.where(push("r", "Raros", "la", "-23.550520", "lo", "-46.633308")));
+        assertNull(PogoAlert.where(push("r", "Raros", "l", "", "la", "-23.5")));
+        assertNull(PogoAlert.where(push("r", "Raros")));
+    }
+
     @Test public void titleLikeTheDesign() {
         long now = 1_000_000;
         assertEquals("✨ Dratini 100% CP512 · 12 min", PogoAlert.title("Dratini", "100", "512", now + 11 * 60_000 + 1, now, true));
