@@ -407,12 +407,14 @@ public class PogoTest {
         assertFalse(Pogo.slow(new java.io.IOException("x")));
     }
 
-    /** Item 6: com a conta PokeLocation tudo vai pelo servidor (tokens dele sem vínculo); os treinadores, só com vínculo. */
-    @Test public void accountGoesThroughTheServer() throws Exception {
-        JSONArray t = new JSONArray().put(new JSONObject().put("trainer_code", "111122223333"));
-        assertNull(Pogo.serverTrainers(false, false, t));   // sem conta: direto e anônimo
-        assertNull(Pogo.serverTrainers(false, true, t));
-        assertEquals(0, Pogo.serverTrainers(true, false, t).length());   // vínculo morto ou nunca feito: sem shiny
-        assertEquals(t, Pogo.serverTrainers(true, true, t));
+    /** Item 6: sem o direto, o que antes caía nele vira "PoGo indisponível agora"; o lento e o limite têm aviso próprio. */
+    @Test public void withoutDirectTheseAreUnavailable() {
+        assertTrue(Pogo.unavailable(Pogo.fromApi(503, "pogo_disabled", "{}", 60)));
+        assertTrue(Pogo.unavailable(Pogo.fromApi(409, "pogo_relogin", "{}", 60)));
+        assertTrue(Pogo.unavailable(Pogo.fromApi(502, "upstream_unavailable", "{}", 60)));
+        assertFalse(Pogo.unavailable(Pogo.fromApi(504, "upstream_timeout", "{}", 60)));
+        assertFalse(Pogo.unavailable(Pogo.fromApi(429, "rate_limited", "{}", 60)));
+        assertFalse(Pogo.unavailable(Pogo.fromApi(404, "not_found", "{}", 60)));
+        assertFalse(Pogo.unavailable(new java.io.IOException("x")));
     }
 }

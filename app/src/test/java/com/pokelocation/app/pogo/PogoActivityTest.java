@@ -4,23 +4,18 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-/** O que a tela PoGo mostra a cada onStart, conforme a conta PokeLocation e o vínculo PoGo daquele momento. */
+/** O que a tela PoGo mostra a cada onStart, conforme o vínculo PoGo (sem a conta PokeLocation ela nem abre). */
 public class PogoActivityTest {
-    @Test public void socialLoginWithoutPogoOffersSignIn() {
-        assertEquals(PogoActivity.SIGN_IN, PogoActivity.screen(false, true, false));
-    }
-
-    @Test public void noSocialAccountAsksForIt() {
-        assertEquals(PogoActivity.NEED_ACCOUNT, PogoActivity.screen(false, false, false));
-        assertEquals(PogoActivity.NEED_ACCOUNT, PogoActivity.screen(false, false, true));
+    @Test public void withoutPogoOffersSignIn() {
+        assertEquals(PogoActivity.SIGN_IN, PogoActivity.screen(false, false));
     }
 
     @Test public void linkedShowsAccount() {
-        assertEquals(PogoActivity.LINKED, PogoActivity.screen(false, true, true));
+        assertEquals(PogoActivity.LINKED, PogoActivity.screen(false, true));
     }
 
     @Test public void busyWins() {
-        assertEquals(PogoActivity.BUSY, PogoActivity.screen(true, true, false));
-        assertEquals(PogoActivity.BUSY, PogoActivity.screen(true, false, false));
+        assertEquals(PogoActivity.BUSY, PogoActivity.screen(true, true));
+        assertEquals(PogoActivity.BUSY, PogoActivity.screen(true, false));
     }
 }

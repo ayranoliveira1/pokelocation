@@ -92,6 +92,7 @@ public final class PogoAlertsActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Pogo.closed(this)) return;
         double[] c = PogoListActivity.center(this, Double.NaN, Double.NaN);
         lat = c[0];
         lng = c[1];
@@ -199,6 +200,7 @@ public final class PogoAlertsActivity extends BaseActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        if (Pogo.closed(this)) return;   // a sessão caiu com a tela na pilha: fecha sem ler
         Context app = getApplicationContext();
         Io.run(() -> PogoAlert.load(app), new Io.Callback<List<Pogo.Mon>>() {
             @Override public void onResult(List<Pogo.Mon> l) {
@@ -230,7 +232,7 @@ public final class PogoAlertsActivity extends BaseActivity {
     protected void onDestroy() {
         if (form != null) form.destroy();
         form = null;
-        panel.destroy();
+        if (panel != null) panel.destroy();
         super.onDestroy();
     }
 

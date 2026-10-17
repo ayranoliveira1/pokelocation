@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import com.pokelocation.app.model.Coord;
+import com.pokelocation.app.social.store.SocialDb;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -284,6 +285,14 @@ public final class Prefs {
     @SuppressWarnings("deprecation")
     public static void setPogoLayer(Context c, boolean on) {
         c.getSharedPreferences(POGO_FILE, Context.MODE_MULTI_PROCESS).edit().putBoolean(POGO_LAYER, on).apply();
+    }
+
+    /**
+     * O único portão do PoGo (mapa, mini-mapa, menu, telas, coluna): só com a conta PokeLocation. O social.db nasce no
+     * login e some no logout, então vale em qualquer processo (o flag do Session só no principal) e não carrega classe.
+     */
+    public static boolean pogo(Context c) {
+        return c.getDatabasePath(SocialDb.NAME).exists();
     }
 
     public static String widgetKey(String base, int appWidgetId) { return base + "_" + appWidgetId; }

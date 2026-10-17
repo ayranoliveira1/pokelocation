@@ -1,5 +1,6 @@
 package com.pokelocation.app.pogo;
 
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -12,6 +13,7 @@ import android.util.JsonToken;
 import com.pokelocation.app.App;
 import com.pokelocation.app.BuildConfig;
 import com.pokelocation.app.Io;
+import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.net.Api;
 
@@ -141,6 +143,13 @@ public final class Pogo {
 
     static boolean writer(int proc) { return proc == App.PROC_MAIN; }
 
+    /** Sem a conta PokeLocation as telas PoGo não abrem (link, notificação velha) e fecham na volta (a sessão caiu). */
+    static boolean closed(Activity a) {
+        if (Prefs.pogo(a)) return false;
+        a.finish();
+        return true;
+    }
+
     /** PoGo vinculado no nosso servidor (exige a conta PokeLocation). */
     public static boolean loggedIn(Context c) {
         long at = prefs(c).getLong(K_LINKED, 0);
@@ -149,7 +158,7 @@ public final class Pogo {
 
     public static List<Mon> lookup(Context c, double n, double w, double s, double e, PogoFilter f) throws IOException {
         try {
-            return route(c, "POST", "/map/lookup", "/lookup", t -> {
+            return route(c, "POST", "/lookup", t -> {
                 JSONObject filters = f.toJson();
                 stripShiny(filters, t);
                 return new JSONObject().put("mode", "pokemon").put("n_lat", n).put("w_lng", w).put("s_lat", s)
@@ -163,7 +172,7 @@ public final class Pogo {
     /** POST /search (§4.1): o mundo inteiro, cap 5 anônimo / 10 logado / até 100 VIP, itens sem coordenada. */
     public static List<Mon> search(Context c, PogoFilter f) throws IOException {
         try {
-            return route(c, "POST", "/search", "/search", t -> searchBody(f, t), SEARCH_MAX, SLOW_MS, r -> results(r, false));
+            return route(c, "POST", "/search", t -> searchBody(f, t), SEARCH_MAX, SLOW_MS, r -> results(r, false));
         } catch (JSONException x) {
             throw new IOException("bad response");
         } catch (Error e) {
@@ -217,7 +226,7 @@ public final class Pogo {
         }
         Mon found = null;
         try {
-            for (Mon x : route(c, "POST", "/search", "/search", t -> enrichBody(m), SEARCH_MAX, SLOW_MS, r -> results(r, false)))
+            for (Mon x : route(c, "POST", "/search", t -> enrichBody(m), SEARCH_MAX, SLOW_MS, r -> results(r, false)))
                 if (m.encounter.equals(x.encounter)) found = x;
         } catch (JSONException x) {
             throw new IOException("bad response");
@@ -247,7 +256,7 @@ public final class Pogo {
     public static double[] reveal(Context c, String code) throws IOException {
         String path = revealPath(code);
         try {
-            double[] ll = route(c, "GET", path, path, t -> null, MAX_BODY, TIMEOUT_MS, Pogo::latLng);
+            double[] ll = route(c, "GET", path, t -> null, MAX_BODY, TIMEOUT_MS, Pogo::latLng);
             if (Double.isNaN(ll[0]) || Double.isNaN(ll[1])) throw new IOException("bad response");
             return ll;
         } catch (JSONException x) {
@@ -479,6 +488,11 @@ public final class Pogo {
     /** PoGo demorou: 504 upstream_timeout do nosso proxy ou o read timeout no direto. A próxima tentativa é o tick normal. */
     public static boolean slow(Throwable t) { return code(t, "upstream_timeout") || t instanceof SocketTimeoutException; }
 
+    /** Sem o direto para cair: integração desligada, nenhum token que sirva (pogo_relogin sem vínculo) ou 5xx. */
+    public static boolean unavailable(Throwable t) {
+        return !slow(t) && (code(t, "pogo_disabled") || code(t, "pogo_relogin") || t instanceof Error && ((Error) t).http >= 500);
+    }
+
     /** 422 ao salvar regra com shiny sem treinador ativo (T22): o mesmo aviso de "Vincular treinador". */
     public static boolean trainerRequired(Throwable t) { return code(t, "trainer_required"); }
 
@@ -558,27 +572,15 @@ public final class Pogo {
 
     private interface Body { JSONObject of(JSONArray trainers) throws JSONException; }
 
-    /** null = direto; senão os treinadores que vão ao servidor (vazio sem vínculo: o stripShiny tira o shiny). */
-    static JSONArray serverTrainers(boolean account, boolean linked, JSONArray trainers) {
-        return !account ? null : linked ? trainers : new JSONArray();
-    }
-
     /**
-     * Com a conta PokeLocation: pelo servidor, que sem vínculo usa os tokens dele; com pogo_relogin/pogo_disabled cai para
-     * o direto anônimo na mesma chamada. A resposta é lida em fluxo (JsonReader): sem árvore JSONObject e, no direto, sem
-     * a String inteira (lookup de até 1 MB a cada 60 s).
+     * Sempre pelo nosso servidor (o app não fala mais direto com o PoGo; sem vínculo ele usa os tokens dele). Os
+     * treinadores, que decidem o shiny no stripShiny, só com o vínculo. A resposta é lida em fluxo (JsonReader): sem
+     * árvore JSONObject (lookup de até 1 MB a cada 60 s).
      */
-    private static <T> T route(Context c, String method, String direct, String proxied, Body body, int max, int timeout,
-                               Pull<T> pull) throws IOException, JSONException {
-        JSONArray t = serverTrainers(Session.loggedIn(c), loggedIn(c), trainers(c));
-        if (t != null) {
-            try {
-                return json(new StringReader(proxy(c, method, proxied, body.of(t), max, timeout)), pull);
-            } catch (Error e) {
-                if (!"pogo_relogin".equals(e.error) && !"pogo_disabled".equals(e.error)) throw e;
-            }
-        }
-        return http(c, method, direct, body.of(new JSONArray()), max, timeout + 5_000, in -> json(in, pull)); // o mesmo teto do proxy
+    private static <T> T route(Context c, String method, String path, Body body, int max, int timeout, Pull<T> pull)
+            throws IOException, JSONException {
+        JSONArray t = loggedIn(c) ? trainers(c) : new JSONArray();
+        return json(new StringReader(proxy(c, method, path, body.of(t), max, timeout)), pull);
     }
 
     interface Pull<T> { T read(JsonReader r) throws IOException; }

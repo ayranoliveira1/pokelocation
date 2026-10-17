@@ -40,6 +40,7 @@ public final class PogoListActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Pogo.closed(this)) return;
         Intent i = getIntent();
         double[] c = center(this, i.getDoubleExtra(EXTRA_LAT, Double.NaN), i.getDoubleExtra(EXTRA_LNG, Double.NaN));
         LinearLayout root = new LinearLayout(this);
@@ -76,6 +77,7 @@ public final class PogoListActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (Pogo.closed(this)) return;   // a sessão caiu com a tela na pilha: fecha sem buscar
         panel.onResume();
         panel.setPaused(false);
     }
@@ -88,7 +90,7 @@ public final class PogoListActivity extends BaseActivity {
 
     @Override
     protected void onDestroy() {
-        panel.destroy();
+        if (panel != null) panel.destroy();
         super.onDestroy();
     }
 

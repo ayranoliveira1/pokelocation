@@ -20,6 +20,7 @@ public final class PogoFiltersActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Pogo.closed(this)) return;
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         getLayoutInflater().inflate(R.layout.base_toolbar, root);
@@ -43,7 +44,7 @@ public final class PogoFiltersActivity extends BaseActivity {
     @Override
     protected void onRestart() {
         super.onRestart();
-        render(); // login ou treinador podem ter mudado na conta
+        if (!Pogo.closed(this)) render(); // login ou treinador podem ter mudado na conta
     }
 
     @Override

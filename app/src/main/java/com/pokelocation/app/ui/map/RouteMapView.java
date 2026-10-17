@@ -354,6 +354,7 @@ public class RouteMapView extends FrameLayout {
         if (friends == null && mode == MODE_MAIN && mv != null && Session.loggedIn(getContext())) friends = new FriendLayer(getContext(), mv);
         if (friends != null) friends.resume();
         if (pogo != null) pogo.resume();
+        syncPogo();
     }
 
     public void onPause() {
@@ -444,7 +445,7 @@ public class RouteMapView extends FrameLayout {
             friends = new FriendLayer(c, mv);
             if (resumed) friends.resume();
         }
-        if (Prefs.pogoLayer(c)) setPogo(true);
+        syncPogo();
         if (!model.hasStart()) {
             Coord s = current != null ? current : Prefs.lastPosition(c);
             if (s != null) model.setStart(s.lat, s.lng, s.alt);
@@ -719,12 +720,23 @@ public class RouteMapView extends FrameLayout {
             optionsChanged();
             if (layer != null) layer.setEnabled(on);
         });
-        vis(swPogo, mode == MODE_MAIN || mode == MODE_FLOATING);
+        vis(swPogo, pogoHere());
         swPogo.setChecked(Prefs.pogoLayer(getContext()));
         swPogo.setOnCheckedChangeListener((b, on) -> {
             Prefs.setPogoLayer(getContext(), on);
             setPogo(on);
         });
+    }
+
+    private boolean pogoHere() {
+        return (mode == MODE_MAIN || mode == MODE_FLOATING) && Prefs.pogo(getContext());
+    }
+
+    /** Login ou logout com o mapa criado: o interruptor e a camada aparecem ou somem na volta. */
+    private void syncPogo() {
+        boolean here = pogoHere();
+        vis(swPogo, here);
+        setPogo(here && Prefs.pogoLayer(getContext()));
     }
 
     /** Botão do card, só depois do /reveal: no main "Definir destino" = toque no mapa na coordenada exata; no :map teleporta. */

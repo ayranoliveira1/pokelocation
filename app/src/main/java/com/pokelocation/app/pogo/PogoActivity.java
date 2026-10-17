@@ -26,8 +26,6 @@ import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
-import com.pokelocation.app.social.Session;
-import com.pokelocation.app.social.ui.AccountActivity;
 import com.pokelocation.app.ui.base.BaseActivity;
 import com.pokelocation.app.util.Ui;
 
@@ -38,7 +36,7 @@ import java.util.Locale;
 
 /** Conta PoGo Coordinates e destino do redirect https do login (singleTask: o Custom Tab acima dela é fechado). */
 public final class PogoActivity extends BaseActivity {
-    static final int NEED_ACCOUNT = 0, SIGN_IN = 1, BUSY = 2, LINKED = 3;
+    static final int SIGN_IN = 1, BUSY = 2, LINKED = 3;
     private LinearLayout list, trainers;
     private ImageView icon;
     private TextView avatar, title, sub, trainerLabel;
@@ -60,6 +58,7 @@ public final class PogoActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Pogo.closed(this)) return;
         setContentView(R.layout.pogo_account);
         setupToolbar(getString(R.string.pogo_account), true);
         applyInsets(findViewById(R.id.pogo_acc_root));
@@ -94,6 +93,7 @@ public final class PogoActivity extends BaseActivity {
     @Override
     protected void onStart() {
         super.onStart();
+        if (Pogo.closed(this)) return;
         if (task == null && Pogo.loggedIn(this)) run(null, null);
         render(); // volta do Login (RETURN_BACK) ou logout do social em outra tela
     }
@@ -147,15 +147,13 @@ public final class PogoActivity extends BaseActivity {
         });
     }
 
-    static int screen(boolean busy, boolean social, boolean pogo) {
+    static int screen(boolean busy, boolean pogo) {
         if (busy) return BUSY;
-        if (!social) return NEED_ACCOUNT;
         return pogo ? LINKED : SIGN_IN;
     }
 
     private void render() {
-        boolean account = Session.loggedIn(this);
-        int screen = screen(busy, account, Pogo.loggedIn(this));
+        int screen = screen(busy, Pogo.loggedIn(this));
         boolean linked = screen == LINKED;
         icon.setVisibility(linked ? View.GONE : View.VISIBLE);
         avatar.setVisibility(linked ? View.VISIBLE : View.GONE);
@@ -168,11 +166,6 @@ public final class PogoActivity extends BaseActivity {
         if (screen == BUSY) {
             title.setText(R.string.pogo_logging_in);
             sub.setText(null);
-        } else if (screen == NEED_ACCOUNT) {
-            // o vínculo fica no nosso servidor, preso ao users.id
-            title.setText(R.string.pogo_account);
-            sub.setText(R.string.pogo_need_account);
-            action(R.string.pogo_enter_account, v -> startActivity(AccountActivity.open(this)));
         } else if (screen == SIGN_IN) {
             title.setText(R.string.pogo_not_connected);
             sub.setText(R.string.pogo_login_summary);
@@ -183,7 +176,7 @@ public final class PogoActivity extends BaseActivity {
         list.removeAllViews();
         row(getString(R.string.pogo_map_layer), null,
                 v -> startActivity(PogoListActivity.intent(this, Double.NaN, Double.NaN)));
-        if (account) row(getString(R.string.pogo_alerts), null, v -> startActivity(PogoAlertsActivity.intent(this)));
+        row(getString(R.string.pogo_alerts), null, v -> startActivity(PogoAlertsActivity.intent(this)));
         row(getString(R.string.pogo_filters), getString(R.string.pogo_filters_summary),
                 v -> startActivity(new Intent(this, PogoFiltersActivity.class)));
     }

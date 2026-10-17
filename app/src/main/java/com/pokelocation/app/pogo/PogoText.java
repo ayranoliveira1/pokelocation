@@ -162,6 +162,7 @@ final class PogoText {
 
     static String error(Context c, Throwable t) {
         if (Pogo.slow(t)) return c.getString(R.string.pogo_slow);
+        if (Pogo.unavailable(t)) return c.getString(R.string.pogo_unavailable);
         if (t instanceof Pogo.Error) {
             Pogo.Error e = (Pogo.Error) t;
             if (e.http == 404 || e.http == 410) return c.getString(R.string.pogo_map_gone);

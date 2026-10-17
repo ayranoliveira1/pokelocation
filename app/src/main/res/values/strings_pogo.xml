@@ -74,11 +74,9 @@
         <item quantity="one">Show results (%d filter)</item>
         <item quantity="other">Show results (%d filters)</item>
     </plurals>
-    <string name="pogo_need_account">Sign in to your PokeLocation account to link PoGo Coordinates</string>
     <string name="pogo_alerts_channel">Pokémon alerts</string>
     <string name="pogo_slow">PoGo Coordinates is taking long to answer. Trying again…</string>
     <string name="pogo_not_connected">Not connected</string>
-    <string name="pogo_enter_account">Sign in to your account</string>
     <string name="pogo_sign_in">Sign in</string>
     <string name="pogo_sheet_title">Sign in to PoGo Coordinates</string>
     <string name="pogo_continue_discord">Continue with Discord</string>

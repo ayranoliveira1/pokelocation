@@ -182,7 +182,11 @@ public final class MainActivity extends BaseActivity {
         // "iniciando" só sobrevive enquanto o usuário está fora (Settings/permissão) no meio das checagens;
         // post: depois do ON_RESUME do StartChecks, que retoma a cadeia
         ui.post(() -> starting = false);
-        ((NavigationView) findViewById(R.id.main_nav)).setCheckedItem(R.id.main_nav_home);
+        NavigationView nav = findViewById(R.id.main_nav);
+        nav.setCheckedItem(R.id.main_nav_home);
+        boolean pogo = Prefs.pogo(this);   // login ou logout na Conta: o PoGo aparece ou some na volta
+        nav.getMenu().findItem(R.id.main_nav_pogo_list).setVisible(pogo);
+        nav.getMenu().findItem(R.id.main_nav_pogo).setVisible(pogo);
         if (map != null) map.onResume();
         ui.removeCallbacks(ticker);
         if (Prefs.getBool(this, Prefs.DISPLAY_DISTANCE_INFO)) ticker.run();

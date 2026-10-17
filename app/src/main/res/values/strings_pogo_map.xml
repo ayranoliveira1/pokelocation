@@ -60,4 +60,5 @@
     <string name="pogo_notified_gone">This Pokémon is already gone</string>
     <string name="pogo_bubbles_logo">Pokémon list</string>
     <string name="pogo_bubbles_count">Pokémon shown: %d</string>
+    <string name="pogo_unavailable">PoGo is unavailable right now, try again</string>
 </resources>
