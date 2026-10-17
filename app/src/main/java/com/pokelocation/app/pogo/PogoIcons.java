@@ -101,26 +101,6 @@ public final class PogoIcons {
     }
 
     /**
-     * Para o push de alerta: memória, senão disco/rede no executor, no máximo timeoutMs. Não entra no LRU (a notificação
-     * copia o bitmap e nada fica retido); estourou o prazo = null, e o download segue e fica no disco para a próxima.
-     */
-    static Bitmap now(Context c, Pogo.Mon m, long timeoutMs) {
-        String key = key(m);
-        synchronized (LOCK) {
-            Bitmap b = sMem == null ? null : sMem.get(key);
-            Long retry = FAILED.get(key);
-            if (b != null || retry != null && retry > System.currentTimeMillis()) return b;
-        }
-        Context app = c.getApplicationContext();
-        List<String> chain = urls(m.id, m.name, m.form, m.costume, m.shiny);
-        try {
-            return exec().submit(() -> fetch(app, chain, key)).get(timeoutMs, TimeUnit.MILLISECONDS);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
      * Ao desligar a camada e ao fechar o painel no :overlay; pouca memória já chama sozinho. Só solta as referências
      * (sem recycle: um bitmap ainda numa view derrubaria o processo); o GC devolve os pixels.
      */

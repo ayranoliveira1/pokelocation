@@ -213,4 +213,18 @@ public class PogoAlertTest {
         assertEquals("old", log.getJSONObject(0).getString("n"));
         assertEquals("2", log.getJSONObject(1).getString("h"));
     }
+
+    @Test
+    public void budgetIsSharedByABurst() {
+        PogoAlert.sBurstEnd = PogoAlert.sLast = 0;
+        assertEquals(8_000, PogoAlert.budget(NOW));
+        PogoAlert.done(NOW + 5_000);
+        assertEquals(2_950, PogoAlert.budget(NOW + 5_050));
+        PogoAlert.done(NOW + 8_000);
+        assertEquals(1_000, PogoAlert.budget(NOW + 8_050));
+        PogoAlert.done(NOW + 9_050);
+        assertEquals(1_000, PogoAlert.budget(NOW + 9_100));
+        PogoAlert.done(NOW + 10_100);
+        assertEquals(8_000, PogoAlert.budget(NOW + 12_000));
+    }
 }

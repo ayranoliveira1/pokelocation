@@ -12,6 +12,7 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.service.notification.StatusBarNotification;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -31,6 +32,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -53,11 +55,60 @@ public final class PogoAlert {
     private static final long KEEP = 60 * 60_000L, KEEP_UNKNOWN = 2 * KEEP;
     /** A aba Notificações à vista: o aviso entra no topo dela na hora (chamado na thread do FCM). */
     static volatile Consumer<Pogo.Mon> sLive;
+    static long sBurstEnd, sLast;
 
     private PogoAlert() {}
 
     public static void show(Context c, Map<String, String> d) {
         if (!remember(c, d)) return;
+        Pogo.Mon mon = mon(d);
+        Consumer<Pogo.Mon> live = sLive;
+        if (live != null) live.accept(mon);
+        if (mon.id <= 0) {
+            post(c, d, null, false);
+            return;
+        }
+        Object lock = new Object();
+        Bitmap[] photo = new Bitmap[1];
+        boolean[] got = new boolean[1], posted = new boolean[1];
+        PogoIcons.load(c, mon, b -> {
+            synchronized (lock) {
+                photo[0] = b;
+                got[0] = true;
+                lock.notifyAll();
+                if (posted[0] && b != null) post(c, d, b, true);
+            }
+        });
+        synchronized (lock) {
+            long now = SystemClock.elapsedRealtime(), end = now + budget(now);
+            for (long left; !got[0] && (left = end - SystemClock.elapsedRealtime()) > 0; ) {
+                try {
+                    lock.wait(left);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            post(c, d, photo[0], false);
+            posted[0] = true;
+        }
+        done(SystemClock.elapsedRealtime());
+    }
+
+    /**
+     * Espera pela foto: 8 s por rajada, no mínimo 1 s por aviso. O FCM entrega em fila numa thread só e a demora de um
+     * encurta a janela (~20 s) dos seguintes; a rajada só recomeça com a fila parada há 1 s. A foto que chega depois
+     * entra pelo repost.
+     */
+    static synchronized long budget(long now) {
+        if (now - sLast > 1_000) sBurstEnd = now + 8_000;
+        return Math.max(1_000, Math.min(8_000, sBurstEnd - now));
+    }
+
+    static synchronized void done(long now) { sLast = now; }
+
+    /** again: a foto chegou depois do prazo; troca o aviso ainda à vista sem tocar de novo. */
+    private static void post(Context c, Map<String, String> d, Bitmap photo, boolean again) {
         long despawn;
         try {
             despawn = Long.parseLong(d.get("d"));
@@ -72,12 +123,9 @@ public final class PogoAlert {
         }
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CHANNEL) : legacy(c);
         String tag = d.get("e") != null ? d.get("e") : d.get("rc"); // um aviso por spawn, sem sobrescrever outro
+        if (again && !visible(nm, tag)) return;
         Bundle data = new Bundle();
         for (Map.Entry<String, String> x : d.entrySet()) data.putString(x.getKey(), x.getValue());
-        Pogo.Mon mon = mon(d);
-        Consumer<Pogo.Mon> live = sLive;
-        if (live != null) live.accept(mon);
-        Bitmap photo = mon.id > 0 ? PogoIcons.now(c, mon, 3_000) : null; // sem foto em 3 s: sai sem, nunca atrasada
         String title = title(d.get("n"), d.get("iv"), d.get("cp"), despawn, System.currentTimeMillis(),
                 "1".equals(d.get("s")));
         String where = where(d);
@@ -85,6 +133,7 @@ public final class PogoAlert {
                 .setContentTitle(title)
                 .setContentText(where)
                 .setAutoCancel(true)
+                .setOnlyAlertOnce(again)
                 .setContentIntent(TaskStackBuilder.create(c).addNextIntent(Intents.main(c))
                         .addNextIntent(PogoAlertsActivity.intent(c).putExtra(EXTRA, data))
                         .getPendingIntent(String.valueOf(tag).hashCode(), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
@@ -107,6 +156,14 @@ public final class PogoAlert {
                 if (keep != null) Shortcuts.prune(c, SHORTCUT, keep);
             }
         }
+    }
+
+    private static boolean visible(NotificationManager nm, String tag) {
+        try {
+            for (StatusBarNotification n : nm.getActiveNotifications()) if (n.getId() == ID && Objects.equals(tag, n.getTag())) return true;
+        } catch (RuntimeException ignored) {
+        }
+        return false;
     }
 
     /** Um atalho por aviso: o rótulo dele é o título que o SystemUI mostra. O prefixo também pega o atalho único da 1.2.0. */
