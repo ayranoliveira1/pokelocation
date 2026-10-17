@@ -9,15 +9,12 @@ import android.os.Process;
 import android.util.Log;
 import android.util.LruCache;
 
-import com.pokelocation.app.App;
 import com.pokelocation.app.Io;
+import com.pokelocation.app.social.net.Api;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -30,13 +27,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * Ícones dos Pokémon com a cadeia de fallback do site (docs/pogo/icones.md §1). Imagens da Niantic/TPC servidas pelo
- * GitHub: nunca no APK, só baixadas sob demanda para cacheDir/pogo_icons (bytes do PNG). Um bitmap por ícone, 96 px.
+ * Ícones dos Pokémon com a cadeia de fallback do site (docs/pogo/icones.md §1). Imagens da Niantic/TPC, que o nosso
+ * servidor busca no GitHub: nunca no APK, só baixadas sob demanda para cacheDir/pogo_icons (bytes do PNG). Um bitmap
+ * por ícone, 96 px.
  */
 public final class PogoIcons {
-    static final String PM = "https://raw.githubusercontent.com/PokeMiners/pogo_assets/master/Images/"
-            + "Pokemon%20-%20256x256/Addressable%20Assets/";
-    static final String UICONS = "https://raw.githubusercontent.com/nileplumb/PkmnShuffleMap/refs/heads/master/UICONS/pokemon/";
+    /** Pelo nosso servidor, que busca no PokeMiners e no UICONS (GitHub) e guarda; o nome do arquivo é o de lá. */
+    static final String PM = "/v1/pogo/icon/pm/", UICONS = "/v1/pogo/icon/u/";
     /** 96 px exatos (36 KB): 4 MB guardam ~110 ícones, mais que as espécies distintas de um lookup de 100. */
     private static final int TARGET_PX = 96, MEM_BYTES = 4 << 20, MAX_BYTES = 256 * 1024, TIMEOUT_MS = 10_000;
     private static final long DISK_MAX = 8L << 20, MISS_MS = 7L * 24 * 3600_000, RETRY_MS = 60_000;
@@ -187,7 +184,7 @@ public final class PogoIcons {
             try {
                 boolean hit = f.exists();
                 if (!hit) {
-                    int got = download(url, f, miss);
+                    int got = download(c, url, f, miss);
                     if (got == NOT_FOUND) continue;
                     if (got == SKIP) {
                         soft = true;
@@ -216,48 +213,25 @@ public final class PogoIcons {
         }
     }
 
-    /** OK = gravado em f; NOT_FOUND = 404 (marca .404); SKIP = outro status; IOException = sem rede. */
-    private static int download(String url, File f, File miss) throws IOException {
-        HttpURLConnection con = (HttpURLConnection) new URL(url).openConnection();
-        // sem disconnect() no caminho feliz: corpo lido até o fim devolve a conexão ao pool (sem novo TLS por ícone)
+    /**
+     * OK = gravado em f; NOT_FOUND = 404, ou 400 do nome fora da lista do servidor (os dois definitivos: marca .404);
+     * SKIP = outro status (429, 5xx, sem sessão); IOException = sem rede.
+     */
+    private static int download(Context c, String path, File f, File miss) throws IOException {
         try {
-            con.setConnectTimeout(TIMEOUT_MS);
-            con.setReadTimeout(TIMEOUT_MS);
-            con.setUseCaches(false);
-            // fora do main, o último pedido do lote não deixa TLS ocioso no pool por minutos
-            if (App.process() != App.PROC_MAIN && exec().getQueue().isEmpty()) con.setRequestProperty("Connection", "close");
-            int status = con.getResponseCode();
-            if (status == 404) {
-                con.disconnect();
-                new FileOutputStream(miss).close();
-                return NOT_FOUND;
-            }
-            if (status != 200) {
-                Log.w(TAG, f.getName() + ": " + status);
-                con.disconnect();
+            Api.pogoFile(c, path, null, f, MAX_BYTES, TIMEOUT_MS);   // o PNG nunca muda: no disco não se revalida
+        } catch (Api.Error e) {
+            if (e.http != 404 && e.http != 400) {
+                Log.w(TAG, f.getName() + ": " + e.http);
                 return SKIP;
             }
-            File tmp = File.createTempFile(f.getName(), ".tmp", f.getParentFile()); // main e :overlay podem baixar juntos
-            try (InputStream in = con.getInputStream(); FileOutputStream out = new FileOutputStream(tmp)) {
-                byte[] buf = new byte[8192];
-                int r, total = 0;
-                while ((r = in.read(buf)) > 0) {
-                    if ((total += r) > MAX_BYTES) throw new IOException("icon too large");
-                    out.write(buf, 0, r);
-                }
-            } catch (IOException e) {
-                tmp.delete();
-                throw e;
-            }
-            if (!tmp.renameTo(f)) tmp.delete();
-            synchronized (LOCK) {
-                if ((sDisk += f.length()) > DISK_MAX) sSwept = false;
-            }
-            return OK;
-        } catch (IOException | RuntimeException e) {
-            con.disconnect();
-            throw e;
+            new FileOutputStream(miss).close();
+            return NOT_FOUND;
         }
+        synchronized (LOCK) {
+            if ((sDisk += f.length()) > DISK_MAX) sSwept = false;
+        }
+        return OK;
     }
 
     /** Buffer de decodificação por thread do executor: sem os 16 KB que o decodeFile alocaria a cada chamada. */

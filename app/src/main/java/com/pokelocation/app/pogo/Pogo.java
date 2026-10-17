@@ -11,7 +11,6 @@ import android.util.JsonReader;
 import android.util.JsonToken;
 
 import com.pokelocation.app.App;
-import com.pokelocation.app.BuildConfig;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.social.Session;
@@ -22,16 +21,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FilterInputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringReader;
-import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
@@ -47,11 +44,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Cliente do PoGo Coordinates. Tudo bloqueante: chamar fora da main. Vinculado (pogo_linked): tudo pelo nosso servidor
- * (/v1/pogo/*, que guarda o token deles); senão direto e anônimo. O app nunca vê o JWT do PoGo.
+ * Cliente do PoGo Coordinates. Tudo bloqueante: chamar fora da main. Tudo pelo nosso servidor (/v1/pogo/*, que guarda
+ * o token deles e, sem vínculo, usa os compartilhados), só com a conta PokeLocation. O app nunca vê o JWT do PoGo.
  */
 public final class Pogo {
-    static final String API = "https://coordinates-api.pokemongopro.com";
     static final String K_LINKED = "pogo_linked", K_NAME = "name", K_TRAINERS = "trainers", K_PENDING = "pending_at",
             K_PROVIDER = "provider";
     public static final int MAX_RULES = 10;
@@ -264,8 +260,28 @@ public final class Pogo {
         }
     }
 
+    /** O JSON fica no cacheDir com o ETag: aberto de novo, o servidor responde 304 e nada desce. */
     static List<Species> catalog(Context c) throws IOException {
-        return http(c, "GET", "/pokemon/catalog?costumes=true", null, CATALOG_MAX, TIMEOUT_MS, in -> json(in, Pogo::species));
+        File f = new File(c.getCacheDir(), "pogo_catalog.json"), tag = new File(c.getCacheDir(), "pogo_catalog.etag");
+        String etag = null;
+        if (f.exists()) {
+            try (Reader in = new InputStreamReader(new FileInputStream(tag), StandardCharsets.UTF_8)) {
+                etag = text(in);
+            } catch (IOException ignored) {   // sem o ETag: baixa inteiro
+            }
+        }
+        String got = Api.pogoFile(c, "/v1/pogo/catalog", etag, f, CATALOG_MAX, TIMEOUT_MS);
+        if (got != null) {
+            try (OutputStream out = new FileOutputStream(tag)) {
+                out.write(got.getBytes(StandardCharsets.UTF_8));
+            }
+        }
+        try (Reader in = new InputStreamReader(new FileInputStream(f), StandardCharsets.UTF_8)) {
+            return json(in, Pogo::species);
+        } catch (IOException e) {
+            f.delete();   // estragado: sem isso o 304 o devolveria para sempre
+            throw e;
+        }
     }
 
     /** Marca o login em curso: o state do site é fixo (sem nonce), então só um callback logo depois deste conta. */
@@ -585,7 +601,6 @@ public final class Pogo {
 
     interface Pull<T> { T read(JsonReader r) throws IOException; }
 
-    private interface Text<T> { T read(Reader in) throws IOException; }
 
     static <T> T json(Reader in, Pull<T> pull) throws IOException {
         try (JsonReader r = new JsonReader(in)) {
@@ -832,45 +847,6 @@ public final class Pogo {
         return o.isNull(k) ? null : o.optString(k);
     }
 
-    /** Direto no PoGo, anônimo (o token fica no nosso servidor). O corpo de sucesso vai ao leitor com teto de bytes. */
-    private static <T> T http(Context c, String method, String path, JSONObject body, int maxBody, int timeoutMs, Text<T> read)
-            throws IOException {
-        HttpURLConnection con = (HttpURLConnection) new URL(API + path).openConnection();
-        try {
-            con.setConnectTimeout(Math.min(timeoutMs, TIMEOUT_MS)); // sem rede não vira "demorando": só o read espera o PoGo
-            con.setReadTimeout(timeoutMs);
-            con.setInstanceFollowRedirects(false);
-            con.setUseCaches(false);
-            con.setRequestMethod(method);
-            con.setRequestProperty("User-Agent", c.getPackageName() + "/" + BuildConfig.VERSION_NAME);
-            con.setRequestProperty("Accept", "application/json");
-            if (App.process() != App.PROC_MAIN) con.setRequestProperty("Connection", "close");
-            if (body != null) {
-                byte[] b = body.toString().getBytes(StandardCharsets.UTF_8);
-                con.setDoOutput(true);
-                con.setFixedLengthStreamingMode(b.length);
-                con.setRequestProperty("Content-Type", "application/json");
-                try (OutputStream out = con.getOutputStream()) {
-                    out.write(b);
-                }
-            }
-            int status = con.getResponseCode();
-            if (status >= 400) {
-                InputStream es = con.getErrorStream();
-                String text = es == null ? "" : text(new InputStreamReader(new Capped(es, MAX_BODY), StandardCharsets.UTF_8));
-                throw error(status, text, con.getHeaderField("Retry-After"));
-            }
-            try (Reader in = new InputStreamReader(new Capped(con.getInputStream(), maxBody), StandardCharsets.UTF_8)) {
-                return read.read(in);
-            }
-        } catch (Error e) {
-            throw e;
-        } catch (IOException | RuntimeException e) {
-            con.disconnect();
-            throw e;
-        }
-    }
-
     private static String text(Reader in) throws IOException {
         StringBuilder b = new StringBuilder(1024);
         char[] buf = new char[2048];
@@ -879,27 +855,5 @@ public final class Pogo {
             while ((r = i.read(buf)) > 0) b.append(buf, 0, r);
         }
         return b.toString();
-    }
-
-    /** Teto em bytes no próprio stream: a resposta nunca é lida inteira para ser medida. */
-    private static final class Capped extends FilterInputStream {
-        private long left;
-
-        Capped(InputStream in, long max) {
-            super(in);
-            left = max;
-        }
-
-        @Override public int read() throws IOException {
-            int b = super.read();
-            if (b >= 0 && --left < 0) throw new IOException("response too large");
-            return b;
-        }
-
-        @Override public int read(byte[] b, int off, int len) throws IOException {
-            int n = super.read(b, off, len);
-            if (n > 0 && (left -= n) < 0) throw new IOException("response too large");
-            return n;
-        }
     }
 }

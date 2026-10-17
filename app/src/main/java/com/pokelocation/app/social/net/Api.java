@@ -15,6 +15,7 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -573,6 +574,67 @@ public final class Api {
         String token = Session.access(c);
         if (token == null) throw unauthorized(c);
         return authed(token, t -> http(c, method, path, t, body, timeoutMs, maxBody), t -> renew(c, t), () -> Session.ended(c));
+    }
+
+    /**
+     * GET binário de /v1/pogo/* (ícones, catálogo) direto num arquivo, com o Bearer e a renovação do pogo(). etag: o que
+     * está guardado com out, ou null. Devolve null no 304 (out segue valendo); senão o ETag novo ("" sem ele) e o corpo
+     * do 200 já está em out, trocado inteiro. 4xx/5xx viram Error com o envelope.
+     */
+    public static String pogoFile(Context c, String path, String etag, File out, int maxBody, int timeoutMs) throws IOException {
+        String token = Session.access(c);
+        if (token == null) throw unauthorized(c);
+        return authed(token, t -> {
+            HttpURLConnection con = (HttpURLConnection) new URL(BuildConfig.SOCIAL_API + path).openConnection();
+            con.setRequestProperty("User-Agent", c.getPackageName() + "/" + BuildConfig.VERSION_NAME);
+            if (App.process() != App.PROC_MAIN) con.setRequestProperty("Connection", "close");
+            con.setRequestProperty("Authorization", "Bearer " + t);
+            return file(con, etag, out, maxBody, timeoutMs);
+        }, t -> renew(c, t), () -> Session.ended(c));
+    }
+
+    static String file(HttpURLConnection con, String etag, File out, int maxBody, int timeoutMs) throws IOException {
+        // sem disconnect() no caminho feliz: corpo lido até o fim devolve a conexão ao pool
+        try {
+            con.setConnectTimeout(timeoutMs);
+            con.setReadTimeout(timeoutMs);
+            con.setInstanceFollowRedirects(false);
+            con.setUseCaches(false);
+            if (etag != null && !etag.isEmpty()) con.setRequestProperty("If-None-Match", etag);
+            int status = con.getResponseCode();
+            if (status >= 400) {
+                String text = read(con.getErrorStream(), MAX_BODY);
+                throw new Error(status, errorCode(text), text);
+            }
+            if (status == 304) {
+                con.getInputStream().close();
+                return null;
+            }
+            if (status != 200) throw new Error(status, "unknown", "");
+            File tmp = File.createTempFile(out.getName(), ".tmp", out.getParentFile());   // main e :overlay podem baixar juntos
+            try (InputStream in = con.getInputStream(); OutputStream o = new FileOutputStream(tmp)) {
+                byte[] b = new byte[8192];
+                int r, total = 0;
+                while ((r = in.read(b)) > 0) {
+                    if ((total += r) > maxBody) throw new IOException("response too large");
+                    o.write(b, 0, r);
+                }
+            } catch (IOException e) {
+                tmp.delete();
+                throw e;
+            }
+            if (!tmp.renameTo(out)) {
+                tmp.delete();
+                throw new IOException("rename failed");
+            }
+            String tag = con.getHeaderField("ETag");
+            return tag != null ? tag : "";
+        } catch (Error e) {
+            throw e;
+        } catch (IOException | RuntimeException e) {
+            con.disconnect();
+            throw e;
+        }
     }
 
     interface Attempt { String run(String token) throws IOException; }
