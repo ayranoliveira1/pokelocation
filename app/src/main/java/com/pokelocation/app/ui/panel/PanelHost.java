@@ -53,7 +53,7 @@ public final class PanelHost {
     private WindowManager.LayoutParams lp;
     private Runnable onDismiss, coverBack;
     private View cover;
-    private boolean showing, backWithIme, backDown, imeVisible, imeHiddenByUs;
+    private boolean showing, hidden, backWithIme, backDown, imeVisible, imeHiddenByUs;
     private long imeHiddenAt = Long.MIN_VALUE / 2;
     private static final long IME_BACK_MS = 300;
     // overGame: janela arrastável do tamanho do card, posição salva por painel (key)
@@ -107,12 +107,7 @@ public final class PanelHost {
             h.lp = lp;
             root.setFocusableInTouchMode(true);
             root.requestFocus();
-            // Android 16 (target 36): o sistema tira o BACK do KeyEvent (o UP chega cancelado) e chama o callback da
-            // janela focada. Com o teclado aberto o callback do IME fica por cima e fecha só ele.
-            if (Build.VERSION.SDK_INT >= 33) {
-                OnBackInvokedDispatcher d = root.findOnBackInvokedDispatcher();
-                if (d != null) d.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, h::back);
-            }
+            h.registerBack();
         }
         h.showing = true;
         sOpen.add(h);
@@ -260,6 +255,36 @@ public final class PanelHost {
         Runnable r = onDismiss;
         onDismiss = null;
         if (r != null) r.run();
+    }
+
+    /**
+     * Android 16 (target 36): o sistema tira o BACK do KeyEvent (o UP chega cancelado) e chama o callback da janela
+     * focada. Com o teclado aberto o callback do IME fica por cima e fecha só ele. O dispatcher é da janela adicionada:
+     * readicionar exige registrar de novo.
+     */
+    private void registerBack() {
+        if (Build.VERSION.SDK_INT < 33) return;
+        OnBackInvokedDispatcher d = window.findOnBackInvokedDispatcher();
+        if (d != null) d.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::back);
+    }
+
+    /** "Ocultar" do overlay: os painéis abertos saem do WindowManager e voltam como estavam. */
+    public static void setAllVisible(boolean v) {
+        for (PanelHost h : sOpen) h.setVisible(v);
+    }
+
+    private void setVisible(boolean v) {
+        if (wm == null || window == null || hidden == !v) return;
+        hidden = !v;
+        try {
+            if (v) {
+                wm.addView(window, lp);
+                registerBack();
+            } else {
+                wm.removeViewImmediate(window);
+            }
+        } catch (RuntimeException ignored) {
+        }
     }
 
     private void back() {

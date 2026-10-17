@@ -22,6 +22,7 @@ import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.engine.EngineConfig;
 import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.geo.CoordParser;
+import com.pokelocation.app.ui.panel.PanelHost;
 import com.pokelocation.app.util.Ui;
 import com.pokelocation.app.util.WindowDrag;
 
@@ -124,6 +125,7 @@ public final class OverlayView implements View.OnClickListener {
         stickShown = show(stickWin, stickLp, stickShown, v && !stickHidden, true);
         if (drawerWin != null) drawerShown = show(drawerWin, drawerLp, drawerShown, v, false);
         flows.pogoVisible(v);
+        PanelHost.setAllVisible(v);
     }
 
     /** {x, y, largura, altura} da janela do joystick, ou null escondido (a coluna PoGo nasce sem cobri-lo). */

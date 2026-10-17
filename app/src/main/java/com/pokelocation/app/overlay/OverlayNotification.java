@@ -136,12 +136,24 @@ public final class OverlayNotification {
         lastNotify = SystemClock.uptimeMillis();
     }
 
+    private void desc(RemoteViews rv, int id, int res) {
+        rv.setContentDescription(id, ctx.getString(res));
+    }
+
     private Notification build() {
         String title = hasRoute && total > 0 ? ctx.getString(R.string.ov_svc_route_progress, index, total)
                 : ctx.getString(R.string.ov_svc_running);
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.ov_notif_main);
         rv.setTextViewText(R.id.ov_notif_title, title);
         rv.setViewVisibility(R.id.ov_notif_text, inject ? View.VISIBLE : View.GONE);
+        // o SystemUI infla o layout no idioma do aparelho: só o texto posto aqui segue o idioma escolhido no app
+        rv.setTextViewText(R.id.ov_notif_text, ctx.getString(R.string.ov_svc_tap_inject));
+        desc(rv, R.id.ov_notif_stop, R.string.ov_svc_stop);
+        desc(rv, R.id.ov_notif_share, R.string.share);
+        desc(rv, R.id.ov_notif_map, R.string.ov_svc_map);
+        desc(rv, R.id.ov_notif_save, R.string.save);
+        desc(rv, R.id.ov_notif_route_stop, R.string.ov_svc_route_stop);
+        desc(rv, R.id.ov_notif_next, R.string.ov_svc_next);
         rv.setOnClickPendingIntent(R.id.ov_notif_stop, piStop);
         rv.setOnClickPendingIntent(R.id.ov_notif_hide, hidden ? piShow : piHide);
         rv.setImageViewResource(R.id.ov_notif_hide, hidden ? R.drawable.ic_visibility : R.drawable.ic_visibility_off);
