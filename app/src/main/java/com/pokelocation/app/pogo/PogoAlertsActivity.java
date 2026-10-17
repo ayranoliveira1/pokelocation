@@ -15,6 +15,7 @@ import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -79,6 +80,8 @@ public final class PogoAlertsActivity extends BaseActivity {
     /** Cursor da próxima página; null = acabou. stuck: a última página falhou, só um reload tenta de novo. */
     private String next;
     private boolean stuck;
+    /** O gesto que só fechou o item aberto: não chega a nada da tela. */
+    private boolean swallow;
     private final Consumer<Pogo.Mon> live = m -> Io.main().post(() -> { if (!isDestroyed()) panel.addFixed(0, Collections.singletonList(m)); });
     private final ActivityResultLauncher<String> notifPerm = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), granted -> {
@@ -239,6 +242,15 @@ public final class PogoAlertsActivity extends BaseActivity {
                 if (asked && form != null && !isDestroyed()) form.render();
             }
         });
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent e) {
+        int a = e.getActionMasked();
+        if (a == MotionEvent.ACTION_DOWN) swallow = panel != null && panel.closeOutside(e.getRawX(), e.getRawY());
+        if (!swallow) return super.dispatchTouchEvent(e);
+        if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) swallow = false;
+        return true;
     }
 
     @Override

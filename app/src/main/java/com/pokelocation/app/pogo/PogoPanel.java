@@ -521,6 +521,16 @@ public final class PogoPanel {
         open = null;
     }
 
+    /** Toque fora da lista com um item aberto: fecha e o host engole o toque. Dentro, a própria lista cuida. */
+    public boolean closeOutside(float rawX, float rawY) {
+        if (open == null) return false;
+        int[] p = new int[2];
+        list.getLocationOnScreen(p);
+        if (rawX >= p[0] && rawX < p[0] + list.getWidth() && rawY >= p[1] && rawY < p[1] + list.getHeight()) return false;
+        closeOpen();
+        return true;
+    }
+
     private void slideTo(View v, float t) {
         v.animate().translationX(t).setDuration(150).setUpdateListener(a -> list.invalidate()).start();
     }
