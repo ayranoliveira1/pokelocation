@@ -63,6 +63,7 @@
     <string name="pogo_notified_gone">This Pokémon is already gone</string>
     <string name="pogo_history_clear">Clear history</string>
     <string name="pogo_history_clear_confirm">Clear all notifications? This can\'t be undone.</string>
+    <string name="pogo_history_delete_confirm">Delete this notification?</string>
     <string name="pogo_history_offline">Showing the saved notifications · %s</string>
     <string name="pogo_bubbles_logo">Pokémon list</string>
     <string name="pogo_bubbles_count">Pokémon shown: %d</string>

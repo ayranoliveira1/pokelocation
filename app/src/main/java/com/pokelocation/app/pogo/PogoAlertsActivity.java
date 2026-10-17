@@ -181,7 +181,7 @@ public final class PogoAlertsActivity extends BaseActivity {
 
             @Override public void reload() { reloadHistory(); }
 
-            @Override public void delete(Pogo.Mon m, int at) { deleteNotified(m, at); }
+            @Override public void delete(Pogo.Mon m) { confirmDeleteNotified(m); }
         });
         FrameLayout content = new FrameLayout(this);
         content.addView(panel.view);
@@ -314,8 +314,17 @@ public final class PogoAlertsActivity extends BaseActivity {
         });
     }
 
+    private void confirmDeleteNotified(Pogo.Mon m) {
+        new MaterialAlertDialogBuilder(this)
+                .setMessage(R.string.pogo_history_delete_confirm)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.delete, (d, w) -> deleteNotified(m))
+                .show();
+    }
+
     /** Sem id (aviso de antes do histórico no servidor) só sai da tela. */
-    private void deleteNotified(Pogo.Mon m, int at) {
+    private void deleteNotified(Pogo.Mon m) {
+        int at = panel.removeFixed(m);
         if (m.historyId == null) return;
         Context app = getApplicationContext();
         Io.run(() -> {
@@ -327,7 +336,7 @@ public final class PogoAlertsActivity extends BaseActivity {
 
             @Override public void onError(Throwable t) {
                 Ui.toast(app, error(t));
-                if (!isDestroyed()) panel.addFixed(at, Collections.singletonList(m));
+                if (at >= 0 && !isDestroyed()) panel.addFixed(at, Collections.singletonList(m));
             }
         });
     }

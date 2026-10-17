@@ -18,6 +18,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator;
@@ -30,7 +31,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.view.ViewCompat;
-import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
@@ -68,8 +68,8 @@ public final class PogoPanel {
     public interface History {
         void more();
         void reload();
-        /** at: onde estava, para voltar com addFixed se o servidor recusar. */
-        void delete(Pogo.Mon m, int at);
+        /** Tocou na lixeira (ou na ação de acessibilidade): o host confirma e chama removeFixed. */
+        void delete(Pogo.Mon m);
     }
 
     private static final String TAG = "PogoPanel";
@@ -176,6 +176,9 @@ public final class PogoPanel {
     private History history;
     private String empty, note;
     private boolean refreshing;
+    /** O bloco arrastado que ficou aberto com a lixeira à mostra; blockClick: o toque que o fechou não abre o card. */
+    private View open;
+    private boolean blockClick;
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
@@ -220,13 +223,20 @@ public final class PogoPanel {
                     if (at != RecyclerView.NO_POSITION) click(mons.get(at));
                 });
                 if (history != null) ViewCompat.addAccessibilityAction(row, ctx.getString(R.string.delete), (x, a) -> {
-                    remove(vh.getBindingAdapterPosition());
+                    int at = vh.getBindingAdapterPosition();
+                    if (at != RecyclerView.NO_POSITION) history.delete(mons.get(at));
                     return true;
                 });
                 return vh;
             }
 
             @Override public void onBindViewHolder(@NonNull RecyclerView.ViewHolder vh, int i) { bind(vh.itemView, mons.get(i)); }
+
+            @Override public void onViewRecycled(@NonNull RecyclerView.ViewHolder vh) {
+                vh.itemView.animate().cancel();
+                vh.itemView.setTranslationX(0);
+                if (open == vh.itemView) open = null;
+            }
         };
         list.setAdapter(adapter);
         onIcon = b -> { if (b != null && !destroyed) redraw(); };
@@ -333,6 +343,7 @@ public final class PogoPanel {
     }
 
     public void showFixed(List<Pogo.Mon> l, String empty) {
+        closeOpen();
         fixed = loaded = true;
         this.empty = empty;
         view.findViewById(R.id.pogo_chips).setVisibility(View.GONE);
@@ -373,76 +384,156 @@ public final class PogoPanel {
     /** Só para a lista fixa; chamar antes do showFixed (a ação de acessibilidade "Excluir" entra ao criar cada bloco). */
     public void history(History h) {
         history = h;
-        new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.START | ItemTouchHelper.END) {
-            final Drawable bin = ctx.getDrawable(R.drawable.ic_delete).mutate();
-            final GradientDrawable bg = PogoChips.round(ctx, 16, ctx.getColor(R.color.danger), 0);
-
-            {
-                bin.setTint(ctx.getColor(R.color.surface));
-            }
-
-            @Override public boolean onMove(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder a, @NonNull RecyclerView.ViewHolder b) {
-                return false;
-            }
-
-            @Override public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int dir) { remove(vh.getBindingAdapterPosition()); }
-
-            @Override public void onChildDraw(@NonNull Canvas cv, @NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh,
-                                              float dx, float dy, int state, boolean active) {
-                View v = vh.itemView;
-                if (dx != 0) {
-                    int l = v.getLeft(), r = v.getRight(), t = v.getTop(), b = v.getBottom(), m = Ui.dp(ctx, 24);
-                    int size = bin.getIntrinsicWidth(), y = (t + b - size) / 2, x = dx > 0 ? l + m : r - m - size;
+        int bw = Ui.dp(ctx, 64), w = bw + Ui.dp(ctx, 8), reach = Ui.dp(ctx, 72), slop = ViewConfiguration.get(ctx).getScaledTouchSlop();
+        int side = ctx.getResources().getConfiguration().getLayoutDirection() == View.LAYOUT_DIRECTION_RTL ? 1 : -1;
+        Drawable bin = ctx.getDrawable(R.drawable.ic_delete).mutate();
+        bin.setTint(ctx.getColor(R.color.surface));
+        GradientDrawable block = PogoChips.round(ctx, 16, ctx.getColor(R.color.danger), 0);
+        list.addItemDecoration(new RecyclerView.ItemDecoration() {
+            /** Só o bloco da lixeira, no espaço que o item deslocado deixa. */
+            @Override public void onDraw(@NonNull Canvas cv, @NonNull RecyclerView rv, @NonNull RecyclerView.State st) {
+                for (int i = 0; i < rv.getChildCount(); i++) {
+                    View v = rv.getChildAt(i);
+                    float t = v.getTranslationX();
+                    if (t == 0) continue;
+                    int l = t < 0 ? v.getRight() - bw : v.getLeft(), top = v.getTop() + (int) v.getTranslationY(),
+                            b = v.getBottom() + (int) v.getTranslationY(), size = bin.getIntrinsicWidth();
                     cv.save();
-                    cv.clipRect(dx > 0 ? l : r + dx, t, dx > 0 ? l + dx : r, b);
-                    bg.setBounds(l, t, r, b);
-                    bg.draw(cv);
+                    cv.clipRect(t < 0 ? v.getRight() + t : v.getLeft(), top, t < 0 ? v.getRight() : v.getLeft() + t, b);
+                    block.setBounds(l, top, l + bw, b);
+                    block.draw(cv);
+                    int x = l + (bw - size) / 2, y = (top + b - size) / 2;
                     bin.setBounds(x, y, x + size, y + size);
                     bin.draw(cv);
                     cv.restore();
                 }
-                super.onChildDraw(cv, rv, vh, dx, dy, state, active);
             }
-        }).attachToRecyclerView(list);
+        });
         list.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrollStateChanged(@NonNull RecyclerView rv, int state) {
+                if (state == RecyclerView.SCROLL_STATE_DRAGGING) closeOpen();
+            }
+
             @Override public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
                 if (dy > 0 && ((LinearLayoutManager) rv.getLayoutManager()).findLastVisibleItemPosition() >= mons.size() - 5) h.more();
             }
         });
-        int reach = Ui.dp(ctx, 72);
-        list.addOnItemTouchListener(new RecyclerView.SimpleOnItemTouchListener() {
-            float y0 = -1;
+        list.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {
+            float x0, y0, base, pullY = -1;
+            View row;
+            boolean dragging, tapBin;
 
             @Override public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
                 switch (e.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        y0 = refreshing || rv.canScrollVertically(-1) ? -1 : e.getY();
+                        x0 = e.getX();
+                        y0 = e.getY();
+                        dragging = tapBin = false;
+                        row = rv.findChildViewUnder(x0, y0);
+                        blockClick = open != null;
+                        if (onOpenBin(x0, y0)) {
+                            tapBin = true;
+                            return true;
+                        }
+                        if (open != null && row != open) closeOpen();
+                        base = row != null ? row.getTranslationX() : 0;
+                        pullY = refreshing || rv.canScrollVertically(-1) ? -1 : y0;
                         break;
                     case MotionEvent.ACTION_MOVE:
-                        if (y0 >= 0) pull.setVisibility(e.getY() - y0 > reach ? View.VISIBLE : View.GONE);
+                        float dx = e.getX() - x0, dy = e.getY() - y0;
+                        if (row != null && Math.abs(dx) > slop && Math.abs(dx) > Math.abs(dy)) {
+                            dragging = true;
+                            if (pullY >= 0) pull.setVisibility(View.GONE);
+                            pullY = -1;
+                            rv.getParent().requestDisallowInterceptTouchEvent(true);
+                            return true;
+                        }
+                        if (pullY >= 0) pull.setVisibility(dy > reach ? View.VISIBLE : View.GONE);
                         break;
                     case MotionEvent.ACTION_UP:
-                        if (y0 >= 0 && e.getY() - y0 > reach) h.reload();
-                        else if (y0 >= 0) pull.setVisibility(View.GONE);
-                        y0 = -1;
+                        if (pullY >= 0 && e.getY() - y0 > reach) h.reload();
+                        else if (pullY >= 0) pull.setVisibility(View.GONE);
+                        if (open != null && row == open) closeOpen();
+                        pullY = -1;
                         break;
                     case MotionEvent.ACTION_CANCEL:
-                        if (y0 >= 0) pull.setVisibility(View.GONE);
-                        y0 = -1;
+                        if (pullY >= 0) pull.setVisibility(View.GONE);
+                        pullY = -1;
                         break;
                 }
                 return false;
             }
+
+            @Override public void onTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
+                int a = e.getActionMasked();
+                if (tapBin) {
+                    if (a == MotionEvent.ACTION_UP && onOpenBin(e.getX(), e.getY())) {
+                        int at = rv.getChildAdapterPosition(open);
+                        if (at != RecyclerView.NO_POSITION) h.delete(mons.get(at));
+                    }
+                    return;
+                }
+                if (!dragging || row == null) return;
+                if (a == MotionEvent.ACTION_MOVE) {
+                    row.setTranslationX(slide(base, e.getX() - x0, w, side));
+                    rv.invalidate();
+                } else if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
+                    float t = settle(row.getTranslationX(), w);
+                    if (t != 0) open = row;
+                    else if (open == row) open = null;
+                    slideTo(row, t);
+                }
+            }
+
+            @Override public void onRequestDisallowInterceptTouchEvent(boolean disallow) {}
+
+            /** Pelo item aberto, não pelo findChildViewUnder: ele soma o translationX e o bloco da lixeira fica fora. */
+            boolean onOpenBin(float x, float y) {
+                if (open == null) return false;
+                float ty = open.getTranslationY();
+                return onBin(x, y, open.getLeft(), open.getTop() + ty, open.getRight(), open.getBottom() + ty, open.getTranslationX(), bw);
+            }
         });
     }
 
-    private void remove(int at) {
-        if (at < 0 || at >= mons.size()) return;
-        Pogo.Mon m = mons.remove(at);
-        rows.remove(m);
+    /**
+     * O host confirmou: sai da lista (pelo historyId, se um reload trocou os objetos com o modal aberto); devolve onde
+     * estava, para voltar com addFixed se o servidor recusar, ou -1 se já saiu.
+     */
+    public int removeFixed(Pogo.Mon m) {
+        int at = mons.indexOf(m);
+        for (int i = 0; at < 0 && m.historyId != null && i < mons.size(); i++) if (m.historyId.equals(mons.get(i).historyId)) at = i;
+        if (at < 0) return -1;
+        rows.remove(mons.remove(at));
+        open = null;
         adapter.notifyItemRemoved(at);
         fixedStatus();
-        history.delete(m, at);
+        return at;
+    }
+
+    private void closeOpen() {
+        if (open != null) slideTo(open, 0);
+        open = null;
+    }
+
+    private void slideTo(View v, float t) {
+        v.animate().translationX(t).setDuration(150).setUpdateListener(a -> list.invalidate()).start();
+    }
+
+    /** Deslocamento no arrasto: só para o lado da lixeira (side -1 = esquerda), no máximo w. */
+    static float slide(float base, float dx, float w, int side) {
+        return side * Math.max(0, Math.min(w, (base + dx) * side));
+    }
+
+    /** Solto além da metade trava aberto; antes, volta. */
+    static float settle(float t, float w) {
+        return Math.abs(t) > w / 2 ? Math.signum(t) * w : 0;
+    }
+
+    /** (x, y) no bloco da lixeira (largura bw) do lado que o item deslocado (t) deixou à mostra. */
+    static boolean onBin(float x, float y, int left, float top, int right, float bottom, float t, int bw) {
+        if (y < top || y > bottom) return false;
+        return t < 0 ? x >= right - bw && x <= right : t > 0 && x >= left && x <= left + bw;
     }
 
     /** Com payload o RecyclerView rebinda os mesmos blocos (sem trocar o ViewHolder): não desfaz um arrasto em curso. */
@@ -759,6 +850,7 @@ public final class PogoPanel {
     }
 
     private void click(Pogo.Mon m) {
+        if (blockClick) return;
         if (fixed && PogoText.gone(m.despawnMs, System.currentTimeMillis())) Ui.toast(ctx, R.string.pogo_notified_gone);
         else openDetail(m);
     }
