@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /** Filtros do modo "pokemon" do /map/lookup, salvos só no aparelho. null = sem filtro. */
@@ -23,7 +24,8 @@ public final class PogoFilter {
     static final List<String> GENDERS = Arrays.asList("Male", "Female", "Genderless");
     static final List<String> SIZES = Arrays.asList("XXS", "XS", "S", "M", "L", "XL", "XXL");
     static final int[] NUM_RESULTS = {100, 250, 500}, KMS = {1, 2, 5, 10};
-    private static final String KEY = "filters", AT = "filters_at", OV_FILE = "pogo_ov";
+    private static final String KEY = "filters", AT = "filters_at", OV_FILE = "pogo_ov", SAVED = "saved", SAVED_AT = "saved_at";
+    static final int MAX_SAVED = 20;
 
     public final List<Integer> pokemonIds = new ArrayList<>();
     /** {pokemon_id, form_id} */
@@ -67,6 +69,76 @@ public final class PogoFilter {
         int p = App.process();
         SharedPreferences sp = Pogo.writer(p) ? Pogo.prefs(c) : p == App.PROC_OVERLAY ? ov(c) : null;
         if (sp != null) sp.edit().putString(KEY, stored().toString()).putLong(AT, System.currentTimeMillis()).apply();
+    }
+
+    public static final class Saved {
+        public final String name;
+        public final PogoFilter filter;
+
+        public Saved(String name, PogoFilter filter) {
+            this.name = name;
+            this.filter = filter;
+        }
+    }
+
+    /** Os filtros salvos com nome, no mesmo esquema de arquivos do filtro atual (a lista inteira, a mais nova vence). */
+    public static List<Saved> saved(Context c) {
+        SharedPreferences main = Pogo.prefs(c), ov = ov(c);
+        return savedFrom(newest(main.getString(SAVED, null), main.getLong(SAVED_AT, 0), ov.getString(SAVED, null), ov.getLong(SAVED_AT, 0)));
+    }
+
+    public static void storeSaved(Context c, List<Saved> l) {
+        int p = App.process();
+        SharedPreferences sp = Pogo.writer(p) ? Pogo.prefs(c) : p == App.PROC_OVERLAY ? ov(c) : null;
+        if (sp != null) sp.edit().putString(SAVED, savedJson(l)).putLong(SAVED_AT, System.currentTimeMillis()).apply();
+    }
+
+    static String savedJson(List<Saved> l) {
+        JSONArray a = new JSONArray();
+        try {
+            for (Saved x : l) a.put(new JSONObject().put("name", x.name).put("filter", x.filter.stored()));
+        } catch (JSONException e) {
+            throw new IllegalStateException(e);
+        }
+        return a.toString();
+    }
+
+    static List<Saved> savedFrom(String s) {
+        List<Saved> out = new ArrayList<>();
+        JSONArray a;
+        try {
+            a = s != null ? new JSONArray(s) : new JSONArray();
+        } catch (JSONException e) {
+            return out;
+        }
+        for (int i = 0; i < a.length() && out.size() < MAX_SAVED; i++) {
+            JSONObject o = a.optJSONObject(i), f = o != null ? o.optJSONObject("filter") : null;
+            String name = o != null ? o.optString("name").trim() : "";
+            if (f != null && !name.isEmpty()) out.add(new Saved(name, fromJson(f)));
+        }
+        return out;
+    }
+
+    /** Nome repetido não vale: compara sem maiúsculas e sem os espaços das pontas. */
+    static boolean taken(List<Saved> l, String name) {
+        String n = name.trim().toLowerCase(Locale.ROOT);
+        for (Saved x : l) if (x.name.trim().toLowerCase(Locale.ROOT).equals(n)) return true;
+        return false;
+    }
+
+    static boolean canSave(List<Saved> l) { return l.size() < MAX_SAVED; }
+
+    static String chosen(List<Saved> l, PogoFilter f) {
+        for (Saved x : l) if (x.filter.same(f)) return x.name;
+        return null;
+    }
+
+    /** O mesmo filtro (os rótulos das espécies são só exibição). */
+    boolean same(PogoFilter o) {
+        JSONObject a = stored(), b = o.stored();
+        a.remove("labels");
+        b.remove("labels");
+        return a.toString().equals(b.toString());
     }
 
     @SuppressWarnings("deprecation")

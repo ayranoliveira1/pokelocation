@@ -4,6 +4,8 @@ import android.content.Context;
 
 import com.pokelocation.app.R;
 
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.Locale;
 
 /** Textos de um Pokémon para o mapa e o painel do joystick (sem osmdroid: o :overlay usa sem carregar o mapa). */
@@ -169,7 +171,13 @@ final class PogoText {
             if (e.http == 429) return c.getString(R.string.pogo_map_wait, Math.max(1, e.retryAfterS));
             if (e.message != null) return e.message;
         }
+        if (offline(t)) return c.getString(R.string.soc_err_network);
         return c.getString(R.string.unknown_error);
+    }
+
+    /** Sem chegar ao nosso servidor (sem rede, DNS, recusado). O timeout fica fora: no mapa ele é o PoGo lento. */
+    static boolean offline(Throwable t) {
+        return t instanceof SocketException || t instanceof UnknownHostException;
     }
 
     /** despawnMs 0 = desconhecido: não some. */

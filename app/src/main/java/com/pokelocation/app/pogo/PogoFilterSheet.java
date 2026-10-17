@@ -72,6 +72,7 @@ public final class PogoFilterSheet {
         sheet.addView(head);
 
         form = new PogoFilterForm(c, edit, this::count, focusable, linkTrainer);
+        form.showSaved();
         clear.setOnClickListener(v -> form.reset());
         sheet.addView(form.view(), new LinearLayout.LayoutParams(-1, 0, 1));
 

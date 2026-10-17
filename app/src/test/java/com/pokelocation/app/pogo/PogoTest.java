@@ -37,6 +37,21 @@ public class PogoTest {
         assertEquals(0, Pogo.error(502, "<html>", "soon").retryAfterS);
     }
 
+    @Test public void meAsksTheServerOnceWithoutTheLocalMark() {
+        assertTrue(Pogo.ask(true, true, true));
+        assertTrue(Pogo.ask(false, true, false));
+        assertFalse(Pogo.ask(false, true, true));
+        assertFalse(Pogo.ask(false, false, false));
+    }
+
+    @Test public void onlyADefinitiveAnswerSpendsTheQuestion() {
+        assertTrue(Pogo.answered(new Pogo.Error(409, "pogo_relogin", null, 0)));
+        assertTrue(Pogo.answered(new Pogo.Error(503, "pogo_disabled", null, 0)));
+        assertFalse(Pogo.answered(new Pogo.Error(429, "rate_limited", null, 60)));
+        assertFalse(Pogo.answered(new Pogo.Error(504, "upstream_timeout", null, 0)));
+        assertFalse(Pogo.answered(new java.net.SocketTimeoutException()));
+    }
+
     @Test public void revealCodeIsUrlEncoded() throws Exception {
         assertEquals("/reveal/a%2Bb%2Fc%3D", Pogo.revealPath("a+b/c="));
     }

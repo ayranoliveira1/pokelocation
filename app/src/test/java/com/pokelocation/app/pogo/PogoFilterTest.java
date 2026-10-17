@@ -1,10 +1,15 @@
 package com.pokelocation.app.pogo;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.json.JSONObject;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class PogoFilterTest {
     @Test public void defaultSendsOnlySort() throws Exception {
@@ -124,5 +129,75 @@ public class PogoFilterTest {
         assertEquals(1, PogoFilter.fromJson(near.stored()).km);
         assertEquals(1, near.activeCount());
         assertEquals(1, near.copy().km);
+    }
+
+    private static PogoFilter.Saved saved(String name, double ivMin) {
+        PogoFilter f = new PogoFilter();
+        f.ivMin = ivMin;
+        f.km = 2;
+        f.labels.put("133|-1", "Eevee");
+        return new PogoFilter.Saved(name, f);
+    }
+
+    @Test public void savedListRoundTripsInOrder() {
+        List<PogoFilter.Saved> l = new ArrayList<>();
+        l.add(saved("Raros", 90));
+        l.add(saved("Cem", 100));
+        List<PogoFilter.Saved> back = PogoFilter.savedFrom(PogoFilter.savedJson(l));
+        assertEquals(2, back.size());
+        assertEquals("Raros", back.get(0).name);
+        assertEquals(Double.valueOf(90), back.get(0).filter.ivMin);
+        assertEquals(2, back.get(0).filter.km);
+        assertEquals("Eevee", back.get(0).filter.labels.get("133|-1"));
+        assertEquals("Cem", back.get(1).name);
+    }
+
+    @Test public void savedToleratesBadData() {
+        assertTrue(PogoFilter.savedFrom(null).isEmpty());
+        assertTrue(PogoFilter.savedFrom("not json").isEmpty());
+        List<PogoFilter.Saved> l = PogoFilter.savedFrom("[{\"name\":\"\"},{\"name\":\"Ok\",\"filter\":{\"sort\":\"CP\"}},7]");
+        assertEquals(1, l.size());
+        assertEquals("CP", l.get(0).filter.sort);
+    }
+
+    @Test public void nameIsTakenIgnoringCaseAndEdgeSpaces() {
+        List<PogoFilter.Saved> l = new ArrayList<>();
+        l.add(saved("Raros", 90));
+        assertTrue(PogoFilter.taken(l, "raros"));
+        assertTrue(PogoFilter.taken(l, "  RAROS "));
+        assertFalse(PogoFilter.taken(l, "Raros 2"));
+        assertFalse(PogoFilter.taken(l, "Ra ros"));
+    }
+
+    @Test public void savedHasACap() {
+        List<PogoFilter.Saved> l = new ArrayList<>();
+        for (int i = 0; i < PogoFilter.MAX_SAVED; i++) l.add(saved("f" + i, i));
+        assertEquals(20, PogoFilter.MAX_SAVED);
+        assertTrue(PogoFilter.savedFrom(PogoFilter.savedJson(l)).size() == PogoFilter.MAX_SAVED);
+        assertFalse(PogoFilter.canSave(l));
+        l.remove(0);
+        assertTrue(PogoFilter.canSave(l));
+    }
+
+    @Test public void sameIgnoresLabelsOnly() {
+        PogoFilter a = saved("x", 90).filter, b = a.copy();
+        b.labels.clear();
+        assertTrue(a.same(b));
+        b.km = 0;
+        assertFalse(a.same(b));
+    }
+
+    @Test public void chosenIsTheSavedEqualToTheCurrentFilter() {
+        List<PogoFilter.Saved> l = new ArrayList<>();
+        l.add(saved("Raros", 90));
+        l.add(saved("Cem", 100));
+        PogoFilter f = l.get(1).filter.copy();
+        assertEquals("Cem", PogoFilter.chosen(l, f));
+        f.sort = "LEVEL";
+        assertNull(PogoFilter.chosen(l, f));
+        f.sort = "IV";
+        f.km = 5;
+        assertNull(PogoFilter.chosen(l, f));
+        assertNull(PogoFilter.chosen(new ArrayList<>(), f));
     }
 }

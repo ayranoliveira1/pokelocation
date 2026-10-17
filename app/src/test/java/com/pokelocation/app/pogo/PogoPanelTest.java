@@ -1,6 +1,7 @@
 package com.pokelocation.app.pogo;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.pokelocation.app.geo.Geo;
@@ -46,5 +47,33 @@ public class PogoPanelTest {
         assertEquals("IV ≥ 90", PogoPanel.range("IV", 90.0, null));
         assertEquals("PC ≤ 1500", PogoPanel.range("PC", null, 1500));
         assertEquals("Nível 20–30.5", PogoPanel.range("Nível", 20.0, 30.5));
+    }
+
+    @Test
+    public void dragOnlyOpensTowardTheBinUpToItsWidth() {
+        assertEquals(-30, PogoPanel.slide(0, -30, 72, -1), 0);
+        assertEquals(-72, PogoPanel.slide(0, -300, 72, -1), 0);
+        assertEquals(0, PogoPanel.slide(0, 40, 72, -1), 0);
+        assertEquals(-32, PogoPanel.slide(-72, 40, 72, -1), 0);
+        assertEquals(72, PogoPanel.slide(0, 300, 72, 1), 0);
+        assertEquals(0, PogoPanel.slide(0, -40, 72, 1), 0);
+    }
+
+    @Test
+    public void releasePastHalfLocksOpenShortDragGoesBack() {
+        assertEquals(-72, PogoPanel.settle(-40, 72), 0);
+        assertEquals(0, PogoPanel.settle(-30, 72), 0);
+        assertEquals(72, PogoPanel.settle(50, 72), 0);
+        assertEquals(0, PogoPanel.settle(0, 72), 0);
+    }
+
+    @Test
+    public void binTapOnlyInsideTheRevealedBlock() {
+        assertTrue(PogoPanel.onBin(950, 50, 16, 0, 1000, 100, -72, 64));   // fora da área do item deslocado [−56, 928]
+        assertFalse(PogoPanel.onBin(930, 50, 16, 0, 1000, 100, -72, 64));
+        assertFalse(PogoPanel.onBin(950, 150, 16, 0, 1000, 100, -72, 64));
+        assertFalse(PogoPanel.onBin(950, 50, 16, 0, 1000, 100, 0, 64));
+        assertTrue(PogoPanel.onBin(40, 50, 16, 0, 1000, 100, 72, 64));
+        assertFalse(PogoPanel.onBin(950, 50, 16, 0, 1000, 100, 72, 64));
     }
 }

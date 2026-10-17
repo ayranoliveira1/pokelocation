@@ -56,6 +56,7 @@ public final class PogoFiltersActivity extends BaseActivity {
     private void render() {
         if (form != null) form.destroy();
         form = new PogoFilterForm(this, f, () -> f.save(this), null, () -> TrainerLink.start(this, this::render));
+        form.showSaved();
         box.removeAllViews();
         box.addView(form.view());
     }

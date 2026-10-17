@@ -4,13 +4,16 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.drawable.GradientDrawable;
 import android.text.Editable;
+import android.text.InputFilter;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
@@ -20,6 +23,7 @@ import android.widget.ImageView;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -54,6 +58,12 @@ public final class PogoFilterForm {
     private boolean advanced;
     private List<Pogo.Species> catalog;
     private Io.Task task;
+    /** null = sem o seletor de filtros salvos. */
+    private List<PogoFilter.Saved> saved;
+    private PopupWindow popup;
+    private View savedField;
+    private TextView savedName;
+    private View modal;
 
     /** focusable: liga/desliga o teclado da janela do :overlay ao editar (null no app); linkTrainer null = sem atalho. */
     public PogoFilterForm(Context c, PogoFilter f, Runnable onChanged, Consumer<Boolean> focusable, Runnable linkTrainer) {
@@ -77,6 +87,14 @@ public final class PogoFilterForm {
 
     /** true se fechou a subtela de espécies. */
     public boolean back() {
+        if (popup != null) {
+            closeSaved();
+            return true;
+        }
+        if (modal != null) {
+            closeModal();
+            return true;
+        }
         if (page == null) return false;
         root.removeView(page);
         page = null;
@@ -94,13 +112,20 @@ public final class PogoFilterForm {
     }
 
     public void destroy() {
+        closeSaved();
         if (task != null) task.cancel();
         task = null;
         catalog = null;
     }
 
+    public void showSaved() {
+        saved = PogoFilter.saved(c);
+        render();
+    }
+
     public void render() {
         body.removeAllViews();
+        if (saved != null) savedBar();
         title(R.string.pogo_f_where);
         // o bloco que lê como uma unidade: seletor e raio no mesmo container; o raio só no "Perto"
         LinearLayout where = new LinearLayout(c);
@@ -228,7 +253,214 @@ public final class PogoFilterForm {
         }
     }
 
-    private void changed() { if (onChanged != null) onChanged.run(); }
+    /** Toda mudança do filtro passa aqui: o valor do select acompanha sem redesenhar o form (o campo em edição fica). */
+    private void changed() {
+        if (onChanged != null) onChanged.run();
+        if (savedName != null) showChosen();
+    }
+
+    private void savedBar() {
+        TextView label = label(R.string.pogo_saved);
+        label.setPadding(0, pad, 0, Ui.dp(c, 4));
+        int dp = Ui.dp(c, 1);
+        LinearLayout bar = new LinearLayout(c);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout field = new LinearLayout(c);
+        field.setGravity(Gravity.CENTER_VERTICAL);
+        field.setBackground(box());
+        field.setPadding(16 * dp, 0, 12 * dp, 0);
+        TextView name = new TextView(c);
+        name.setTextSize(16);
+        name.setSingleLine(true);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        field.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+        ImageView arrow = new ImageView(c);
+        arrow.setImageResource(R.drawable.ic_expand_more);
+        arrow.setColorFilter(c.getColor(R.color.on_surface_variant));
+        field.addView(arrow, new LinearLayout.LayoutParams(24 * dp, 24 * dp));
+        field.setOnClickListener(v -> openSaved(field, PogoFilter.chosen(saved, f)));
+        savedField = field;
+        savedName = name;
+        showChosen();
+        bar.addView(field, new LinearLayout.LayoutParams(0, 52 * dp, 1));
+        bar.addView(button(R.string.pogo_saved_save, v -> saveModal()), new LinearLayout.LayoutParams(-2, 52 * dp));
+        body.addView(bar);
+    }
+
+    private void showChosen() {
+        String current = PogoFilter.chosen(saved, f);
+        savedName.setText(current != null ? current : c.getString(R.string.pogo_saved_unset));
+        savedName.setTextColor(c.getColor(current != null ? R.color.on_surface : R.color.on_surface_variant));
+        savedField.setContentDescription(c.getString(R.string.pogo_saved) + ": " + savedName.getText());
+    }
+
+    /** A lista ancorada logo abaixo do campo e da largura dele: a PopupWindow também abre no :overlay, sem Activity. */
+    private void openSaved(View field, String current) {
+        saved = PogoFilter.saved(c);
+        int dp = Ui.dp(c, 1);
+        LinearLayout list = new LinearLayout(c);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(0, 8 * dp, 0, 8 * dp);
+        if (saved.isEmpty()) list.addView(item(c.getString(R.string.pogo_saved_none), R.color.on_surface_variant));
+        for (PogoFilter.Saved x : saved) {
+            LinearLayout row = new LinearLayout(c);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            TextView t = item(x.name, x.name.equals(current) ? R.color.primary : R.color.on_surface);
+            t.setOnClickListener(v -> {
+                closeSaved();
+                f.set(x.filter.copy());
+                changed();
+                render();
+            });
+            row.addView(t, new LinearLayout.LayoutParams(0, -2, 1));
+            ImageView del = new ImageView(c);
+            del.setImageResource(R.drawable.ic_close);
+            del.setColorFilter(c.getColor(R.color.on_surface_variant));
+            del.setScaleType(ImageView.ScaleType.CENTER);
+            del.setContentDescription(c.getString(R.string.pogo_saved_delete, x.name));
+            del.setOnClickListener(v -> {
+                closeSaved();
+                confirmDelete(x);
+            });
+            row.addView(del, new LinearLayout.LayoutParams(48 * dp, 48 * dp));
+            list.addView(row);
+        }
+        ScrollView sv = new ScrollView(c);
+        sv.addView(list);
+        closeSaved();
+        popup = new PopupWindow(sv, field.getWidth(), Math.max(1, Math.min(saved.size(), 5)) * 48 * dp + 16 * dp);
+        popup.setBackgroundDrawable(PogoChips.round(c, 4, c.getColor(R.color.surface_container), 0));
+        popup.setElevation(3 * dp);
+        popup.setOutsideTouchable(true);
+        popup.setOnDismissListener(() -> popup = null);
+        popup.showAsDropDown(field, 0, 4 * dp);
+    }
+
+    private TextView item(String s, int color) {
+        TextView t = new TextView(c);
+        t.setText(s);
+        t.setTextSize(16);
+        t.setTextColor(c.getColor(color));
+        t.setSingleLine(true);
+        t.setEllipsize(TextUtils.TruncateAt.END);
+        t.setGravity(Gravity.CENTER_VERTICAL);
+        t.setMinHeight(Ui.dp(c, 48));
+        t.setPadding(pad, 0, pad, 0);
+        return t;
+    }
+
+    private void closeSaved() {
+        if (popup != null) popup.dismiss();
+    }
+
+    private void confirmDelete(PogoFilter.Saved x) {
+        LinearLayout card = modal(c.getString(R.string.pogo_saved_delete, x.name));
+        actions(card, R.string.delete, () -> {
+            saved = PogoFilter.saved(c);
+            saved.removeIf(y -> y.name.equals(x.name));
+            PogoFilter.storeSaved(c, saved);
+            closeModal();
+            render();
+        });
+    }
+
+    /** Nome obrigatório e sem repetir: o Salvar só liga com um nome novo (não há substituir). */
+    private void saveModal() {
+        saved = PogoFilter.saved(c);   // o outro processo pode ter salvo: a lista inteira gravada aqui venceria a dele
+        LinearLayout card = modal(c.getString(R.string.pogo_saved_save));
+        EditText name = edit(R.string.pogo_saved_name);
+        name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(40)});
+        name.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(-1, Ui.dp(c, 52));
+        nl.topMargin = Ui.dp(c, 16);
+        card.addView(name, nl);
+        TextView err = new TextView(c);
+        err.setTextColor(c.getColor(R.color.danger));
+        err.setPadding(0, Ui.dp(c, 4), 0, 0);
+        card.addView(err);
+        Runnable[] check = new Runnable[1];
+        TextView ok = actions(card, R.string.save, () -> {
+            saved = PogoFilter.saved(c);
+            String n = name.getText().toString();
+            if (!PogoFilter.canSave(saved) || PogoFilter.taken(saved, n)) {
+                check[0].run();
+                return;
+            }
+            saved.add(0, new PogoFilter.Saved(n.trim(), f.copy()));
+            PogoFilter.storeSaved(c, saved);
+            closeModal();
+            render();
+        });
+        check[0] = () -> {
+            String n = name.getText().toString();
+            boolean full = !PogoFilter.canSave(saved), dup = PogoFilter.taken(saved, n), on = !full && !dup && !n.trim().isEmpty();
+            err.setText(full ? c.getString(R.string.pogo_saved_full, PogoFilter.MAX_SAVED) : c.getString(R.string.pogo_saved_taken));
+            err.setVisibility(full || dup ? View.VISIBLE : View.GONE);
+            ok.setEnabled(on);
+            ok.setAlpha(on ? 1f : 0.38f);
+        };
+        watch(name, x -> check[0].run());
+        check[0].run();
+        focus(true);
+        name.requestFocus();
+        name.post(() -> ((InputMethodManager) c.getSystemService(Context.INPUT_METHOD_SERVICE)).showSoftInput(name, 0));
+    }
+
+    /** Diálogo dentro do próprio form: no :overlay não há janela para um AlertDialog. */
+    private LinearLayout modal(String title) {
+        closeModal();
+        int p24 = Ui.dp(c, 24);
+        FrameLayout veil = new FrameLayout(c);
+        veil.setBackgroundColor(0x66000000);
+        veil.setClickable(true);
+        LinearLayout card = new LinearLayout(c);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(p24, p24, p24, Ui.dp(c, 8));
+        card.setBackground(PogoChips.round(c, 28, c.getColor(R.color.surface), 0));
+        TextView t = new TextView(c);
+        t.setText(title);
+        t.setTextSize(18);
+        t.setTextColor(c.getColor(R.color.on_surface));
+        card.addView(t);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER);
+        lp.setMargins(p24, 0, p24, 0);
+        veil.addView(card, lp);
+        modal = veil;
+        root.addView(veil, new FrameLayout.LayoutParams(-1, -1));
+        return card;
+    }
+
+    private TextView actions(LinearLayout card, int okRes, Runnable ok) {
+        LinearLayout row = new LinearLayout(c);
+        row.setGravity(Gravity.END);
+        row.setPadding(0, Ui.dp(c, 16), 0, 0);
+        row.addView(button(R.string.cancel, v -> closeModal()));
+        TextView b = button(okRes, v -> ok.run());
+        row.addView(b);
+        card.addView(row);
+        return b;
+    }
+
+    private TextView button(int res, View.OnClickListener click) {
+        TextView b = new TextView(c);
+        b.setText(res);
+        b.setTextSize(14);
+        b.setTypeface(PogoChips.MEDIUM);
+        b.setTextColor(c.getColor(R.color.primary));
+        b.setGravity(Gravity.CENTER);
+        b.setMinHeight(Ui.dp(c, 48));
+        b.setPadding(Ui.dp(c, 12), 0, Ui.dp(c, 12), 0);
+        b.setOnClickListener(click);
+        return b;
+    }
+
+    private void closeModal() {
+        if (modal == null) return;
+        ((InputMethodManager) c.getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(root.getWindowToken(), 0);
+        root.removeView(modal);
+        modal = null;
+        focus(false);
+    }
 
     private void focus(boolean on) { if (focusable != null) focusable.accept(on); }
 
@@ -342,10 +574,7 @@ public final class PogoFilterForm {
         e.setSingleLine(true);
         e.setTextSize(16);
         e.setMinHeight(Ui.dp(c, 52));
-        GradientDrawable box = new GradientDrawable();
-        box.setCornerRadius(Ui.dp(c, 12));
-        box.setStroke(Ui.dp(c, 1), c.getColor(R.color.outline)); // controle interativo: ~4,5:1 (o pogo_outline é decorativo)
-        e.setBackground(box);
+        e.setBackground(box());
         e.setPadding(Ui.dp(c, 12), 0, Ui.dp(c, 12), 0);
         e.setOnTouchListener((v, ev) -> {
             if (ev.getAction() == MotionEvent.ACTION_DOWN) focus(true);
@@ -356,6 +585,13 @@ public final class PogoFilterForm {
             if (!has) root.post(() -> { if (root.findFocus() == null) focus(false); });
         });
         return e;
+    }
+
+    private GradientDrawable box() {
+        GradientDrawable box = new GradientDrawable();
+        box.setCornerRadius(Ui.dp(c, 12));
+        box.setStroke(Ui.dp(c, 1), c.getColor(R.color.outline)); // controle interativo: ~4,5:1 (o pogo_outline é decorativo)
+        return box;
     }
 
     private static void watch(EditText e, Consumer<String> after) {

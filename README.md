@@ -23,12 +23,15 @@ Tudo do PoGo exige a conta PokeLocation e passa pelo nosso servidor; sem a conta
 - **Coluna de bolhas no joystick:** um ícone por Pokémon, arrastável pela logo; a logo abre **Atualizar**, **Filtros**
   e a quantidade (**5** ou **10**). Atualiza sozinha a cada 5 min; tocar numa bolha abre o card semitransparente ao
   lado, com **Teleportar**.
-- **Filtros** com espécies e fotos, IV, shiny e escopo **Mundo** ou **Perto**.
-- **Alertas por push** com foto e a tela **Alertas** em duas abas: **Notificações** (os Pokémon já avisados, sem
-  repetir o mesmo; os que sumiram ficam marcados como expirados) e **Meus alertas**. Alertas sem shiny funcionam sem
-  vincular conta do PoGo; os de shiny pedem treinador vinculado.
+- **Filtros** com espécies e fotos, IV, shiny e escopo **Mundo** ou **Perto**, e **filtros salvos** com nome para
+  aplicar de novo com um toque.
+- **Alertas por push** no formato de conversa do Android, com a foto do Pokémon e a localização. A tela **Alertas**
+  tem duas abas: **Notificações**, com o histórico guardado no servidor (rolagem infinita, puxar para recarregar,
+  arrastar para o lado e tocar na lixeira para apagar, **Limpar histórico**; cada Pokémon avisado uma vez só) e
+  **Meus alertas**. Alertas sem shiny funcionam sem vincular conta do PoGo; os de shiny pedem treinador vinculado.
 - **Conta e PoGo redesenhadas:** treinador vinculado com nível e time, e login do PoGo num botão só (Google ou
-  Discord).
+  Discord). Ao reinstalar, o vínculo com o PoGo volta sozinho depois de entrar na conta.
+- **Chat** com notificação no formato de conversa, com o círculo da inicial do amigo.
 - **Mapa sempre na posição atual** ao voltar ao app, depois de teleportar, andar ou seguir uma rota com o joystick.
 
 Precisa do servidor v1.1 atualizado. Tudo das versões anteriores continua igual.

@@ -64,7 +64,8 @@ public final class Pogo {
     /** O PoGo leva 7–15 s no lookup; o nosso proxy espera até 30 s (504 upstream_timeout). */
     private static final int SLOW_MS = 30_000;
     private static final int TIMEOUT_MS = 15_000, TRAINER_TIMEOUT_MS = 60_000, MAX_BODY = 64 * 1024,
-            CATALOG_MAX = 512 * 1024, SEARCH_MAX = 256 * 1024, LOOKUP_MAX = 1024 * 1024, RULES_MAX = 128 * 1024;
+            CATALOG_MAX = 512 * 1024, SEARCH_MAX = 256 * 1024, LOOKUP_MAX = 1024 * 1024, RULES_MAX = 128 * 1024,
+            HISTORY_PAGE = 20;
     /** pogo_linked que este processo viu morrer (pogo_relogin/pogo_disabled): só o main apaga a pref; um novo vínculo muda o valor. */
     private static volatile long sDeadLink;
 
@@ -92,7 +93,7 @@ public final class Pogo {
      */
     public static final class Mon {
         public String reveal, name, form, gender, size, location, costume, rawIv, fastMove, chargeMove;
-        public String pvpLeague, pvpName, encounter;
+        public String pvpLeague, pvpName, encounter, historyId;
         public int id, cp, pvpRank = -1, pvpCp = -1;
         public double level, iv, lat, lng, pvpPercent = -1;
         public long despawnMs;
@@ -318,14 +319,38 @@ public final class Pogo {
         }
     }
 
-    /** Atualiza nome e treinadores ativos. */
-    static void me(Context c) throws IOException {
-        if (!loggedIn(c)) return;
-        try {
-            saveProfile(c, proxy(c, "GET", "/me", null, MAX_BODY, TIMEOUT_MS), false);
-        } catch (JSONException x) {
-            throw new IOException("bad response");
+    /** Reinstalar apaga o pogo_linked, mas o vínculo segue no servidor: sem a marca, pergunta 1× por processo e por login. */
+    private static volatile boolean sAsked;
+    /** Quem chega com o GET de outro em curso espera e já vê o vínculo restaurado. */
+    private static final Object ME = new Object();
+
+    /** Atualiza nome e treinadores ativos; sem a marca local, restaura o vínculo que o servidor tiver. true = perguntou. */
+    static boolean me(Context c) throws IOException {
+        synchronized (ME) {
+            boolean linked = loggedIn(c);
+            if (!ask(linked, Session.loggedIn(c), sAsked)) return false;
+            try {
+                saveProfile(c, proxy(c, "GET", "/me", null, MAX_BODY, TIMEOUT_MS), !linked);
+            } catch (IOException e) {
+                if (answered(e)) sAsked = true;
+                throw e;
+            } catch (JSONException x) {
+                throw new IOException("bad response");
+            }
+            sAsked = true;
+            return true;
         }
+    }
+
+    static boolean ask(boolean linked, boolean session, boolean asked) { return linked || session && !asked; }
+
+    /** Offline, timeout, 5xx e 429 não dizem se há vínculo: a próxima tela pergunta de novo. */
+    static boolean answered(Throwable t) { return relogin(t) || code(t, "pogo_disabled"); }
+
+    public static void signedIn(Context c) {
+        sAsked = false;
+        Context app = c.getApplicationContext();
+        Io.run(() -> me(app), null);
     }
 
     /** Perfil do servidor: display_name (já com o fallback do Discord) e trainers já filtrados (active != false). */
@@ -537,6 +562,43 @@ public final class Pogo {
         } catch (JSONException x) {
             throw new IOException("bad response");
         }
+    }
+
+    static final class Page {
+        final JSONArray log;
+        final List<Mon> mons;
+        final String next;
+
+        Page(JSONArray log, String next) {
+            this.log = log;
+            this.mons = PogoAlert.mons(log);
+            this.next = next;
+        }
+    }
+
+    /** Os avisos já enviados, do mais novo para o mais velho; before = o next da página anterior (null = do começo). */
+    static Page history(Context c, String before) throws IOException {
+        String q = "/notifications?limit=" + HISTORY_PAGE + (before == null ? "" : "&before=" + URLEncoder.encode(before, "UTF-8"));
+        try {
+            return page(new JSONObject(proxy(c, "GET", q, null, MAX_BODY, TIMEOUT_MS)));
+        } catch (JSONException x) {
+            throw new IOException("bad response");
+        }
+    }
+
+    /** O log fica no formato do PogoAlert (mais velho primeiro, o map do push com o id em "h"). */
+    static Page page(JSONObject o) throws JSONException {
+        JSONArray items = o.getJSONArray("items"), log = new JSONArray();
+        for (int i = items.length() - 1; i >= 0; i--) {
+            JSONObject it = items.getJSONObject(i), d = it.getJSONObject("data");
+            log.put(d.put("h", str(it, "id")));
+        }
+        return new Page(log, str(o, "next"));
+    }
+
+    /** id null = apaga o histórico inteiro. */
+    static void deleteHistory(Context c, String id) throws IOException {
+        proxy(c, "DELETE", "/notifications" + (id == null ? "" : "/" + URLEncoder.encode(id, "UTF-8")), null, MAX_BODY, TIMEOUT_MS);
     }
 
     /** Devolve a regra com o id do servidor. */

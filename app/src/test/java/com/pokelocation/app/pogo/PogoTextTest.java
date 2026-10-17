@@ -1,10 +1,18 @@
 package com.pokelocation.app.pogo;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.pokelocation.app.R;
 
 import org.junit.Test;
+
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 
 public class PogoTextTest {
     private static Pogo.Mon mon() {
@@ -135,5 +143,14 @@ public class PogoTextTest {
         f.km = 2;
         assertEquals(R.string.pogo_map_count_filtered, PogoText.countRes(4, f, false));
         assertEquals(R.string.pogo_map_none_filtered, PogoText.countRes(0, f, false));
+    }
+
+    @Test
+    public void offlineIsOnlyTheNetworkFailures() {
+        assertTrue(PogoText.offline(new ConnectException()));
+        assertTrue(PogoText.offline(new UnknownHostException()));
+        assertTrue(PogoText.offline(new NoRouteToHostException()));
+        assertFalse(PogoText.offline(new SocketTimeoutException()));   // é o "PoGo lento" do mapa
+        assertFalse(PogoText.offline(new IOException("bad response")));
     }
 }
