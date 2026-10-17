@@ -35,6 +35,7 @@ import com.pokelocation.app.data.RouteDao;
 import com.pokelocation.app.geo.Cooldown;
 import com.pokelocation.app.geo.Geo;
 import com.pokelocation.app.ipc.Intents;
+import com.pokelocation.app.ipc.LiveStatus;
 import com.pokelocation.app.ipc.WidgetPing;
 import com.pokelocation.app.model.Coord;
 import com.pokelocation.app.model.Folder;
@@ -165,7 +166,7 @@ public final class MainActivity extends BaseActivity {
     protected void onStart() {
         super.onStart();
         Prefs.sp(this).registerOnSharedPreferenceChangeListener(prefListener);
-        form.refreshLast();
+        LiveStatus.request(this, this::showLast);
         form.setupHide();
         form.loadRoutes();
         boolean now = Intents.isOverlayRunning(this);
@@ -181,7 +182,11 @@ public final class MainActivity extends BaseActivity {
         // "iniciando" só sobrevive enquanto o usuário está fora (Settings/permissão) no meio das checagens;
         // post: depois do ON_RESUME do StartChecks, que retoma a cadeia
         ui.post(() -> starting = false);
-        ((NavigationView) findViewById(R.id.main_nav)).setCheckedItem(R.id.main_nav_home);
+        NavigationView nav = findViewById(R.id.main_nav);
+        nav.setCheckedItem(R.id.main_nav_home);
+        boolean pogo = Prefs.pogo(this);   // login ou logout na Conta: o PoGo aparece ou some na volta
+        nav.getMenu().findItem(R.id.main_nav_pogo_list).setVisible(pogo);
+        nav.getMenu().findItem(R.id.main_nav_pogo).setVisible(pogo);
         if (map != null) map.onResume();
         ui.removeCallbacks(ticker);
         if (Prefs.getBool(this, Prefs.DISPLAY_DISTANCE_INFO)) ticker.run();
@@ -284,6 +289,13 @@ public final class MainActivity extends BaseActivity {
                     .putExtra(LoginActivity.EXTRA_RETURN_TO, LoginActivity.RETURN_CHATS));
         } else if (id == R.id.main_nav_account) {
             startActivity(AccountActivity.open(this));
+        } else if (id == R.id.main_nav_pogo_list) {
+            Coord t = form == null ? null : form.typedCoord();
+            // por nome (sem const-class): com a camada desligada nada do pacote pogo é carregado; extras = os da PogoListActivity
+            startActivity(new Intent().setClassName(this, "com.pokelocation.app.pogo.PogoListActivity")
+                    .putExtra("pogo_lat", t != null ? t.lat : Double.NaN).putExtra("pogo_lng", t != null ? t.lng : Double.NaN));
+        } else if (id == R.id.main_nav_pogo) {
+            startActivity(new Intent().setClassName(this, "com.pokelocation.app.pogo.PogoActivity"));
         } else if (id == R.id.main_nav_gpx) {
             SelectPanel.show(this, getString(R.string.main_nav_gpx),
                     new CharSequence[]{getString(R.string.main_gpx_import), getString(R.string.main_gpx_export)},
@@ -463,17 +475,19 @@ public final class MainActivity extends BaseActivity {
     private void onSpoofState(boolean active) {
         setRunning(active);
         if (active) return;
-        form.refreshLast();
+        showLast(Prefs.lastPosition(this));
         form.syncRouteRadios();
-        if (map != null) {
-            Coord l = form.last();
-            if (l != null) map.setCurrentPosition(l);
-            map.clearRoute();
-        }
+        if (map != null) map.clearRoute();
         if (restartAfterStop) {   // GpsFixDialog mudou algo com o serviço rodando (F19)
             restartAfterStop = false;
             ui.postDelayed(restart, RESTART_DELAY_MS);
         }
+    }
+
+    private void showLast(Coord l) {
+        if (isDestroyed()) return;
+        form.setLast(l);
+        if (map != null && l != null) map.setCurrentPosition(l);
     }
 
     /** Habilitação do Start + linha de distância imediata. Chamado pelo MainForm. */

@@ -79,4 +79,6 @@
     <string name="soc_delete_wrong_password">Wrong password.</string>
     <string name="soc_delete_other_google">That\'s a different Google account. Use the one linked to PokeLocation.</string>
     <string name="soc_delete_reauth_required">Confirm with Google again to delete the account.</string>
+    <string name="soc_account_google">Signed in with Google</string>
+    <string name="soc_account_email">Signed in with email</string>
 </resources>

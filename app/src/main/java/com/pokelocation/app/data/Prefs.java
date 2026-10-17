@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import com.pokelocation.app.model.Coord;
+import com.pokelocation.app.social.store.SocialDb;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,6 +31,8 @@ public final class Prefs {
     public static final String DRAWER_X = "drawer_x", DRAWER_Y = "drawer_y";
     public static final String LAST_MOCKED_TIME = "last_mocked_time";
     public static final String CUSTOM_MARKERS_ENABLED = "custom_markers_enabled";
+    /** Camada Pokémon: arquivo próprio, fora da sessão (o :overlay devolvia um valor velho no Stop). */
+    public static final String POGO_FILE = "pogo_map", POGO_LAYER = "pogo_layer";
     public static final String TELEPORT_WALK_MODE = "teleport_walk_mode";
     public static final String GENERATE_MODE = "generate_mode";
     public static final String GENERATE_MARKER_COUNT = "generate_marker_count";
@@ -268,6 +271,28 @@ public final class Prefs {
     @SuppressWarnings("deprecation")
     public static void setShareLocation(Context c, boolean on) {
         c.getSharedPreferences(SHARE_FILE, Context.MODE_MULTI_PROCESS).edit().putBoolean(SHARE_LOCATION, on).commit();
+    }
+
+    /**
+     * Só o mapa do main e o do :map leem e gravam (o switch), cada um direto no arquivo: uma chave só, então a escrita
+     * de um processo não atropela nada do outro.
+     */
+    @SuppressWarnings("deprecation")
+    public static boolean pogoLayer(Context c) {
+        return c.getSharedPreferences(POGO_FILE, Context.MODE_MULTI_PROCESS).getBoolean(POGO_LAYER, false);
+    }
+
+    @SuppressWarnings("deprecation")
+    public static void setPogoLayer(Context c, boolean on) {
+        c.getSharedPreferences(POGO_FILE, Context.MODE_MULTI_PROCESS).edit().putBoolean(POGO_LAYER, on).apply();
+    }
+
+    /**
+     * O único portão do PoGo (mapa, mini-mapa, menu, telas, coluna): só com a conta PokeLocation. O social.db nasce no
+     * login e some no logout, então vale em qualquer processo (o flag do Session só no principal) e não carrega classe.
+     */
+    public static boolean pogo(Context c) {
+        return c.getDatabasePath(SocialDb.NAME).exists();
     }
 
     public static String widgetKey(String base, int appWidgetId) { return base + "_" + appWidgetId; }

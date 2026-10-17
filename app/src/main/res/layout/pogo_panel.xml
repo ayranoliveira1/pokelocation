@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:paddingTop="@dimen/panel_padding" android:paddingBottom="@dimen/gap">
+    <FrameLayout android:id="@+id/pogo_chips" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="8dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="16dp"
+        android:paddingEnd="16dp">
+        <TextView android:id="@+id/pogo_status" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.PokeLocation.PanelBody" android:textSize="14sp" />
+    </LinearLayout>
+    <FrameLayout android:id="@+id/pogo_frame" android:layout_width="match_parent" android:layout_height="240dp">
+        <ListView android:id="@+id/pogo_list" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:divider="@null" />
+        <ScrollView android:id="@+id/pogo_detail" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:paddingStart="@dimen/gap_large" android:paddingEnd="@dimen/gap_large" android:visibility="gone" />
+    </FrameLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:paddingStart="@dimen/gap" android:paddingEnd="@dimen/gap" android:gravity="end">
+        <Button android:id="@+id/pogo_close" style="@style/Widget.PokeLocation.PanelButton"
+            android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/close" />
+    </LinearLayout>
+</LinearLayout>

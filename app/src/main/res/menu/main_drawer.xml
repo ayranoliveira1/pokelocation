@@ -9,6 +9,8 @@
         <item android:id="@+id/main_nav_friends" android:icon="@drawable/soc_ic_friends" android:title="@string/soc_friends" />
         <item android:id="@+id/main_nav_chats" android:icon="@drawable/soc_ic_chat" android:title="@string/soc_chat_title" />
         <item android:id="@+id/main_nav_account" android:icon="@drawable/soc_ic_account" android:title="@string/soc_account" />
+        <item android:id="@+id/main_nav_pogo_list" android:icon="@drawable/ic_list" android:title="@string/pogo_map_layer" />
+        <item android:id="@+id/main_nav_pogo" android:icon="@drawable/ic_target" android:title="@string/pogo_account" />
         <item android:id="@+id/main_nav_gpx" android:icon="@drawable/ic_download" android:title="@string/main_nav_gpx" />
         <item android:id="@+id/main_nav_widget" android:icon="@drawable/ic_widget" android:title="@string/main_nav_widget" />
     </group>

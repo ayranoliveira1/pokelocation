@@ -7,8 +7,8 @@ android {
         applicationId = "com.pokelocation.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
         // Build de teste lado a lado com o app instalado: outro pacote, dados separados.
         providers.gradleProperty("POKELOCATION_ID_SUFFIX").orNull?.let { applicationIdSuffix = it }
         buildConfigField("String", "SOCIAL_API",
@@ -96,7 +96,7 @@ val apkDir = layout.buildDirectory.dir("outputs/apk")
 listOf("Qa", "Release").forEach { v ->
     val check = tasks.register("checkApkSize$v") {
         doLast {
-            val max = 2_500_000L
+            val max = 2_550_000L
             apkDir.get().dir(v.lowercase()).asFile.listFiles { f -> f.extension == "apk" }?.forEach {
                 if (it.length() > max) throw GradleException("checkApkSize: ${it.name} tem ${it.length()} B (> $max B)")
             }

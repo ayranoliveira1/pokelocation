@@ -15,11 +15,29 @@ bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
 
 ## Versões
 
+### v1.2: integração com o PoGo Coordinates (com a conta PokeLocation)
+
+Tudo do PoGo exige a conta PokeLocation e passa pelo nosso servidor; sem a conta, nada dele aparece no app.
+
+- **Camada PoGo** no mapa principal e no mini-mapa, com card de detalhe e foto do Pokémon.
+- **Coluna de bolhas no joystick:** um ícone por Pokémon, arrastável pela logo; a logo abre **Atualizar**, **Filtros**
+  e a quantidade (**5** ou **10**). Atualiza sozinha a cada 5 min; tocar numa bolha abre o card semitransparente ao
+  lado, com **Teleportar**.
+- **Filtros** com espécies e fotos, IV, shiny e escopo **Mundo** ou **Perto**.
+- **Alertas por push** com foto e a tela **Alertas** em duas abas: **Notificações** (os Pokémon já avisados, sem
+  repetir o mesmo; os que sumiram ficam marcados como expirados) e **Meus alertas**. Alertas sem shiny funcionam sem
+  vincular conta do PoGo; os de shiny pedem treinador vinculado.
+- **Conta e PoGo redesenhadas:** treinador vinculado com nível e time, e login do PoGo num botão só (Google ou
+  Discord).
+- **Mapa sempre na posição atual** ao voltar ao app, depois de teleportar, andar ou seguir uma rota com o joystick.
+
+Precisa do servidor v1.1 atualizado. Tudo das versões anteriores continua igual.
+
 ### v1.1: amigos e chat (opcional, com login)
 
 Tudo da v1.0 continua igual e funciona sem conta. Quem entrar (e-mail e senha ou Google) ganha:
 
-- **Amigos:** adicione por **@nome** único ou por código; abas de amigos e pedidos.
+- **Amigos:** adicione por **@nome** único ou por código; abas de amigos, pedidos e bloqueados (com desbloquear).
 - **Amigos no mapa:** veja a posição **simulada** dos amigos enquanto o joystick deles roda. Dá para desligar em
   **Conta → Compartilhar minha localização**.
 - **Chat com criptografia ponta a ponta** (protocolo Signal), 1:1 e em grupos: texto, **localização atual** e
@@ -65,10 +83,10 @@ configuração e os modos avançados de injeção. Os detalhes estão em [Como u
 ## Instalação
 
 **[⬇️ Baixar o APK mais recente](https://github.com/ayranoliveira1/pokelocation/releases/latest)** (também em
-[`apks/`](apks/pokelocation-v1.1-release.apk)).
+[`apks/`](apks/pokelocation-v1.2-release.apk)).
 
 ```bash
-adb install -r apks/pokelocation-v1.1-release.apk
+adb install -r apks/pokelocation-v1.2-release.apk
 ```
 
 Ou copie o APK para o aparelho e abra pelo gerenciador de arquivos (permita "instalar apps desconhecidos").

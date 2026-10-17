@@ -13,6 +13,7 @@ import com.pokelocation.app.R;
 import com.pokelocation.app.data.MarkerDao;
 import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.geo.CoordParser;
+import com.pokelocation.app.ipc.LiveStatus;
 import com.pokelocation.app.map.MapHelper;
 import com.pokelocation.app.model.Coord;
 import com.pokelocation.app.model.MarkerType;
@@ -53,6 +54,7 @@ public final class MarkerMapView extends FrameLayout {
     private Marker selected;
     private GeoPoint moveOrigin;
     private GeoPoint camOrigin;
+    private Coord seen;
 
     public MarkerMapView(Context c, MarkerType type, Runnable onClose) {
         super(c);
@@ -91,13 +93,14 @@ public final class MarkerMapView extends FrameLayout {
         }
         container.addView(mv, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
         icon = MapHelper.typeIcon(getContext(), type);
-        Coord last = Prefs.lastPosition(getContext());
+        Coord last = seen = Prefs.lastPosition(getContext());
         if (last != null) {
             mv.getController().setZoom(MapHelper.DEFAULT_ZOOM);
             mv.getController().setCenter(new GeoPoint(last.lat, last.lng));
         } else {
             mv.getController().setZoom(MapHelper.MIN_ZOOM);
         }
+        showCurrent();
         // Eventos no índice 0: os marcadores (por cima) recebem o toque primeiro.
         mv.getOverlays().add(0, new MapEventsOverlay(new MapEventsReceiver() {
             @Override public boolean singleTapConfirmedHelper(GeoPoint p) {
@@ -121,7 +124,19 @@ public final class MarkerMapView extends FrameLayout {
         mv.addOnFirstLayoutListener((v, l, t, r, b) -> refresh());   // bbox só é válida após o 1º layout
     }
 
-    public void onResume() { if (mv != null) mv.onResume(); }
+    public void onResume() {
+        if (mv == null) return;
+        mv.onResume();
+        showCurrent();
+    }
+
+    private void showCurrent() {
+        LiveStatus.request(getContext(), c -> {
+            if (destroyed || mv == null || c == null || moving || c.sameLatLng(seen)) return;   // no Move o marcador segue a câmera
+            seen = c;
+            MapHelper.reveal(mv, c);
+        });
+    }
 
     public void onPause() { if (mv != null) mv.onPause(); }
 

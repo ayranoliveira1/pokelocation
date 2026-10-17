@@ -13,12 +13,12 @@ import android.widget.TextView;
 
 import com.google.android.material.color.MaterialColors;
 import com.pokelocation.app.R;
+import com.pokelocation.app.geo.CoordParser;
 import com.pokelocation.app.social.chat.Chat;
 import com.pokelocation.app.util.Ui;
 
 import java.text.DateFormat;
 import java.util.Collections;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -114,10 +114,10 @@ final class Bubble {
     private String body(Context c, Chat.Msg m) {
         switch (m.type) {
             case Chat.TEXT: return m.text;
-            case Chat.LOC: return c.getString(R.string.soc_chat_location) + "\n" + coords(m.lat, m.lng);
+            case Chat.LOC: return c.getString(R.string.soc_chat_location) + "\n" + CoordParser.label(m.lat, m.lng);
             case Chat.LIVE_START:
                 return m.liveUntil > System.currentTimeMillis()
-                        ? c.getString(R.string.soc_chat_msg_live, time.format(m.liveUntil)) + "\n" + coords(m.lat, m.lng)
+                        ? c.getString(R.string.soc_chat_msg_live, time.format(m.liveUntil)) + "\n" + CoordParser.label(m.lat, m.lng)
                         : c.getString(R.string.soc_chat_msg_live_ended);
             case Chat.LIVE_STOP: return c.getString(R.string.soc_chat_msg_live_stop);
             case Chat.IDENTITY_CHANGED:
@@ -126,10 +126,6 @@ final class Bubble {
                 return m.resend > 0 ? s + "\n" + c.getResources().getQuantityString(R.plurals.soc_chat_resend_pending, m.resend, m.resend) : s;
             default: return c.getString(R.string.soc_chat_unreadable);
         }
-    }
-
-    static String coords(double lat, double lng) {
-        return String.format(Locale.ROOT, "%.5f, %.5f", lat, lng);
     }
 
     private static final class Holder {

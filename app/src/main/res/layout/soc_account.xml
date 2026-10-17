@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/soc_account_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -10,12 +11,81 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:fillViewport="true">
         <LinearLayout
-            android:id="@+id/soc_account_list"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingBottom="@dimen/gap_large" />
+            android:paddingBottom="@dimen/gap_large">
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.Material3.CardView.Filled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/gap_large">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:padding="@dimen/gap_large">
+                    <TextView android:id="@+id/soc_account_avatar"
+                        android:layout_width="64dp" android:layout_height="64dp"
+                        android:background="@drawable/soc_avatar" android:gravity="center"
+                        android:importantForAccessibility="no" android:text="\?"
+                        android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+                    <LinearLayout android:id="@+id/soc_account_name_row"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/gap"
+                        android:background="?attr/selectableItemBackground"
+                        android:gravity="center_vertical" android:minHeight="48dp"
+                        android:orientation="horizontal" android:paddingStart="@dimen/gap">
+                        <TextView android:id="@+id/soc_account_name"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="@string/soc_account_signed_in"
+                            android:textAppearance="?attr/textAppearanceTitleLarge"
+                            android:textColor="?attr/colorOnSurface" />
+                        <ImageView
+                            android:layout_width="48dp" android:layout_height="48dp"
+                            android:contentDescription="@string/soc_username_change" android:scaleType="center"
+                            android:src="@drawable/ic_edit" app:tint="?attr/colorPrimary" />
+                    </LinearLayout>
+                    <TextView android:id="@+id/soc_account_email"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textColor="?attr/colorOnSurfaceVariant" android:visibility="gone" />
+                    <TextView android:id="@+id/soc_account_provider"
+                        android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/gap" android:drawablePadding="@dimen/gap"
+                        android:gravity="center_vertical"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
+                        android:textColor="?attr/colorOnSurfaceVariant" android:visibility="gone" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <LinearLayout
+                android:id="@+id/soc_account_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:minHeight="@dimen/gap_large" />
+
+            <com.google.android.material.button.MaterialButton android:id="@+id/soc_account_logout"
+                style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal" android:minWidth="160dp"
+                android:text="@string/soc_logout" app:icon="@drawable/ic_logout" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/soc_account_delete"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal" android:layout_marginTop="@dimen/gap"
+                android:text="@string/soc_delete_account" android:textColor="@color/danger" />
+        </LinearLayout>
     </ScrollView>
 </LinearLayout>

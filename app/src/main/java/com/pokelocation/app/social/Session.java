@@ -12,6 +12,7 @@ import android.util.Base64;
 import com.pokelocation.app.App;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.R;
+import com.pokelocation.app.pogo.PogoAlert;
 import com.pokelocation.app.social.chat.Chat;
 import com.pokelocation.app.social.chat.Live;
 import com.pokelocation.app.social.chat.Notify;
@@ -230,6 +231,7 @@ public final class Session {
         if (App.process() != App.PROC_MAIN) return;
         if (loggedIn(c)) Push.stop(c); // sem login, o Firebase nem deve subir
         Notify.cancelAll(c);
+        PogoAlert.forget(c);
         Live.forget(c);
         sAccess = null;
         sp(c).edit().clear().commit();

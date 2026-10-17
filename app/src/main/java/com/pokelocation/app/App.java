@@ -11,7 +11,7 @@ import java.io.FileInputStream;
 
 /** Process-aware: fora do processo main o onCreate retorna cedo (nada de AppCompat/osmdroid no :overlay). */
 public final class App extends Application {
-    public static final int PROC_MAIN = 0, PROC_OVERLAY = 1, PROC_MAP = 2;
+    public static final int PROC_MAIN = 0, PROC_OVERLAY = 1, PROC_MAP = 2, PROC_POGOWEB = 3;
     private static int sProcess = -1;
 
     public static int process() {
@@ -34,6 +34,7 @@ public final class App extends Application {
         }
         if (name.endsWith(":overlay")) return PROC_OVERLAY;
         if (name.endsWith(":map")) return PROC_MAP;
+        if (name.endsWith(":pogoweb")) return PROC_POGOWEB;
         return PROC_MAIN;
     }
 
@@ -51,7 +52,7 @@ public final class App extends Application {
     @Override
     public void onTrimMemory(int level) {
         super.onTrimMemory(level);
-        // :overlay nunca carrega osmdroid
-        if (process() != PROC_OVERLAY) MapHelper.trimMemory(level);
+        // :overlay e :pogoweb nunca carregam osmdroid
+        if (process() == PROC_MAIN || process() == PROC_MAP) MapHelper.trimMemory(level);
     }
 }

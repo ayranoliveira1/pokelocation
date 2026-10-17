@@ -150,6 +150,8 @@ public class QuickActionsWidgetProvider extends AppWidgetProvider {
         color(rv, R.id.widget_title, "setTextColor", TEXT, mode);
         rv.setTextViewText(R.id.widget_status, c.getString(spoof ? R.string.widget_active : R.string.widget_idle));
         color(rv, R.id.widget_status, "setTextColor", spoof ? ACTIVE : TEXT2, mode);
+        // o launcher infla o layout no idioma do aparelho: só o texto posto aqui segue o idioma escolhido no app
+        rv.setContentDescription(R.id.widget_add, c.getString(R.string.widget_add));
         color(rv, R.id.widget_add, "setColorFilter", ACCENT, mode);
         color(rv, R.id.widget_divider, "setBackgroundColor", LINE, mode);
 
@@ -163,6 +165,7 @@ public class QuickActionsWidgetProvider extends AppWidgetProvider {
         rv.setTextViewText(R.id.widget_empty_text,
                 c.getString(routes ? R.string.widget_empty_routes : R.string.widget_empty_locations));
         color(rv, R.id.widget_empty_text, "setTextColor", TEXT, mode);
+        rv.setTextViewText(R.id.widget_empty_hint, c.getString(R.string.widget_empty_hint));
         color(rv, R.id.widget_empty_hint, "setTextColor", TEXT2, mode);
 
         rv.setViewVisibility(R.id.widget_tabs, grouped ? android.view.View.VISIBLE : android.view.View.GONE);
@@ -202,6 +205,7 @@ public class QuickActionsWidgetProvider extends AppWidgetProvider {
     }
 
     private static void tab(Context c, RemoteViews rv, int id, int view, boolean routes, boolean selected, int mode) {
+        rv.setTextViewText(view, c.getString(routes ? R.string.widget_tab_routes : R.string.widget_tab_favorites));
         rv.setInt(view, "setBackgroundResource", selected ? R.drawable.widget_tab_selected : 0);
         if (selected) rv.setTextColor(view, 0xFFFFFFFF);
         else color(rv, view, "setTextColor", TEXT2, mode);

@@ -50,6 +50,9 @@
                 android:minWidth="16dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:textColor="@color/on_primary"
                 android:textSize="9sp" android:textStyle="bold" android:visibility="gone" />
         </FrameLayout>
+        <ImageView android:id="@+id/ov_pogo" style="@style/ov_style_btn_small"
+            android:contentDescription="@string/pogo_map_layer" android:src="@drawable/pogo_ic_pokemon"
+            android:visibility="gone" />
     </LinearLayout>
     <com.pokelocation.app.overlay.ui.JoystickView android:id="@+id/ov_stick"
         android:layout_width="wrap_content" android:layout_height="wrap_content"

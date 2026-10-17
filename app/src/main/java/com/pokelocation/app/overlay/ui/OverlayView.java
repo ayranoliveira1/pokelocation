@@ -9,7 +9,6 @@ import android.os.Bundle;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -23,7 +22,9 @@ import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.engine.EngineConfig;
 import com.pokelocation.app.engine.MockEngine;
 import com.pokelocation.app.geo.CoordParser;
+import com.pokelocation.app.ui.panel.PanelHost;
 import com.pokelocation.app.util.Ui;
+import com.pokelocation.app.util.WindowDrag;
 
 /**
  * Janelas do joystick no :overlay (02 §2.1–2.3, 09 §2.3, 11 §2.6). API combinada em docs/team/W1c-api.md.
@@ -50,7 +51,6 @@ public final class OverlayView implements View.OnClickListener {
     }
 
     private static final String TYPE_CLASSIC = "classic";
-    private static final int CLICK_SLOP_PX = 20;     // 02 §3.13
     private static final int DRAWER_DEFAULT_Y = 200;
     private static final long DROP_MS = 500;
 
@@ -60,11 +60,11 @@ public final class OverlayView implements View.OnClickListener {
     private final EngineConfig cfg;
     private final WindowManager wm;
     private final OverlayFlows flows;
-    private final boolean classic, secure;
+    final boolean classic, secure;
     private final int sizePct;
     private final float alpha;
     private final Display display;           // DisplayInfo ao vivo: acompanha a rotação (o ctx temático não)
-    private final Point scr = new Point();   // tela real, relida a cada place/arrasto
+    private final Point scr = new Point();   // tela real, relida a cada place/fit
 
     // Sessão (vai no putSession; last_mocked_time fica só em memória, o serviço grava o seu no Stop)
     private int stickX, stickY, drawerX, drawerY;
@@ -81,7 +81,7 @@ public final class OverlayView implements View.OnClickListener {
     // Views (as do tipo que não existem ficam null)
     private JoystickView stick;
     private View column, routePill, recPill, speedPill, routeTop, routeRow, asBox, suspend, recMap, recSave;
-    private View chatBox;
+    private View chatBox, pogo;
     private TextView chatBadge;
     private boolean chat;
     private int unread;
@@ -124,6 +124,16 @@ public final class OverlayView implements View.OnClickListener {
         if (stickWin == null) inflate();
         stickShown = show(stickWin, stickLp, stickShown, v && !stickHidden, true);
         if (drawerWin != null) drawerShown = show(drawerWin, drawerLp, drawerShown, v, false);
+        flows.pogoVisible(v);
+        PanelHost.setAllVisible(v);
+    }
+
+    /** {x, y, largura, altura} da janela do joystick, ou null escondido (a coluna PoGo nasce sem cobri-lo). */
+    int[] stickBounds() {
+        if (!stickShown) return null;
+        if (stickWin.isLaidOut()) return new int[]{stickLp.x, stickLp.y, stickWin.getWidth(), stickWin.getHeight()};
+        stickWin.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);   // recém-anexada, antes do 1º layout
+        return new int[]{stickLp.x, stickLp.y, stickWin.getMeasuredWidth(), stickWin.getMeasuredHeight()};
     }
 
     public boolean hasVisibleWindow() {
@@ -152,6 +162,7 @@ public final class OverlayView implements View.OnClickListener {
         if (destroyed) return;
         destroyed = true;
         flows.close();
+        flows.closePogo();
         if (stick != null) stick.shutdown();
         removeDrop();
         if (stickShown) remove(stickWin);
@@ -254,11 +265,17 @@ public final class OverlayView implements View.OnClickListener {
 
     // ------------------------------------------------------------------ abrir fluxos
 
-    /** Só com login: sem ele nenhuma classe social carrega no :overlay. */
+    /** Só com login: sem ele nenhuma classe social carrega no :overlay. O botão Pokémon segue a mesma conta. */
     public void setChatEnabled(boolean on) {
         chat = on;
         setShown(chatBox, on);
-        if (!on) flows.closeChat();
+        setShown(pogo, on);
+        if (on) {
+            flows.startPogo(visible);
+        } else {
+            flows.closeChat();
+            flows.closePogo();
+        }
     }
 
     public void chatChanged() {
@@ -344,6 +361,8 @@ public final class OverlayView implements View.OnClickListener {
             engine.injectNow();
         } else if (id == R.id.ov_chat) {
             flows.openChat();
+        } else if (id == R.id.ov_pogo) {
+            flows.openPogo();
         } else if (id == R.id.ov_as_close) {
             autoSuspendActive = false;
             engine.setAutoSuspendActive(false);
@@ -378,12 +397,12 @@ public final class OverlayView implements View.OnClickListener {
         stick = stickWin.findViewById(R.id.ov_stick);
         stick.setup(engine, sizePct, classic);
         stickLp = params(ViewGroup.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
-        stickWin.findViewById(R.id.ov_move).setOnTouchListener(new Drag(stickWin, stickLp, true, false));
+        stickWin.findViewById(R.id.ov_move).setOnTouchListener(new WindowDrag(wm, stickWin, stickLp, display, false, (x, y) -> savePos(true, x, y)));
         if (!classic) {
             drawerWin = inf.inflate(R.layout.ov_drawer, null);
             bind(drawerWin);
             drawerLp = params(ViewGroup.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
-            drawerWin.findViewById(R.id.ov_handle).setOnTouchListener(new Drag(drawerWin, drawerLp, false, true));
+            drawerWin.findViewById(R.id.ov_handle).setOnTouchListener(new WindowDrag(wm, drawerWin, drawerLp, display, true, (x, y) -> savePos(false, x, y)));
             if (eye != null && stickHidden) eye.setImageResource(R.drawable.ic_visibility_off);
         }
         setShown(suspend, cfg.suspended);
@@ -393,6 +412,7 @@ public final class OverlayView implements View.OnClickListener {
         if (hasRoute && !classic) expand(routePill);
         showRecording(true);
         setShown(chatBox, chat);
+        setShown(pogo, chat);
         setUnread(unread);
     }
 
@@ -401,7 +421,8 @@ public final class OverlayView implements View.OnClickListener {
         int[] ids = {R.id.ov_handle, R.id.ov_map, R.id.ov_r_stop, R.id.ov_r_pause, R.id.ov_r_prev, R.id.ov_r_next,
                 R.id.ov_record, R.id.ov_rec_stop, R.id.ov_rec_add, R.id.ov_rec_map, R.id.ov_rec_save,
                 R.id.ov_teleport, R.id.ov_save, R.id.ov_share, R.id.ov_eye, R.id.ov_lock, R.id.ov_speed,
-                R.id.ov_sp_walk, R.id.ov_sp_jog, R.id.ov_sp_run, R.id.ov_suspend, R.id.ov_as_close, R.id.ov_chat};
+                R.id.ov_sp_walk, R.id.ov_sp_jog, R.id.ov_sp_run, R.id.ov_suspend, R.id.ov_as_close, R.id.ov_chat,
+                R.id.ov_pogo};
         for (int id : ids) {
             View v = w.findViewById(id);
             if (v != null) v.setOnClickListener(this);
@@ -412,6 +433,7 @@ public final class OverlayView implements View.OnClickListener {
         speedPill = pick(w, R.id.ov_speed_pill, speedPill);
         routeTop = pick(w, R.id.ov_route_top, routeTop);
         chatBox = pick(w, R.id.ov_chat_box, chatBox);
+        pogo = pick(w, R.id.ov_pogo, pogo);
         chatBadge = pick(w, R.id.ov_chat_badge, chatBadge);
         routeRow = pick(w, R.id.ov_route_row, routeRow);
         asBox = pick(w, R.id.ov_as_box, asBox);
@@ -532,55 +554,6 @@ public final class OverlayView implements View.OnClickListener {
     }
 
     /** Arrasto de janela (02 §3.13) com clamp; toque curto na alça clicável = performClick. */
-    private final class Drag implements View.OnTouchListener {
-        private final View win;
-        private final WindowManager.LayoutParams lp;
-        private final boolean isStick, clickable;
-        private int x0, y0;
-        private float rx0, ry0;
-
-        Drag(View win, WindowManager.LayoutParams lp, boolean isStick, boolean clickable) {
-            this.win = win;
-            this.lp = lp;
-            this.isStick = isStick;
-            this.clickable = clickable;
-        }
-
-        @Override
-        public boolean onTouch(View v, MotionEvent e) {
-            if (destroyed) return false;
-            switch (e.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    readScreen();   // uma vez por arrasto: MOVE sem alocação
-                    x0 = lp.x;
-                    y0 = lp.y;
-                    rx0 = e.getRawX();
-                    ry0 = e.getRawY();
-                    return true;
-                case MotionEvent.ACTION_MOVE: {
-                    lp.x = clamp(x0 + Math.round(e.getRawX() - rx0), 0, Math.max(0, scr.x - win.getWidth()));
-                    lp.y = clamp(y0 + Math.round(e.getRawY() - ry0), 0, Math.max(0, scr.y - win.getHeight()));
-                    try {
-                        wm.updateViewLayout(win, lp);
-                    } catch (RuntimeException ignored) {
-                    }
-                    return true;
-                }
-                case MotionEvent.ACTION_UP:
-                    savePos(isStick, lp.x, lp.y);   // já clampado (corrige o original)
-                    if (clickable && Math.abs(lp.x - x0) < CLICK_SLOP_PX && Math.abs(lp.y - y0) < CLICK_SLOP_PX) {
-                        v.performClick();
-                    }
-                    return true;
-                case MotionEvent.ACTION_CANCEL:
-                    savePos(isStick, lp.x, lp.y);
-                    return true;
-                default:
-                    return false;
-            }
-        }
-    }
-
     // ------------------------------------------------------------------ pílulas
 
     /** Só uma pílula aberta por vez na gaveta. */

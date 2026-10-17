@@ -105,6 +105,7 @@ public class RouteMapView extends FrameLayout {
     private final ArrayList<Marker> wpMarkers = new ArrayList<>();
     private MarkerLayer layer;
     private FriendLayer friends;   // null sem login: nada social carregado
+    private MapPoiLayer pogo;      // null com a camada desligada: nada da PoGo carregado (ver PoiLayers)
     private final ArrayList<GeoPoint> linePts = new ArrayList<>();
     private boolean lineSimplified;
 
@@ -119,7 +120,8 @@ public class RouteMapView extends FrameLayout {
     private final View mapContainer, closeBtn, routeBox, routeOptions, routeOptionsBody, actions, movePanel;
     private final TextView optionsTitle, btnStartRoute, btnGenerate, btnLoad, btnSave, btnClear, btnSetRoute, btnSetLocation,
             btnRecord, btnStart, btnTeleport, distance, actTitle, actCoords, actMove, actCopy, actDelete, actAddMarker;
-    private final Switch swMarkers;
+    private final Switch swMarkers, swPogo;
+    private final View pogoBox;
 
     private Io.Task elevTask, loadTask, countTask;   // só leituras (canceláveis)
     private Object panel;   // PanelHost / ItemListPanel / TeleportPanel aberto por este mapa
@@ -211,6 +213,8 @@ public class RouteMapView extends FrameLayout {
         btnStart = findViewById(R.id.map_btn_start);
         btnTeleport = findViewById(R.id.map_btn_teleport);
         swMarkers = findViewById(R.id.map_sw_markers);
+        swPogo = findViewById(R.id.map_sw_pogo);
+        pogoBox = findViewById(R.id.map_pogo_box);
         distance = findViewById(R.id.map_distance);
         actions = findViewById(R.id.map_actions);
         actTitle = findViewById(R.id.map_act_title);
@@ -260,11 +264,13 @@ public class RouteMapView extends FrameLayout {
     // ------------------------------------------------------------------ API pública (§3.11)
 
     public void setCurrentPosition(Coord c) {
+        boolean moved = !c.sameLatLng(current);
         current = c;
         if (mv == null) return;
         syncCurrentMarker();
         rebuildLines();
         updateDistance();
+        if (moved && !moving) MapHelper.reveal(mv, c);   // no Move o ponto segue a câmera
     }
 
     public void setStart(Coord c) {
@@ -347,12 +353,15 @@ public class RouteMapView extends FrameLayout {
         // Login feito com o mapa já criado.
         if (friends == null && mode == MODE_MAIN && mv != null && Session.loggedIn(getContext())) friends = new FriendLayer(getContext(), mv);
         if (friends != null) friends.resume();
+        if (pogo != null) pogo.resume();
+        syncPogo();
     }
 
     public void onPause() {
         resumed = false;
         if (mv != null) mv.onPause();
         if (friends != null) friends.pause();
+        if (pogo != null) pogo.pause();
     }
 
     /** Os marcadores customizados já são só os do viewport; aqui basta o cache de tiles. */
@@ -373,6 +382,8 @@ public class RouteMapView extends FrameLayout {
         layer = null;
         if (friends != null) friends.destroy();
         friends = null;
+        if (pogo != null) pogo.destroy();
+        pogo = null;
         if (mv != null) {
             mv.removeMapListener(scroll);
             MapHelper.destroy(mv);
@@ -426,11 +437,15 @@ public class RouteMapView extends FrameLayout {
         walkLine = addLine(MapHelper.LINE_WALK);
         layer = new MarkerLayer(c, mv, layerClick);
         mv.addMapListener(scroll);
-        MapHelper.onIdle(mv, () -> { if (layer != null) layer.refresh(); });
+        MapHelper.onIdle(mv, () -> {
+            if (layer != null) layer.refresh();
+            if (pogo != null) pogo.boxChanged();
+        });
         if (mode == MODE_MAIN && Session.loggedIn(c)) {
             friends = new FriendLayer(c, mv);
             if (resumed) friends.resume();
         }
+        syncPogo();
         if (!model.hasStart()) {
             Coord s = current != null ? current : Prefs.lastPosition(c);
             if (s != null) model.setStart(s.lat, s.lng, s.alt);
@@ -445,6 +460,7 @@ public class RouteMapView extends FrameLayout {
             if (destroyed || mv == null) return;
             initialCamera();
             if (swMarkers.isChecked()) layer.setEnabled(true);
+            if (pogo != null) pogo.boxChanged();
         });
         final Context app = c.getApplicationContext();
         countTask = Io.run(() -> FavoriteDao.countAll(app) + MarkerDao.totalMarkers(app), new Io.Callback<Integer>() {
@@ -704,6 +720,43 @@ public class RouteMapView extends FrameLayout {
             optionsChanged();
             if (layer != null) layer.setEnabled(on);
         });
+        vis(swPogo, pogoHere());
+        swPogo.setChecked(Prefs.pogoLayer(getContext()));
+        swPogo.setOnCheckedChangeListener((b, on) -> {
+            Prefs.setPogoLayer(getContext(), on);
+            setPogo(on);
+        });
+    }
+
+    private boolean pogoHere() {
+        return (mode == MODE_MAIN || mode == MODE_FLOATING) && Prefs.pogo(getContext());
+    }
+
+    /** Login ou logout com o mapa criado: o interruptor e a camada aparecem ou somem na volta. */
+    private void syncPogo() {
+        boolean here = pogoHere();
+        vis(swPogo, here);
+        setPogo(here && Prefs.pogoLayer(getContext()));
+    }
+
+    /** Botão do card, só depois do /reveal: no main "Definir destino" = toque no mapa na coordenada exata; no :map teleporta. */
+    private void setPogo(boolean on) {
+        if (on && pogo == null && mv != null && (mode == MODE_MAIN || mode == MODE_FLOATING)) {
+            boolean floating = mode == MODE_FLOATING;
+            pogo = PoiLayers.pogo(getContext(), mv, this, pogoBox, floating ? R.string.teleport : R.string.pogo_card_set_dest, (lat, lng) -> {
+                if (destroyed || moving) return;
+                if (floating) {
+                    goTo(lat, lng, Double.NaN, false);
+                    return;
+                }
+                taps.singleTapConfirmedHelper(new GeoPoint(lat, lng));
+                if (mv != null) mv.getController().animateTo(new GeoPoint(lat, lng));
+            });
+            if (resumed) pogo.resume();
+        } else if (!on && pogo != null) {
+            pogo.destroy();
+            pogo = null;
+        }
     }
 
     private void showOptionsBody(boolean show) {
@@ -933,6 +986,7 @@ public class RouteMapView extends FrameLayout {
     private void startMove() {
         if (selIndex < 0 || selMarker == null || mv == null) return;
         moving = true;
+        if (pogo != null) pogo.setTapsEnabled(false);
         moveLat = model.lat(selIndex);
         moveLng = model.lng(selIndex);
         selMarker.setIcon(MapHelper.pin(getContext(), MapHelper.PIN_MOVING));
@@ -945,6 +999,7 @@ public class RouteMapView extends FrameLayout {
     private void finishMove(boolean ok) {
         if (!moving) return;
         moving = false;
+        if (pogo != null) pogo.setTapsEnabled(true);
         int i = selIndex;
         movePanel.setVisibility(GONE);
         if (ok) {

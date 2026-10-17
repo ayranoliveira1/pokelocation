@@ -62,6 +62,9 @@
                 android:minWidth="16dp" android:paddingStart="4dp" android:paddingEnd="4dp" android:textColor="@color/on_primary"
                 android:textSize="9sp" android:textStyle="bold" android:visibility="gone" />
         </FrameLayout>
+        <ImageView android:id="@+id/ov_pogo" style="@style/ov_style_btn"
+            android:contentDescription="@string/pogo_map_layer" android:src="@drawable/pogo_ic_pokemon"
+            android:visibility="gone" />
         <ImageView android:id="@+id/ov_eye" style="@style/ov_style_btn"
             android:contentDescription="@string/ov_cd_hide" android:src="@drawable/ic_visibility" />
         <ImageView android:id="@+id/ov_lock" style="@style/ov_style_btn"

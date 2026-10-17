@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
@@ -16,6 +17,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputLayout;
@@ -31,7 +33,7 @@ public final class AccountActivity extends BaseActivity {
     static final String LOGIN_RETURN = LoginActivity.RETURN_BACK;
 
     private LinearLayout list;
-    private TextView name, email;
+    private TextView avatar, name, email, provider;
     private MaterialSwitch share;
     private Api.Me me;
     private Io.Task task, deleting;
@@ -59,13 +61,14 @@ public final class AccountActivity extends BaseActivity {
         setupToolbar(getString(R.string.soc_account), true);
         applyInsets(findViewById(R.id.soc_account_root));
         list = findViewById(R.id.soc_account_list);
-        View who = row(R.string.soc_account_signed_in, null);
-        who.setClickable(false);
-        who.setFocusable(false);
-        name = who.findViewById(R.id.set_row_title);
-        email = who.findViewById(R.id.set_row_summary);
-        email.setVisibility(View.GONE);
-        row(R.string.soc_username_change, v -> startActivity(
+        avatar = findViewById(R.id.soc_account_avatar);
+        avatar.setBackgroundTintList(ColorStateList.valueOf(
+                MaterialColors.getColor(avatar, com.google.android.material.R.attr.colorPrimaryContainer)));
+        avatar.setTextColor(MaterialColors.getColor(avatar, com.google.android.material.R.attr.colorOnPrimaryContainer));
+        name = findViewById(R.id.soc_account_name);
+        email = findViewById(R.id.soc_account_email);
+        provider = findViewById(R.id.soc_account_provider);
+        findViewById(R.id.soc_account_name_row).setOnClickListener(v -> startActivity(
                 UsernameActivity.intent(this, LoginActivity.RETURN_BACK, me != null ? me.username : null)));
         // Só grava; o LocationSharer do :overlay lê a cada tick e envia o LocationOff.
         View s = row(R.string.soc_share_location, v -> {
@@ -78,9 +81,8 @@ public final class AccountActivity extends BaseActivity {
         share = s.findViewById(R.id.set_row_switch);
         share.setVisibility(View.VISIBLE);
         share.setChecked(Prefs.shareLocation(this));
-        row(R.string.soc_logout, v -> confirmLogout());
-        View del = row(R.string.soc_delete_account, v -> confirmDelete());
-        ((TextView) del.findViewById(R.id.set_row_title)).setTextColor(ContextCompat.getColor(this, R.color.danger));
+        findViewById(R.id.soc_account_logout).setOnClickListener(v -> confirmLogout());
+        findViewById(R.id.soc_account_delete).setOnClickListener(v -> confirmDelete());
     }
 
     @Override
@@ -117,8 +119,13 @@ public final class AccountActivity extends BaseActivity {
                 task = null;
                 me = m;
                 if (m.username != null) name.setText(FriendsActivity.label(m.username, null));
+                avatar.setText(FriendsActivity.initial(m.username, null));
                 email.setText(m.email);
                 email.setVisibility(m.email != null ? View.VISIBLE : View.GONE);
+                // conta por e-mail sempre tem senha; sem senha, só entrou pelo Google
+                provider.setText(m.hasPassword ? R.string.soc_account_email : R.string.soc_account_google);
+                provider.setCompoundDrawablesRelativeWithIntrinsicBounds(m.hasPassword ? 0 : R.drawable.soc_ic_google, 0, 0, 0);
+                provider.setVisibility(View.VISIBLE);
             }
             @Override public void onError(Throwable t) {
                 task = null;
@@ -134,10 +141,8 @@ public final class AccountActivity extends BaseActivity {
 
     private void confirmLogout() {
         Context app = getApplicationContext();
-        new MaterialAlertDialogBuilder(this)
-                .setTitle(me != null && me.email != null ? me.email : getString(R.string.soc_account))
-                .setMessage(R.string.soc_logout_confirm)
-                .setPositiveButton(R.string.soc_logout, (d, w) -> {
+        confirmSheet(me != null && me.email != null ? me.email : getString(R.string.soc_account),
+                R.string.soc_logout_confirm, R.string.soc_logout, () -> {
                     if (task != null) task.cancel();
                     task = Io.run(() -> {
                         Api.logout(app);
@@ -145,9 +150,7 @@ public final class AccountActivity extends BaseActivity {
                     }, new Io.Callback<Boolean>() {
                         @Override public void onResult(Boolean ok) { finish(); }
                     });
-                })
-                .setNegativeButton(R.string.cancel, null)
-                .show();
+                });
     }
 
     private void confirmDelete() {
