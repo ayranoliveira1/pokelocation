@@ -7,10 +7,7 @@ import android.app.PendingIntent;
 import android.app.Person;
 import android.app.TaskStackBuilder;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.ShortcutInfo;
-import android.content.pm.ShortcutManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Icon;
 import android.os.Build;
@@ -21,13 +18,13 @@ import android.widget.RemoteViews;
 import com.pokelocation.app.R;
 import com.pokelocation.app.geo.CoordParser;
 import com.pokelocation.app.ipc.Intents;
+import com.pokelocation.app.util.Shortcuts;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -42,7 +39,7 @@ public final class PogoAlert {
     public static final String EXTRA = "pogo_alert";
     static final String CHANNEL = "pogo_alerts";
     /** createNotificationChannel é IPC: 1× por processo. */
-    private static boolean sChannel, sShortcut;
+    private static boolean sChannel;
     private static final String SHORTCUT = "pogo_alerts";
     private static final int ID = 0x9090;
     /** Grupo próprio: com 5+ avisos o Android agrupa sozinho e as linhas do grupo recolhido não abrem. */
@@ -88,7 +85,8 @@ public final class PogoAlert {
                 .setContentIntent(TaskStackBuilder.create(c).addNextIntent(Intents.main(c))
                         .addNextIntent(PogoAlertsActivity.intent(c).putExtra(EXTRA, data))
                         .getPendingIntent(String.valueOf(tag).hashCode(), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT));
-        if (!conversation(c, b, photo, title, where)) b.setCustomContentView(content(c, photo, title, where, false))
+        boolean conversation = conversation(c, b, photo, title, where);
+        if (!conversation) b.setCustomContentView(content(c, photo, title, where, false))
                 .setCustomBigContentView(content(c, photo, title, where, true))
                 .setStyle(new Notification.DecoratedCustomViewStyle());
         long left = despawn - System.currentTimeMillis();
@@ -98,6 +96,8 @@ public final class PogoAlert {
             nm.notify(SUMMARY, ID, summary(c));
         } catch (RuntimeException ignored) {
             // sem POST_NOTIFICATIONS
+        } finally {
+            if (conversation) Shortcuts.release(c, SHORTCUT);
         }
     }
 
@@ -109,19 +109,7 @@ public final class PogoAlert {
     private static boolean conversation(Context c, Notification.Builder b, Bitmap photo, String title, String where) {
         if (Build.VERSION.SDK_INT < 30) return false;
         String label = c.getString(R.string.pogo_alerts_channel);
-        if (!sShortcut) {
-            try {
-                ShortcutInfo.Builder sb = new ShortcutInfo.Builder(c, SHORTCUT).setShortLabel(label).setLongLived(true)
-                        .setCategories(Collections.singleton(ShortcutInfo.SHORTCUT_CATEGORY_CONVERSATION))
-                        .setIntents(new Intent[]{Intents.main(c).setAction(Intent.ACTION_VIEW),
-                                PogoAlertsActivity.intent(c).setAction(Intent.ACTION_VIEW)});
-                if (Build.VERSION.SDK_INT >= 33) sb.setExcludedFromSurfaces(ShortcutInfo.SURFACE_LAUNCHER);
-                c.getSystemService(ShortcutManager.class).pushDynamicShortcut(sb.build());
-                sShortcut = true;
-            } catch (RuntimeException e) {
-                return false;
-            }
-        }
+        if (!Shortcuts.publish(c, SHORTCUT, label, Intents.main(c), PogoAlertsActivity.intent(c))) return false;
         Icon face = photo != null ? Icon.createWithBitmap(photo)
                 : Icon.createWithResource(c, R.drawable.pogo_ic_pokemon).setTint(c.getColor(R.color.primary));
         Person mon = new Person.Builder().setName(title).setIcon(face).build();

@@ -24,12 +24,11 @@ import com.pokelocation.app.ipc.Intents;
 import com.pokelocation.app.social.net.Api;
 import com.pokelocation.app.social.ui.chat.ChatActivity;
 import com.pokelocation.app.social.ui.chat.ConvRow;
+import com.pokelocation.app.util.Shortcuts;
 import com.pokelocation.app.util.Ui;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,8 +40,6 @@ public final class Notify {
     /** ponytail: por processo (principal e :overlay: no máximo 2 a cada 10 min por conversa). */
     private static final Rules.Limiter UNREADABLE = new Rules.Limiter();
     private static final String SHORTCUT = "chat:";
-    /** id do atalho → rótulo já publicado neste processo: o SystemUI mostra o rótulo do atalho como título da conversa. */
-    private static final Map<String, String> PUSHED = new HashMap<>();
     /** Por inicial e cor (claro/escuro): o círculo da lista de conversas, desenhado uma vez. */
     private static final Map<String, Icon> AVATARS = new LinkedHashMap<String, Icon>(8, 0.75f, true) {
         @Override protected boolean removeEldestEntry(Map.Entry<String, Icon> e) { return size() > 3; }
@@ -82,25 +79,30 @@ public final class Notify {
                 .setVisibility(Notification.VISIBILITY_PRIVATE)
                 .setPublicVersion(builder(c, nm).setSmallIcon(R.drawable.ic_notification_logo)
                         .setContentTitle(c.getString(R.string.soc_notif_new)).build());
-        conversation(c, b, conv, title, sender(conv.group, title, who), body, m.ts, open);
+        boolean conversation = conversation(c, b, conv, title, sender(conv.group, title, who), body, m.ts, open);
         try {
             nm.notify(conv.id, ID, b.build());
         } catch (RuntimeException ignored) {
             // sem POST_NOTIFICATIONS: a mensagem já está gravada
+        } finally {
+            if (conversation) Shortcuts.release(c, shortcutId(conv.id));
         }
     }
 
     /** 30+: conversa, com o círculo da inicial no lugar do ícone pequeno; antes, o círculo vai de largeIcon. */
-    private static void conversation(Context c, Notification.Builder b, Chat.Conv conv, String title, String who,
-                                     String body, long ts, Intent open) {
+    private static boolean conversation(Context c, Notification.Builder b, Chat.Conv conv, String title, String who,
+                                        String body, long ts, Intent open) {
         Icon face = avatar(c, title);
         b.setLargeIcon(face);
-        if (Build.VERSION.SDK_INT < 30 || !shortcut(c, conv.id, title, open)) return;
+        if (Build.VERSION.SDK_INT < 30 || !Shortcuts.publish(c, shortcutId(conv.id), title, Intents.main(c), open)) {
+            return false;
+        }
         Person from = new Person.Builder().setKey(who).setName(who).setIcon(conv.group ? avatar(c, who) : face).build();
         b.setShortcutId(shortcutId(conv.id)).setStyle(new Notification.MessagingStyle(
                 new Person.Builder().setName(c.getString(R.string.app_name)).build())
                 .setConversationTitle(conv.group ? title : null).setGroupConversation(conv.group)
                 .addMessage(new Notification.MessagingStyle.Message(body, ts, from)));
+        return true;
     }
 
     static String sender(boolean group, String title, String member) {
@@ -111,55 +113,6 @@ public final class Notify {
     static String shortcutId(String convId) { return SHORTCUT + convId; }
 
     static boolean chatShortcut(String id) { return id.startsWith(SHORTCUT); }
-
-    /** Fora do launcher na 33+; na 30–32 o Android não tem como esconder. */
-    private static boolean shortcut(Context c, String convId, String title, Intent open) {
-        if (Build.VERSION.SDK_INT < 30) return false;
-        String id = shortcutId(convId);
-        synchronized (PUSHED) {
-            if (title.equals(PUSHED.get(id))) return true;
-            try {
-                ShortcutInfo.Builder sb = new ShortcutInfo.Builder(c, id).setShortLabel(title).setLongLived(true)
-                        .setCategories(Collections.singleton(ShortcutInfo.SHORTCUT_CATEGORY_CONVERSATION))
-                        .setIntents(new Intent[]{Intents.main(c).setAction(Intent.ACTION_VIEW),
-                                new Intent(open).setAction(Intent.ACTION_VIEW)});
-                if (Build.VERSION.SDK_INT >= 33) sb.setExcludedFromSurfaces(ShortcutInfo.SURFACE_LAUNCHER);
-                ShortcutManager sm = c.getSystemService(ShortcutManager.class);
-                List<ShortcutInfo> dyn = sm.getDynamicShortcuts();
-                String[] ids = new String[dyn.size()];
-                long[] changed = new long[dyn.size()];
-                for (int i = 0; i < ids.length; i++) {
-                    ids[i] = dyn.get(i).getId();
-                    changed[i] = dyn.get(i).getLastChangedTimestamp();
-                }
-                String old = evict(ids, changed, sm.getMaxShortcutCountPerActivity(), id);
-                if (old != null) {
-                    sm.removeDynamicShortcuts(Collections.singletonList(old));
-                    PUSHED.remove(old);
-                }
-                sm.pushDynamicShortcut(sb.build());
-            } catch (RuntimeException e) {
-                return false;
-            }
-            PUSHED.put(id, title);
-            return true;
-        }
-    }
-
-    /** Lista cheia: o push tiraria um qualquer (todos com rank 0), até o pogo_alerts; sai a conversa mais velha. */
-    static String evict(String[] ids, long[] changed, int max, String adding) {
-        if (ids.length < max) return null;
-        String old = null;
-        long at = Long.MAX_VALUE;
-        for (int i = 0; i < ids.length; i++) {
-            if (ids[i].equals(adding)) return null;
-            if (chatShortcut(ids[i]) && changed[i] < at) {
-                old = ids[i];
-                at = changed[i];
-            }
-        }
-        return old;
-    }
 
     private static Icon avatar(Context c, String name) {
         String initial = ConvRow.initial(name);
@@ -250,9 +203,6 @@ public final class Notify {
                 if (chatShortcut(s.getId())) ids.add(s.getId());
             sm.removeLongLivedShortcuts(ids);
         } catch (RuntimeException ignored) {
-        }
-        synchronized (PUSHED) {
-            PUSHED.clear();
         }
     }
 }
