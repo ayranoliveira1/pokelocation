@@ -141,10 +141,8 @@ public final class AccountActivity extends BaseActivity {
 
     private void confirmLogout() {
         Context app = getApplicationContext();
-        new MaterialAlertDialogBuilder(this)
-                .setTitle(me != null && me.email != null ? me.email : getString(R.string.soc_account))
-                .setMessage(R.string.soc_logout_confirm)
-                .setPositiveButton(R.string.soc_logout, (d, w) -> {
+        confirmSheet(me != null && me.email != null ? me.email : getString(R.string.soc_account),
+                R.string.soc_logout_confirm, R.string.soc_logout, () -> {
                     if (task != null) task.cancel();
                     task = Io.run(() -> {
                         Api.logout(app);
@@ -152,9 +150,7 @@ public final class AccountActivity extends BaseActivity {
                     }, new Io.Callback<Boolean>() {
                         @Override public void onResult(Boolean ok) { finish(); }
                     });
-                })
-                .setNegativeButton(R.string.cancel, null)
-                .show();
+                });
     }
 
     private void confirmDelete() {

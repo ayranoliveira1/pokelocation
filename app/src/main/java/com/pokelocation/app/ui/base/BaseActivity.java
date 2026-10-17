@@ -5,6 +5,7 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -14,6 +15,8 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.pokelocation.app.R;
 import com.pokelocation.app.data.Prefs;
 import com.pokelocation.app.util.Themes;
@@ -69,5 +72,23 @@ public abstract class BaseActivity extends AppCompatActivity {
             return insets;
         });
         ViewCompat.requestApplyInsets(root);
+    }
+
+    /** Confirmação em bottom sheet com botões na largura toda: num diálogo central o joystick do :overlay cobria o botão. */
+    protected void confirmSheet(CharSequence title, int message, int action, Runnable ok) {
+        View v = getLayoutInflater().inflate(R.layout.base_confirm_sheet, null);
+        BottomSheetDialog d = new BottomSheetDialog(this);
+        ((TextView) v.findViewById(R.id.base_confirm_title)).setText(title);
+        ((TextView) v.findViewById(R.id.base_confirm_message)).setText(message);
+        TextView b = v.findViewById(R.id.base_confirm_ok);
+        b.setText(action);
+        b.setOnClickListener(x -> {
+            d.dismiss();
+            ok.run();
+        });
+        v.findViewById(R.id.base_confirm_cancel).setOnClickListener(x -> d.dismiss());
+        d.setContentView(v);
+        d.getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+        d.show();
     }
 }

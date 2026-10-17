@@ -303,22 +303,17 @@ public final class PogoActivity extends BaseActivity {
 
     private void confirmLogout() {
         Context app = getApplicationContext();
-        new MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.pogo_account)
-                .setMessage(R.string.pogo_logout_confirm)
-                .setPositiveButton(R.string.soc_logout, (d, w) -> {
-                    if (task != null) task.cancel();
-                    task = Io.run(() -> {
-                        Pogo.logout(app);
-                        return Boolean.TRUE;
-                    }, new Io.Callback<Boolean>() {
-                        @Override public void onResult(Boolean ok) {
-                            task = null;
-                            render();
-                        }
-                    });
-                })
-                .setNegativeButton(R.string.cancel, null)
-                .show();
+        confirmSheet(getString(R.string.pogo_account), R.string.pogo_logout_confirm, R.string.soc_logout, () -> {
+            if (task != null) task.cancel();
+            task = Io.run(() -> {
+                Pogo.logout(app);
+                return Boolean.TRUE;
+            }, new Io.Callback<Boolean>() {
+                @Override public void onResult(Boolean ok) {
+                    task = null;
+                    render();
+                }
+            });
+        });
     }
 }
