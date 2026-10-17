@@ -61,6 +61,8 @@ public final class PogoFilterForm {
     /** null = sem o seletor de filtros salvos. */
     private List<PogoFilter.Saved> saved;
     private PopupWindow popup;
+    private View savedField;
+    private TextView savedName;
     private View modal;
 
     /** focusable: liga/desliga o teclado da janela do :overlay ao editar (null no app); linkTrainer null = sem atalho. */
@@ -251,14 +253,15 @@ public final class PogoFilterForm {
         }
     }
 
-    private void changed() { if (onChanged != null) onChanged.run(); }
+    /** Toda mudança do filtro passa aqui: o valor do select acompanha sem redesenhar o form (o campo em edição fica). */
+    private void changed() {
+        if (onChanged != null) onChanged.run();
+        if (savedName != null) showChosen();
+    }
 
-    /** O valor do select é o salvo igual ao filtro atual: mexer em qualquer filtro volta a Nenhum. */
     private void savedBar() {
         TextView label = label(R.string.pogo_saved);
         label.setPadding(0, pad, 0, Ui.dp(c, 4));
-        String current = null;
-        for (PogoFilter.Saved x : saved) if (x.filter.same(f)) current = x.name;
         int dp = Ui.dp(c, 1);
         LinearLayout bar = new LinearLayout(c);
         bar.setGravity(Gravity.CENTER_VERTICAL);
@@ -267,9 +270,7 @@ public final class PogoFilterForm {
         field.setBackground(box());
         field.setPadding(16 * dp, 0, 12 * dp, 0);
         TextView name = new TextView(c);
-        name.setText(current != null ? current : c.getString(R.string.pogo_saved_unset));
         name.setTextSize(16);
-        name.setTextColor(c.getColor(current != null ? R.color.on_surface : R.color.on_surface_variant));
         name.setSingleLine(true);
         name.setEllipsize(TextUtils.TruncateAt.END);
         field.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
@@ -277,12 +278,20 @@ public final class PogoFilterForm {
         arrow.setImageResource(R.drawable.ic_expand_more);
         arrow.setColorFilter(c.getColor(R.color.on_surface_variant));
         field.addView(arrow, new LinearLayout.LayoutParams(24 * dp, 24 * dp));
-        field.setContentDescription(c.getString(R.string.pogo_saved) + ": " + name.getText());
-        String chosen = current;
-        field.setOnClickListener(v -> openSaved(field, chosen));
+        field.setOnClickListener(v -> openSaved(field, PogoFilter.chosen(saved, f)));
+        savedField = field;
+        savedName = name;
+        showChosen();
         bar.addView(field, new LinearLayout.LayoutParams(0, 52 * dp, 1));
         bar.addView(button(R.string.pogo_saved_save, v -> saveModal()), new LinearLayout.LayoutParams(-2, 52 * dp));
         body.addView(bar);
+    }
+
+    private void showChosen() {
+        String current = PogoFilter.chosen(saved, f);
+        savedName.setText(current != null ? current : c.getString(R.string.pogo_saved_unset));
+        savedName.setTextColor(c.getColor(current != null ? R.color.on_surface : R.color.on_surface_variant));
+        savedField.setContentDescription(c.getString(R.string.pogo_saved) + ": " + savedName.getText());
     }
 
     /** A lista ancorada logo abaixo do campo e da largura dele: a PopupWindow também abre no :overlay, sem Activity. */
@@ -447,6 +456,7 @@ public final class PogoFilterForm {
 
     private void closeModal() {
         if (modal == null) return;
+        ((InputMethodManager) c.getSystemService(Context.INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(root.getWindowToken(), 0);
         root.removeView(modal);
         modal = null;
         focus(false);

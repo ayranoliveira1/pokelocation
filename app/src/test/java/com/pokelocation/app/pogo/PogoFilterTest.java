@@ -186,4 +186,18 @@ public class PogoFilterTest {
         b.km = 0;
         assertFalse(a.same(b));
     }
+
+    @Test public void chosenIsTheSavedEqualToTheCurrentFilter() {
+        List<PogoFilter.Saved> l = new ArrayList<>();
+        l.add(saved("Raros", 90));
+        l.add(saved("Cem", 100));
+        PogoFilter f = l.get(1).filter.copy();
+        assertEquals("Cem", PogoFilter.chosen(l, f));
+        f.sort = "LEVEL";
+        assertNull(PogoFilter.chosen(l, f));
+        f.sort = "IV";
+        f.km = 5;
+        assertNull(PogoFilter.chosen(l, f));
+        assertNull(PogoFilter.chosen(new ArrayList<>(), f));
+    }
 }

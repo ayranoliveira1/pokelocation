@@ -128,6 +128,12 @@ public final class PogoFilter {
 
     static boolean canSave(List<Saved> l) { return l.size() < MAX_SAVED; }
 
+    /** O salvo igual ao filtro (o valor do select); null = Nenhum. */
+    static String chosen(List<Saved> l, PogoFilter f) {
+        for (Saved x : l) if (x.filter.same(f)) return x.name;
+        return null;
+    }
+
     /** O mesmo filtro (os rótulos das espécies são só exibição). */
     boolean same(PogoFilter o) {
         JSONObject a = stored(), b = o.stored();
