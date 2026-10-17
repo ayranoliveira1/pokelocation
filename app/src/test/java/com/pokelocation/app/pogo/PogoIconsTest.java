@@ -64,4 +64,21 @@ public class PogoIconsTest {
         assertEquals(Arrays.asList(PM + "pm19.icon.png", U + "19.png"), PogoIcons.urls(19, "Rattata", "46", "12", false));
         assertEquals(PM + "pm646.fNORMAL.icon.png", PogoIcons.urls(646, "Kyurem", "0", null, false).get(0));
     }
+
+    /** Os PNGs do PokeMiners têm margem transparente (o Pikachu ocupa 36% × 40% de 256 px): o recorte quadrado o centraliza. */
+    @Test public void squareAroundTheOpaquePartWithAThinMargin() {
+        int[] pika = PogoIcons.square(256, 256, new int[]{100, 124, 193, 228});   // medido no pm25.icon.png
+        assertEquals(110, pika[2]);                // 104 de altura + 3% de cada lado
+        assertEquals(91, pika[0]);                 // centrado em x: (100 + 193) / 2 − 55
+        assertEquals(121, pika[1]);                // centrado em y: (124 + 228) / 2 − 55
+        int[] full = PogoIcons.square(128, 128, new int[]{9, 14, 118, 113});   // UICONS: já ocupa quase tudo
+        assertEquals(116, full[2]);
+        assertEquals(5, full[0]);
+        assertEquals(5, full[1]);
+        int[] edge = PogoIcons.square(256, 256, new int[]{0, 0, 250, 40});     // largo e no canto: preso dentro da imagem
+        assertEquals(256, edge[2]);
+        assertEquals(0, edge[0]);
+        assertEquals(0, edge[1]);
+        assertEquals(Arrays.toString(new int[]{0, 0, 96}), Arrays.toString(PogoIcons.square(96, 96, null)));   // tudo transparente: inteira
+    }
 }

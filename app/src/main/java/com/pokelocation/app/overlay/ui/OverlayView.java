@@ -126,6 +126,14 @@ public final class OverlayView implements View.OnClickListener {
         flows.pogoVisible(v);
     }
 
+    /** {x, y, largura, altura} da janela do joystick, ou null escondido (a coluna PoGo nasce sem cobri-lo). */
+    int[] stickBounds() {
+        if (!stickShown) return null;
+        if (stickWin.isLaidOut()) return new int[]{stickLp.x, stickLp.y, stickWin.getWidth(), stickWin.getHeight()};
+        stickWin.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);   // recém-anexada, antes do 1º layout
+        return new int[]{stickLp.x, stickLp.y, stickWin.getMeasuredWidth(), stickWin.getMeasuredHeight()};
+    }
+
     public boolean hasVisibleWindow() {
         return stickShown || drawerShown;
     }

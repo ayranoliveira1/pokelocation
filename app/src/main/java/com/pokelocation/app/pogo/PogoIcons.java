@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.os.Process;
 import android.util.Log;
 import android.util.LruCache;
@@ -34,6 +35,8 @@ import java.util.function.Consumer;
 public final class PogoIcons {
     /** Pelo nosso servidor, que busca no PokeMiners e no UICONS (GitHub) e guarda; o nome do arquivo é o de lá. */
     static final String PM = "/v1/pogo/icon/pm/", UICONS = "/v1/pogo/icon/u/";
+    /** Decodifica em até ~256 px (256 KB passageiros): o recorte da margem precisa da resolução cheia do PNG. */
+    private static final int TRIM_PX = 256;
     /** 96 px exatos (36 KB): 4 MB guardam ~110 ícones, mais que as espécies distintas de um lookup de 100. */
     private static final int TARGET_PX = 96, MEM_BYTES = 4 << 20, MAX_BYTES = 256 * 1024, TIMEOUT_MS = 10_000;
     private static final long DISK_MAX = 8L << 20, MISS_MS = 7L * 24 * 3600_000, RETRY_MS = 60_000;
@@ -245,14 +248,44 @@ public final class PogoIcons {
         BitmapFactory.decodeFile(path, o);
         if (o.outWidth <= 0 || o.outHeight <= 0) return null;
         o.inJustDecodeBounds = false;
-        o.inSampleSize = sample(o.outWidth, o.outHeight, TARGET_PX);
-        int side = Math.min(o.outWidth, o.outHeight) / o.inSampleSize;
-        if (side > TARGET_PX) {
-            o.inScaled = true;
-            o.inDensity = side;
-            o.inTargetDensity = TARGET_PX;
+        o.inSampleSize = sample(o.outWidth, o.outHeight, TRIM_PX);
+        Bitmap src = BitmapFactory.decodeFile(path, o);
+        if (src == null) return null;
+        int[] sq = square(src.getWidth(), src.getHeight(), opaque(src));
+        Matrix m = new Matrix();
+        m.setScale((float) TARGET_PX / sq[2], (float) TARGET_PX / sq[2]);
+        Bitmap out = Bitmap.createBitmap(src, sq[0], sq[1], sq[2], sq[2], m, true);
+        if (out != src) src.recycle();   // só existiu aqui: nenhuma view o segura
+        return out;
+    }
+
+    /** {esquerda, topo, direita, base} do que tem alfa visível, ou null se a imagem é toda transparente. */
+    private static int[] opaque(Bitmap b) {
+        int w = b.getWidth(), h = b.getHeight(), l = w, t = h, r = -1, bo = -1;
+        int[] row = new int[w];
+        for (int y = 0; y < h; y++) {
+            b.getPixels(row, 0, w, 0, y, w, 1);
+            for (int x = 0; x < w; x++) {
+                if ((row[x] >>> 24) <= 16) continue;
+                if (x < l) l = x;
+                if (x > r) r = x;
+                if (y < t) t = y;
+                bo = y;
+            }
         }
-        return BitmapFactory.decodeFile(path, o);
+        return r < 0 ? null : new int[]{l, t, r + 1, bo + 1};
+    }
+
+    /**
+     * {x, y, lado} do quadrado centrado na parte opaca, com 3% de folga de cada lado e preso na imagem: o Pokémon ocupa
+     * o ícone quase todo, sem a margem transparente dos PNGs. Quadrado porque o mapa estica o ícone num quadrado.
+     */
+    static int[] square(int w, int h, int[] box) {
+        int max = Math.min(w, h);
+        if (box == null) return new int[]{(w - max) / 2, (h - max) / 2, max};
+        int side = Math.min(max, Math.round(Math.max(box[2] - box[0], box[3] - box[1]) * 1.06f));
+        int x = (box[0] + box[2]) / 2 - side / 2, y = (box[1] + box[3]) / 2 - side / 2;
+        return new int[]{Math.max(0, Math.min(x, w - side)), Math.max(0, Math.min(y, h - side)), side};
     }
 
     /** Uma vez por processo: .404 vencidos fora e, acima de 8 MB, os PNGs mais antigos primeiro. */

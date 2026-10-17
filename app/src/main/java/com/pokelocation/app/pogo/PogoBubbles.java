@@ -14,8 +14,8 @@ import android.os.PowerManager;
 import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.animation.LinearInterpolator;
 import android.widget.ImageView;
@@ -45,11 +45,14 @@ public final class PogoBubbles {
         double lat();
         double lng();
         void teleport(String text, String title);
+        /** {x, y, largura, altura} da janela do joystick à vista, ou null: a coluna nasce sem cobri-lo. */
+        int[] stick();
     }
 
     private static final String TAG = "PogoBubbles", POS = "overlay_panels", COUNT = "pogo_col_n";
     /** O servidor aceita 10 buscas/min por conta e o 429 vem sem retry_after: a busca manual espera este tanto. */
     private static final long GAP_MS = 6_000;
+    private static final int FEW = 5, MANY = 10;
     /** Opacidade do card sobre o jogo, para não atrapalhar. */
     private static final float ALPHA = 0.8f;
 
@@ -62,15 +65,15 @@ public final class PogoBubbles {
     private final SharedPreferences pos;
     private final String key;
     private final int size, gap, margin;
-    private final LinearLayout root, top, side, bubbles;
+    private final LinearLayout root, side, bubbles;
     private final ImageView refresh;
     private final TextView count;
     private final ObjectAnimator spin;
-    private final WindowManager.LayoutParams lp;
+    private final WindowManager.LayoutParams lp, sideLp;
     private final ImageView logo;
     private final List<Pogo.Mon> mons = new ArrayList<>();
-    private int n;
-    private boolean open = true, visible, shown, left = true, destroyed;
+    private int n, downX, downY;   // a coluna no DOWN da logo: o arraste conta a partir daqui
+    private boolean open = true, visible, shown, destroyed;
     private final Consumer<Bitmap> onIcon = b -> { if (b != null && !destroyed) icons(); };
     private final Runnable auto = this::auto, retry = this::retry, prune = this::render, user = () -> load(true);
     private long lastAt;
@@ -91,8 +94,8 @@ public final class PogoBubbles {
         wm = (WindowManager) c.getSystemService(Context.WINDOW_SERVICE);
         display = ((DisplayManager) app.getSystemService(Context.DISPLAY_SERVICE)).getDisplay(Display.DEFAULT_DISPLAY);
         pos = c.getSharedPreferences(POS, Context.MODE_PRIVATE);   // só o :overlay grava
-        key = classic ? "pogo_col_classic" : "pogo_col_drawer";
-        n = pos.getInt(COUNT, 5) == 10 ? 10 : 5;
+        key = classic ? "pogo_col_classic" : "pogo_col_drawer_top";   // o padrão da gaveta saiu de baixo: a salva antiga não vale
+        n = pos.getInt(COUNT, FEW) == MANY ? MANY : FEW;
         size = c.getResources().getDimensionPixelSize(R.dimen.ov_btn);   // o botão da gaveta
         gap = Ui.dp(c, 6);
         margin = Ui.dp(c, 8);
@@ -102,7 +105,6 @@ public final class PogoBubbles {
         logo.setImageResource(R.mipmap.ic_launcher_round);
         logo.setContentDescription(c.getString(R.string.pogo_bubbles_logo));
         side = new LinearLayout(c);
-        side.setVisibility(View.GONE);
         refresh = button(PogoChips.refresh(c, primary), R.string.pogo_refresh, v -> refreshNow());
         button(PogoChips.lines(c, primary), R.string.pogo_panel_filters, v -> openSheet());
         count = new TextView(c);
@@ -114,17 +116,12 @@ public final class PogoBubbles {
         count.setOnClickListener(v -> cycle());
         side.addView(count, sideLp());
         showCount();
-        top = new LinearLayout(c);
-        top.addView(logo, new LinearLayout.LayoutParams(size, size));
-        top.addView(side);
         bubbles = new LinearLayout(c);
         bubbles.setOrientation(LinearLayout.VERTICAL);
         root = new LinearLayout(c);
         root.setOrientation(LinearLayout.VERTICAL);
-        // WRAP: com MATCH (o padrão) as bolhas ficavam na largura dos botões abertos, e não embaixo da logo
-        LinearLayout.LayoutParams wrap = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        root.addView(top, wrap);
-        root.addView(bubbles, new LinearLayout.LayoutParams(wrap));
+        root.addView(logo, new LinearLayout.LayoutParams(size, size));
+        root.addView(bubbles);
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> { if (b - t != ob - ot || r - l != or - ol) fit(); });
 
         spin = ObjectAnimator.ofFloat(refresh, View.ROTATION, 0f, 360f);
@@ -135,8 +132,20 @@ public final class PogoBubbles {
         lp = params(WindowManager.LayoutParams.WRAP_CONTENT);
         lp.x = pos.getInt(key + "_x", -1);
         lp.y = pos.getInt(key + "_y", -1);
+        sideLp = params(WindowManager.LayoutParams.WRAP_CONTENT);
         logo.setOnClickListener(v -> toggleSide());
-        logo.setOnTouchListener(new WindowDrag(wm, root, lp, display, true, (x, y) -> moved()));
+        WindowDrag drag = new WindowDrag(wm, root, lp, display, true, (x, y) -> moved());
+        logo.setOnTouchListener((v, e) -> {
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                downX = lp.x;
+                downY = lp.y;
+            }
+            boolean r = drag.onTouch(v, e);
+            if (e.getActionMasked() == MotionEvent.ACTION_MOVE && WindowDrag.dragged(lp.x - downX, lp.y - downY)) {
+                closeSide();   // ficariam para trás
+            }
+            return r;
+        });
     }
 
     /** O joystick apareceu ou sumiu (oculto, Stop): a coluna vai junto. */
@@ -185,7 +194,8 @@ public final class PogoBubbles {
             return;
         }
         readScreen();
-        int[] p = place(classic, lp.x, lp.y, size, size + n * (size + gap), scr.x, scr.y, margin, size, 2 * size);
+        int[] p = place(classic, lp.x, lp.y, size, size + n * (size + gap), size + MANY * (size + gap), scr.x, scr.y, margin,
+                size, host.stick());
         lp.x = p[0];
         lp.y = p[1];
         try {
@@ -208,21 +218,29 @@ public final class PogoBubbles {
 
     /**
      * Sem posição salva, ou com o x fora da tela (girou, outra tela): clássico no canto superior esquerdo, gaveta no
-     * inferior direito. A salva só sobe o que for preciso para caber (de 5 para 10 bolhas).
+     * superior direito, descendo. Se a coluna cheia (full, 10 bolhas) chegaria ao joystick, desce ao lado dele, por
+     * dentro. A salva só sobe o que for preciso para caber (de 5 para 10 bolhas).
      */
-    static int[] place(boolean classic, int x, int y, int w, int h, int scrW, int scrH, int margin, int top, int bottom) {
+    static int[] place(boolean classic, int x, int y, int w, int h, int full, int scrW, int scrH, int margin, int top,
+                       int[] stick) {
         if (x >= 0 && y >= 0 && x <= scrW - w) return new int[]{x, WindowDrag.clamp(y, 0, Math.max(0, scrH - h))};
-        return classic ? new int[]{margin, top} : new int[]{scrW - w - margin, scrH - h - bottom};
+        x = classic ? margin : scrW - w - margin;
+        if (stick != null && x < stick[0] + stick[2] && stick[0] < x + w && top < stick[1] + stick[3] && stick[1] < top + full) {
+            x = stick[0] - w - margin;
+            if (x < 0) x = Math.min(stick[0] + stick[2] + margin, scrW - w);
+        }
+        return new int[]{x, top};
     }
 
     static boolean onLeft(int x, int w, int scrW) {
         return x + w / 2 < scrW / 2;
     }
 
-    /** Soltou a logo: guarda o x da logo (com os botões abertos à esquerda dela, a janela começa antes). */
+    /** Soltou a logo: só um arraste de verdade grava a posição (o toque curto deixa o padrão livre). */
     private void moved() {
         closeCard();
-        pos.edit().putInt(key + "_x", lp.x + top.getLeft() + logo.getLeft()).putInt(key + "_y", lp.y).apply();
+        if (!WindowDrag.dragged(lp.x - downX, lp.y - downY)) return;
+        pos.edit().putInt(key + "_x", lp.x).putInt(key + "_y", lp.y).apply();
     }
 
     /** A coluna mudou de tamanho (quantidade, busca, botões): continua inteira na tela. */
@@ -259,36 +277,29 @@ public final class PogoBubbles {
 
     // ------------------------------------------------------------------ botões da logo
 
-    /** Com a coluna à direita os botões abrem à esquerda da logo: a janela cresce para lá e a logo não sai do lugar. */
+    /**
+     * Os botões numa janela própria, ao lado da logo e para o lado de dentro da tela: na janela da coluna eles a
+     * alargavam, e a área vazia embaixo deles engolia o toque do jogo (janela de overlay não deixa o toque atravessar).
+     */
     private void toggleSide() {
-        if (side.getVisibility() == View.VISIBLE) {
+        if (side.getParent() != null) {
             closeSide();
             return;
         }
         readScreen();
-        left = onLeft(lp.x, size, scr.x);
-        top.removeView(side);
-        top.addView(side, left ? 1 : 0);
-        root.setGravity(left ? Gravity.START : Gravity.END);
-        side.setVisibility(View.VISIBLE);
-        if (!left) shift(-sideWidth());
+        side.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int w = side.getMeasuredWidth();
+        int x = onLeft(lp.x, size, scr.x) ? lp.x + size : lp.x - w;
+        sideLp.x = WindowDrag.clamp(x, 0, Math.max(0, scr.x - w));
+        sideLp.y = lp.y + (size - side.getMeasuredHeight()) / 2;
+        try {
+            wm.addView(side, sideLp);
+        } catch (RuntimeException ignored) {
+        }
     }
 
     private void closeSide() {
-        if (side.getVisibility() != View.VISIBLE) return;
-        side.setVisibility(View.GONE);
-        if (!left) shift(sideWidth());
-    }
-
-    private void shift(int dx) {
-        if (!shown) return;
-        lp.x += dx;
-        update(root, lp);
-    }
-
-    private int sideWidth() {
-        side.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        return side.getMeasuredWidth();
+        remove(side);
     }
 
     private ImageView button(Drawable icon, int desc, View.OnClickListener click) {
@@ -317,7 +328,7 @@ public final class PogoBubbles {
     }
 
     static int nextCount(int n) {
-        return n == 5 ? 10 : 5;
+        return n == FEW ? MANY : FEW;
     }
 
     private void cycle() {

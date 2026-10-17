@@ -60,7 +60,7 @@ public final class WindowDrag implements View.OnTouchListener {
                 return true;
             case MotionEvent.ACTION_UP:
                 done.onMoved(lp.x, lp.y);   // já preso na tela (corrige o original)
-                if (clickable && Math.abs(lp.x - x0) < CLICK_SLOP_PX && Math.abs(lp.y - y0) < CLICK_SLOP_PX) v.performClick();
+                if (clickable && !dragged(lp.x - x0, lp.y - y0)) v.performClick();
                 return true;
             case MotionEvent.ACTION_CANCEL:
                 done.onMoved(lp.x, lp.y);
@@ -68,6 +68,11 @@ public final class WindowDrag implements View.OnTouchListener {
             default:
                 return false;
         }
+    }
+
+    /** Passou da tolerância do clique: o tremor de um toque curto (o MOVE já soma o delta cru) não conta como arraste. */
+    public static boolean dragged(int dx, int dy) {
+        return Math.abs(dx) >= CLICK_SLOP_PX || Math.abs(dy) >= CLICK_SLOP_PX;
     }
 
     public static int clamp(int v, int min, int max) {
