@@ -185,6 +185,11 @@ final class PogoText {
         return despawnMs > 0 && despawnMs <= now;
     }
 
+    static int minutesLeft(long expiresMs, long now) {
+        if (expiresMs == 0) return -1;
+        return (int) ((Math.max(0, expiresMs - now) + 59_999) / 60_000);
+    }
+
     static String level(double l) {
         return l == Math.floor(l) ? String.valueOf((long) l) : String.valueOf(l);
     }
