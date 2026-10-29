@@ -13,6 +13,7 @@ import android.util.JsonToken;
 import com.pokelocation.app.App;
 import com.pokelocation.app.Io;
 import com.pokelocation.app.data.Prefs;
+import com.pokelocation.app.geo.CoordParser;
 import com.pokelocation.app.social.Session;
 import com.pokelocation.app.social.net.Api;
 
@@ -102,6 +103,33 @@ public final class Pogo {
         String iconKey;
     }
 
+    /** coords ("lat,lng" da API) é a identidade da candy. distanceKm NaN se não veio; expiresMs 0 = nunca é podada. */
+    public static final class Candy {
+        public final String coords, location;
+        public final double lat, lng, distanceKm;
+        public final long expiresMs;
+
+        Candy(String coords, String location, double lat, double lng, double distanceKm, long expiresMs) {
+            this.coords = coords;
+            this.location = location;
+            this.lat = lat;
+            this.lng = lng;
+            this.distanceKm = distanceKm;
+            this.expiresMs = expiresMs;
+        }
+    }
+
+    /** list na ordem da API (a mais perto primeiro); cap = o limite do plano do token que buscou. */
+    public static final class Candies {
+        public final List<Candy> list;
+        public final int cap;
+
+        Candies(List<Candy> list, int cap) {
+            this.list = list;
+            this.cap = cap;
+        }
+    }
+
     static final class Species {
         final int id, form;
         final String name, formName;
@@ -174,6 +202,15 @@ public final class Pogo {
         } catch (Error e) {
             searchLimited(e);
             throw e;
+        }
+    }
+
+    public static Candies rareCandy(Context c, double lat, double lng, int km) throws IOException {
+        try {
+            return route(c, "POST", "/rare-candy", t -> new JSONObject().put("center_lat", lat).put("center_lng", lng)
+                    .put("radius_km", km), MAX_BODY, SLOW_MS, Pogo::candies);
+        } catch (JSONException x) {
+            throw new IOException("bad response");
         }
     }
 
@@ -698,6 +735,54 @@ public final class Pogo {
     static List<Mon> parseLookup(String text) throws IOException { return json(new StringReader(text), r -> results(r, true)); }
 
     static List<Mon> parseSearch(String text) throws IOException { return json(new StringReader(text), r -> results(r, false)); }
+
+    static Candies parseCandies(String text) throws IOException { return json(new StringReader(text), Pogo::candies); }
+
+    private static Candies candies(JsonReader r) throws IOException {
+        List<Candy> list = new ArrayList<>();
+        int cap = 10;
+        r.beginObject();
+        while (r.hasNext()) {
+            switch (r.nextName()) {
+                case "results":
+                    if (r.peek() != JsonToken.BEGIN_ARRAY) {
+                        r.skipValue();
+                        break;
+                    }
+                    r.beginArray();
+                    while (r.hasNext()) {
+                        Candy k = candy(r);
+                        if (k != null) list.add(k);
+                    }
+                    r.endArray();
+                    break;
+                case "cap": cap = (int) num(r, 10); break;
+                default: r.skipValue();
+            }
+        }
+        r.endObject();
+        return new Candies(list, cap);
+    }
+
+    /** null sem coords válido: sem ele não há aonde ir nem como lembrar a visita. */
+    private static Candy candy(JsonReader r) throws IOException {
+        String coords = null, location = null;
+        double km = Double.NaN;
+        long expires = 0;
+        r.beginObject();
+        while (r.hasNext()) {
+            switch (r.nextName()) {
+                case "coords": coords = str(r); break;
+                case "location": location = str(r); break;
+                case "expires_at": expires = isoMs(str(r)); break;
+                case "distance_km": km = num(r, Double.NaN); break;
+                default: r.skipValue();
+            }
+        }
+        r.endObject();
+        double[] ll = new double[2];
+        return CoordParser.parse(coords, ll) ? new Candy(coords, location, ll[0], ll[1], km, expires) : null;
+    }
 
     /** {results:[…]}: no mapa (lookup) só entra quem tem apx_lat/apx_long; no /search não há coordenada. */
     static List<Mon> results(JsonReader r, boolean map) throws IOException {

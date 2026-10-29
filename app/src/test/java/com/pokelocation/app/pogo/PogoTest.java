@@ -277,6 +277,40 @@ public class PogoTest {
         assertEquals(1792020676000L, m.despawnMs);
     }
 
+    @Test public void parseCandiesKeepsOrderAndFields() throws Exception {
+        Pogo.Candies c = Pogo.parseCandies("{\"results\":[{\"coords\":\"-23.583031,-46.657144\","
+                + "\"location\":\"São Paulo, Brazil\",\"expires_at\":\"2026-10-29T22:05:10Z\",\"distance_km\":0.16,"
+                + "\"extra\":{\"a\":1}},{\"coords\":\"-23.59,-46.66\",\"location\":\"B\",\"distance_km\":1.2}],"
+                + "\"tier\":\"vip\",\"cap\":25}");
+        assertEquals(2, c.list.size());
+        Pogo.Candy a = c.list.get(0);
+        assertEquals("-23.583031,-46.657144", a.coords);
+        assertEquals(-23.583031, a.lat, 0);
+        assertEquals(-46.657144, a.lng, 0);
+        assertEquals(Pogo.isoMs("2026-10-29T22:05:10Z"), a.expiresMs);
+        assertEquals(0.16, a.distanceKm, 0);
+        assertEquals("São Paulo, Brazil", a.location);
+        assertEquals("-23.59,-46.66", c.list.get(1).coords);
+        assertEquals(25, c.cap);
+    }
+
+    @Test public void parseCandiesSkipsBadCoords() throws Exception {
+        Pogo.Candies c = Pogo.parseCandies("{\"results\":[{\"coords\":\"x\"},{\"coords\":null},{\"location\":\"L\"},"
+                + "{\"coords\":\"1,2\"}]}");
+        assertEquals(1, c.list.size());
+        assertEquals("1,2", c.list.get(0).coords);
+    }
+
+    @Test public void parseCandiesDefaults() throws Exception {
+        Pogo.Candies c = Pogo.parseCandies("{\"results\":[{\"coords\":\"1,2\"}]}");
+        assertEquals(0, c.list.get(0).expiresMs);
+        assertTrue(Double.isNaN(c.list.get(0).distanceKm));
+        assertEquals(10, c.cap);
+        Pogo.Candies empty = Pogo.parseCandies("{\"cap\":5}");
+        assertTrue(empty.list.isEmpty());
+        assertEquals(5, empty.cap);
+    }
+
     @Test public void isoWithZoneOrOffset() {
         long z = 1792020676000L;
         assertEquals(z, Pogo.isoMs("2026-10-14T23:31:16Z"));
