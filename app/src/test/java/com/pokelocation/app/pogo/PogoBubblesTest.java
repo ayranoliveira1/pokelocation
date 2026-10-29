@@ -9,7 +9,10 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PogoBubblesTest {
     private static final int W = 1080, H = 2400, COL_W = 150, COL_H = 900, FULL = 1400, M = 20, TOP = 100;
@@ -63,5 +66,33 @@ public class PogoBubblesTest {
         assertEquals(now + 4000, PogoBubbles.nextDespawn(l, 3, now)); // o 4º não está na coluna
         assertEquals(now + 1000, PogoBubbles.nextDespawn(l, 10, now));
         assertEquals(0, PogoBubbles.nextDespawn(Arrays.asList(mon(0), mon(now - 1)), 5, now)); // nada a agendar
+    }
+
+    @Test public void candyCountCycleRespectsCap() {
+        assertEquals(10, PogoBubbles.nextCandyCount(5, 10));
+        assertEquals(5, PogoBubbles.nextCandyCount(10, 10));
+        assertEquals(25, PogoBubbles.nextCandyCount(10, 25));
+        assertEquals(5, PogoBubbles.nextCandyCount(25, 25));
+        assertEquals(5, PogoBubbles.nextCandyCount(100, 100));
+        assertEquals(5, PogoBubbles.nextCandyCount(5, 5));
+        assertEquals(5, PogoBubbles.nextCandyCount(5, 0));
+    }
+
+    @Test public void candyCountClampsSaved() {
+        assertEquals(10, PogoBubbles.candyCount(25, 10));
+        assertEquals(10, PogoBubbles.candyCount(10, 25));
+        assertEquals(5, PogoBubbles.candyCount(7, 25));
+        assertEquals(25, PogoBubbles.candyCount(50, 30));
+        assertEquals(5, PogoBubbles.candyCount(10, -1));
+    }
+
+    @Test public void pruneVisitedKeepsOnlyLive() {
+        Set<String> visited = new HashSet<>(Arrays.asList("a", "b", "c"));
+        PogoBubbles.pruneVisited(visited, Arrays.asList(candy("a", 0), candy("c", 900)), 1000);
+        assertEquals(Collections.singleton("a"), visited);
+    }
+
+    private static Pogo.Candy candy(String coords, long expires) {
+        return new Pogo.Candy(coords, null, 0, 0, Double.NaN, expires);
     }
 }

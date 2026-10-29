@@ -79,6 +79,10 @@ final class OverlayFlows {
             @Override public void teleport(String text, String title) { openTeleport(text, title); }
 
             @Override public int[] stick() { return ov.stickBounds(); }
+
+            @Override public void go(double lat, double lng, boolean walk) {
+                if (!ov.isDestroyed()) ov.host.onGo(lat, lng, Double.NaN, walk);
+            }
         });
         pogo.setVisible(visible);
     }
