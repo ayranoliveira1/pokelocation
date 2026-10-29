@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pogo_mode_to_candy">Show Rare Candy</string>
+    <string name="pogo_mode_to_pokemon">Show Pokémon</string>
+    <string name="pogo_candy_title">Rare Candy</string>
+    <string name="pogo_candy_expires">Gone at %1$s (%2$d min left)</string>
+    <string name="pogo_candy_walk">Walk there</string>
+    <string name="pogo_candy_copy">Copy coordinates</string>
+    <string name="pogo_candy_distance">Rare Candy distance</string>
+    <string name="pogo_candy_none">No Rare Candy within %d km</string>
+    <string name="pogo_candy_count">Rare Candy shown: %d</string>
+    <string name="pogo_bubbles_loading">Loading</string>
+</resources>
