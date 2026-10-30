@@ -666,7 +666,7 @@ public final class PogoBubbles {
         d.setColor(ctx.getColor(R.color.surface));
         d.setStroke(Ui.dp(ctx, 1), ctx.getColor(R.color.outline));
         b.setBackground(d);
-        int p = Ui.dp(ctx, 4);
+        int p = Ui.dp(ctx, candyMode ? 8 : 4);
         b.setPadding(p, p, p, p);
         if (candyMode) gestures(b);
         else b.setOnClickListener(this::tap);
