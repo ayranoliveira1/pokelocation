@@ -58,6 +58,8 @@ public class PogoIconsTest {
     @Test public void diskNamesDoNotCollide() {
         assertEquals("pm25.icon.png", PogoIcons.fileName(PM + "pm25.icon.png"));
         assertEquals("u25.png", PogoIcons.fileName(U + "25.png"));
+        assertEquals("/v1/pogo/icon/it/1301.png", PogoIcons.CANDY_URL);
+        assertEquals("it1301.png", PogoIcons.fileName(PogoIcons.CANDY_URL));
     }
 
     @Test public void zeroMeansNoFormNorCostume() {

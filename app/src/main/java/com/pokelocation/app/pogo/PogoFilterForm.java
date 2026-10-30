@@ -35,9 +35,12 @@ import com.pokelocation.app.util.Ui;
 import org.json.JSONArray;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.IntConsumer;
 
 /**
@@ -58,6 +61,7 @@ public final class PogoFilterForm {
     private boolean advanced;
     private List<Pogo.Species> catalog;
     private Io.Task task;
+    private boolean openPage;
     /** null = sem o seletor de filtros salvos. */
     private List<PogoFilter.Saved> saved;
     private PopupWindow popup;
@@ -630,6 +634,16 @@ public final class PogoFilterForm {
             speciesPage();
             return;
         }
+        openPage = true;
+        loadCatalog();
+    }
+
+    /** Os filters de um alerta voltam do servidor sem os rótulos: sem eles os chips mostram "#id". */
+    void fillLabels() {
+        if (!unlabeled(f).isEmpty()) loadCatalog();
+    }
+
+    private void loadCatalog() {
         if (task != null) return;
         Context app = c.getApplicationContext();
         task = Io.run(() -> Pogo.catalog(app), new Io.Callback<List<Pogo.Species>>() {
@@ -637,14 +651,48 @@ public final class PogoFilterForm {
                 task = null;
                 l.sort((x, y) -> Integer.compare(x.id, y.id)); // agrupa as formas de cada espécie
                 catalog = l;
-                speciesPage();
+                label(f, l, n -> c.getString(R.string.pogo_f_any_form, n));
+                if (openPage) speciesPage();
+                else if (root.findFocus() == null) render();   // refazer o body levaria o campo em edição e o teclado
+                openPage = false;
             }
             @Override public void onError(Throwable t) {
                 task = null;
-                Ui.toast(c, R.string.pogo_catalog_failed);
+                if (openPage) Ui.toast(c, R.string.pogo_catalog_failed);
+                openPage = false;
             }
         });
     }
+
+    private static Set<String> unlabeled(PogoFilter f) {
+        Set<String> keys = new HashSet<>();
+        for (int id : f.pokemonIds) keys.add(PogoFilter.labelKey(id, -1));
+        for (int[] sf : f.speciesForms) keys.add(PogoFilter.labelKey(sf[0], sf[1]));
+        keys.removeAll(f.labels.keySet());
+        return keys;
+    }
+
+    static void label(PogoFilter f, List<Pogo.Species> catalog, Function<String, String> anyForm) {
+        Set<String> keys = unlabeled(f);
+        if (!keys.isEmpty()) rows(catalog, anyForm, (key, label, s, form) -> { if (keys.contains(key)) f.labels.put(key, label); });
+    }
+
+    interface Row { void add(String key, String label, Pogo.Species s, boolean form); }
+
+    /** catalog em ordem de id: uma linha por espécie ("qualquer forma" se tiver várias) e uma por forma. */
+    static void rows(List<Pogo.Species> catalog, Function<String, String> anyForm, Row row) {
+        for (int i = 0; i < catalog.size(); i++) {
+            Pogo.Species s = catalog.get(i);
+            String name = name(s);
+            boolean several = (i > 0 && catalog.get(i - 1).id == s.id) || (i + 1 < catalog.size() && catalog.get(i + 1).id == s.id);
+            if (i == 0 || catalog.get(i - 1).id != s.id)
+                row.add(PogoFilter.labelKey(s.id, -1), several ? anyForm.apply(name) : name, s, false);
+            if (several)
+                row.add(PogoFilter.labelKey(s.id, s.form), name + " · " + (s.formName != null ? s.formName : "#" + s.form), s, true);
+        }
+    }
+
+    private static String name(Pogo.Species s) { return s.name != null ? s.name : "#" + s.id; }
 
     /** Linha da lista de espécies: views da linha reciclada + a chave atual (descarta foto de pedido antigo). */
     private static final class Holder {
@@ -663,26 +711,13 @@ public final class PogoFilterForm {
     private void speciesPage() {
         List<String> keys = new ArrayList<>(), labels = new ArrayList<>(), titles = new ArrayList<>(), dex = new ArrayList<>();
         List<Pogo.Mon> icons = new ArrayList<>();
-        for (int i = 0; i < catalog.size(); i++) {
-            Pogo.Species s = catalog.get(i);
-            String name = s.name != null ? s.name : "#" + s.id;
-            boolean several = (i > 0 && catalog.get(i - 1).id == s.id) || (i + 1 < catalog.size() && catalog.get(i + 1).id == s.id);
-            if (i == 0 || catalog.get(i - 1).id != s.id) {
-                keys.add(PogoFilter.labelKey(s.id, -1));
-                labels.add(several ? c.getString(R.string.pogo_f_any_form, name) : name);
-                titles.add(several ? c.getString(R.string.pogo_f_any_form, name) : name);
-                icons.add(icon(s.id, name, null));
-                dex.add(String.format(Locale.ROOT, "#%03d", s.id));
-            }
-            if (several) {
-                String form = s.formName != null ? s.formName : "#" + s.form;
-                keys.add(PogoFilter.labelKey(s.id, s.form));
-                labels.add(name + " · " + form);
-                titles.add(name + " · " + form);
-                icons.add(icon(s.id, name, s.formName));
-                dex.add(dex.get(dex.size() - 1));
-            }
-        }
+        rows(catalog, n -> c.getString(R.string.pogo_f_any_form, n), (key, label, s, form) -> {
+            keys.add(key);
+            labels.add(label);
+            titles.add(label);
+            icons.add(icon(s.id, name(s), form ? s.formName : null));
+            dex.add(form ? dex.get(dex.size() - 1) : String.format(Locale.ROOT, "#%03d", s.id));
+        });
         List<Integer> shown = new ArrayList<>();
         for (int i = 0; i < keys.size(); i++) shown.add(i);
         int dp = Ui.dp(c, 1);

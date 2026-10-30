@@ -146,6 +146,15 @@ public class PogoTextTest {
     }
 
     @Test
+    public void minutesLeftRoundsUpNeverNegative() {
+        long now = 1_000_000;
+        assertEquals(2, PogoText.minutesLeft(now + 61_000, now));
+        assertEquals(1, PogoText.minutesLeft(now + 60_000, now));
+        assertEquals(0, PogoText.minutesLeft(now - 5_000, now));
+        assertEquals(-1, PogoText.minutesLeft(0, now));
+    }
+
+    @Test
     public void offlineIsOnlyTheNetworkFailures() {
         assertTrue(PogoText.offline(new ConnectException()));
         assertTrue(PogoText.offline(new UnknownHostException()));

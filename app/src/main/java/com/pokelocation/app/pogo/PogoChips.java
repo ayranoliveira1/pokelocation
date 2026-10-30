@@ -289,6 +289,77 @@ final class PogoChips {
         return d;
     }
 
+    /** O P&B da candy visitada é um ColorFilter de quem usa: alfa e filtro valem para todas as tintas. */
+    private abstract static class Icon extends Drawable {
+        private final int size;
+        private final Paint[] paints;
+
+        Icon(float size, Paint... paints) {
+            this.size = (int) size;
+            this.paints = paints;
+            setBounds(0, 0, this.size, this.size);
+        }
+
+        @Override public void setAlpha(int a) { for (Paint p : paints) p.setAlpha(a); }
+        @Override public void setColorFilter(ColorFilter cf) { for (Paint p : paints) p.setColorFilter(cf); }
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+        @Override public int getIntrinsicWidth() { return size; }
+        @Override public int getIntrinsicHeight() { return size; }
+    }
+
+    private static Paint fill(int color) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setColor(color);
+        return p;
+    }
+
+    /** Grade de 24 escalada aos bounds: a mesma candy serve na fileira, na bolha e no card. */
+    static Drawable candy(Context c) {
+        Paint wrap = fill(0xFFB39DDB), body = fill(0xFF7E57C2), shine = fill(0xFFFFFFFF);
+        android.graphics.Path ends = new android.graphics.Path();
+        ends.moveTo(7.5f, 12);
+        ends.lineTo(1.5f, 7);
+        ends.lineTo(3, 12);
+        ends.lineTo(1.5f, 17);
+        ends.close();
+        ends.moveTo(16.5f, 12);
+        ends.lineTo(22.5f, 7);
+        ends.lineTo(21, 12);
+        ends.lineTo(22.5f, 17);
+        ends.close();
+        return new Icon(Ui.dp(c, 20), wrap, body, shine) {
+            @Override public void draw(Canvas cv) {
+                android.graphics.Rect b = getBounds();
+                float u = b.width() / 24f;
+                int save = cv.save();
+                cv.translate(b.left, b.top);
+                cv.scale(u, u);
+                cv.rotate(-30, 12, 12);
+                cv.drawPath(ends, wrap);
+                cv.drawCircle(12, 12, 6, body);
+                cv.drawCircle(9.6f, 9.6f, 1.4f, shine);
+                cv.restoreToCount(save);
+            }
+        };
+    }
+
+    static Drawable pokeball(Context c, int color) {
+        float sw = Ui.dp(c, 2);
+        Paint p = fill(color);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(sw);
+        return new Icon(Ui.dp(c, 20), p) {
+            @Override public void draw(Canvas cv) {
+                android.graphics.Rect b = getBounds();
+                float r = b.width() / 2f - sw, br = r * 0.3f, cx = b.exactCenterX(), cy = b.exactCenterY();
+                cv.drawCircle(cx, cy, r, p);
+                cv.drawCircle(cx, cy, br, p);
+                cv.drawLine(cx - r, cy, cx - br, cy, p);
+                cv.drawLine(cx + br, cy, cx + r, cy, p);
+            }
+        };
+    }
+
     static View summaryChip(Context c, CharSequence text, View.OnClickListener open, View.OnClickListener remove) {
         LinearLayout chip = new LinearLayout(c);
         chip.setGravity(Gravity.CENTER_VERTICAL);
