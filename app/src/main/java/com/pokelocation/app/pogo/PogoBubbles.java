@@ -427,9 +427,9 @@ public final class PogoBubbles {
     }
 
     private void showMode() {
-        if (candyMode && candyIcon == null) candyIcon = PogoChips.candy(ctx);
-        if (!candyMode && ballIcon == null) ballIcon = PogoChips.pokeball(ctx, ctx.getColor(R.color.primary));
-        mode.setImageDrawable(candyMode ? candyIcon : ballIcon);
+        if (candyIcon == null) candyIcon = PogoChips.candy(ctx);
+        if (candyMode && ballIcon == null) ballIcon = PogoChips.pokeball(ctx, ctx.getColor(R.color.primary));
+        mode.setImageDrawable(candyMode ? ballIcon : candyIcon);
         mode.setContentDescription(ctx.getString(candyMode ? R.string.pogo_mode_to_pokemon : R.string.pogo_mode_to_candy));
         showCount();
     }
