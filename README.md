@@ -15,6 +15,24 @@ bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
 
 ## Versões
 
+### v1.3: Rare Candy no joystick e editar alertas
+
+- **Modo Rare Candy na coluna de bolhas:** um botão novo na fileira da logo troca entre Pokémon e candies; o ícone dele
+  mostra o modo para onde vai trocar. As candies vêm da mais perto para a mais longe, com a imagem do item baixada sob
+  demanda (como as fotos dos Pokémon).
+- **Toques na candy:** 1 toque anda até ela na velocidade do joystick (a troca de velocidade no caminho vale),
+  2 toques teleportam e segurar abre o card com **Ir andando**, **Teleportar** e **Copiar coordenadas**.
+- **Visitadas:** a candy fica cinza na hora e some na próxima atualização, e as seguintes sobem. Um spawn novo no
+  mesmo lugar aparece normal.
+- **Filtros no modo Candy:** distância de 1, 2, 5, 10 ou 20 km; a quantidade vai até o limite da sua conta do PoGo, e
+  a coluna rola sem barra quando não cabe. A busca usa a sua conta do PoGo vinculada e, sem ela, as contas do servidor.
+- **Logo carregando:** ao atualizar, nos dois modos, a logo da coluna vira o indicador de carregamento.
+- **Editar alerta** em **Meus alertas** (lápis ou toque na linha), com nome, filtros e raio já preenchidos.
+- **Correções:** o card do joystick abre sempre inteiro na tela, sem cobrir a coluna; teleportar durante um "ir
+  andando" cancela a caminhada.
+
+Precisa do servidor v1.2. Tudo das versões anteriores continua igual.
+
 ### v1.2: integração com o PoGo Coordinates (com a conta PokeLocation)
 
 Tudo do PoGo exige a conta PokeLocation e passa pelo nosso servidor; sem a conta, nada dele aparece no app.
@@ -86,10 +104,10 @@ configuração e os modos avançados de injeção. Os detalhes estão em [Como u
 ## Instalação
 
 **[⬇️ Baixar o APK mais recente](https://github.com/ayranoliveira1/pokelocation/releases/latest)** (também em
-[`apks/`](apks/pokelocation-v1.2-release.apk)).
+[`apks/`](apks/pokelocation-v1.3-release.apk)).
 
 ```bash
-adb install -r apks/pokelocation-v1.2-release.apk
+adb install -r apks/pokelocation-v1.3-release.apk
 ```
 
 Ou copie o APK para o aparelho e abra pelo gerenciador de arquivos (permita "instalar apps desconhecidos").
@@ -159,7 +177,7 @@ Depois de **Iniciar**, o joystick aparece sobre qualquer app:
 - **Trava ("piloto automático"):** solte o dedo e continue andando na mesma direção.
 - **Arrastar:** o joystick e a gaveta podem ser movidos; a posição fica salva.
 - **Teleporte:** cole uma coordenada, escolha um favorito ou volte para a posição anterior. Com o *modo caminhada*,
-  em vez de teleportar ele anda até o destino.
+  em vez de teleportar ele anda até o destino; um teleporte no meio do caminho cancela essa caminhada.
 - **Salvar a posição** como favorito, ponto de uma rota ou marcador. **Compartilhar** envia `lat,lng`.
 - **Mini-mapa flutuante:** abre um mapa sobre o app atual para escolher destino, ver ou editar a rota.
 - **Controles de rota:** play/pausa, parar, próximo, anterior e progresso `i/n`.
