@@ -55,6 +55,15 @@ public class PogoBubblesTest {
         assertFalse(PogoBubbles.onLeft(W - COL_W, COL_W, W));
     }
 
+    @Test public void cardOpensOnTheRoomierSideWithinTheScreen() {
+        int max = 788;
+        assertArrayEquals(new int[]{M + COL_W + M, max}, PogoBubbles.cardBox(M, COL_W, W, M, max));
+        assertArrayEquals(new int[]{W - COL_W - 2 * M - max, max}, PogoBubbles.cardBox(W - COL_W - M, COL_W, W, M, max));
+        int mid = (W - COL_W) / 2;
+        assertArrayEquals(new int[]{mid + COL_W + M, mid - 2 * M}, PogoBubbles.cardBox(mid, COL_W, W, M, max));
+        assertArrayEquals(new int[]{M, 715 - 2 * M}, PogoBubbles.cardBox(715, COL_W, W, M, max)); // QA: cobria a coluna
+    }
+
     @Test public void countTogglesFiveAndTen() {
         assertEquals(10, PogoBubbles.nextCount(5));
         assertEquals(5, PogoBubbles.nextCount(10));

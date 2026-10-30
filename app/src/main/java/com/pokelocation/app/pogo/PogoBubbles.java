@@ -766,8 +766,9 @@ public final class PogoBubbles {
         }
         int colX = lp.x + scroll.getLeft();
         readScreen();
-        cardLp.width = Math.min(Ui.dp(ctx, 300), scr.x - size - 3 * margin);
-        cardLp.x = onLeft(colX, size, scr.x) ? colX + size + margin : colX - margin - cardLp.width;
+        int[] box = cardBox(colX, size, scr.x, margin, Ui.dp(ctx, 300));
+        cardLp.x = box[0];
+        cardLp.width = box[1];
         cardLp.y = lp.y + scroll.getTop() + b.getTop() - scroll.getScrollY();
         if (v.getParent() != null) {
             update(v, cardLp);
@@ -779,6 +780,14 @@ public final class PogoBubbles {
         } catch (RuntimeException e) {
             return false;
         }
+    }
+
+    /** {x, largura}: do lado da coluna com mais espaço, sem passar da tela nem cobrir a coluna. */
+    static int[] cardBox(int colX, int size, int scrW, int margin, int max) {
+        int right = scrW - colX - size;
+        if (right >= colX) return new int[]{colX + size + margin, Math.min(max, right - 2 * margin)};
+        int w = Math.min(max, colX - 2 * margin);
+        return new int[]{colX - margin - w, w};
     }
 
     private void fitCard(View v) {
