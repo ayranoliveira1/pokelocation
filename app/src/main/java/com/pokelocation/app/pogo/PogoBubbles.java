@@ -39,9 +39,9 @@ import com.pokelocation.app.util.WindowDrag;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -101,7 +101,7 @@ public final class PogoBubbles {
     private PanelHost sheetHost, candySheet;
     private Drawable spinner, ballIcon, candyIcon, grayIcon;
     private List<Pogo.Candy> candies;
-    private Set<String> visited;
+    private Map<String, Long> visited;
     private PogoCandyCard candyCard;
     private Pogo.Candy cardCandy;
 
@@ -388,11 +388,20 @@ public final class PogoBubbles {
         return k;
     }
 
-    static void pruneVisited(Set<String> visited, List<Pogo.Candy> live, long now) {
-        visited.removeIf(v -> {
-            for (Pogo.Candy c : live) if (c.coords.equals(v) && !PogoText.gone(c.expiresMs, now)) return false;
-            return true;
-        });
+    /** Um spawn novo no mesmo lugar tem outro expiresMs e não conta como visitado. */
+    static boolean isVisited(Map<String, Long> visited, Pogo.Candy c) {
+        if (visited == null) return false;
+        Long e = visited.get(c.coords);
+        return e != null && e == c.expiresMs;
+    }
+
+    /** Só na lista nova: até ela chegar, a visitada continua na coluna, cinza. */
+    static void dropVisited(List<Pogo.Candy> list, Map<String, Long> visited) {
+        if (visited != null) list.removeIf(c -> isVisited(visited, c));
+    }
+
+    static void pruneVisited(Map<String, Long> visited, long now) {
+        visited.values().removeIf(e -> PogoText.gone(e, now));
     }
 
     private int shown() {
@@ -548,10 +557,11 @@ public final class PogoBubbles {
             Io.main().post(() -> {
                 if (!done(t, e, user)) return;
                 candies = new ArrayList<>(cs.list);
+                dropVisited(candies, visited);
                 candyCap = cs.cap;
                 pos.edit().putInt(CANDY_CAP, candyCap).apply();
                 showCount();
-                if (user && cs.list.isEmpty()) Ui.toast(app, app.getString(R.string.pogo_candy_none, km));
+                if (user && candies.isEmpty()) Ui.toast(app, app.getString(R.string.pogo_candy_none, km));
                 render();
                 schedule();
             });
@@ -603,7 +613,7 @@ public final class PogoBubbles {
     private long renderCandies(long now) {
         if (candies == null) return 0;
         candies.removeIf(c -> PogoText.gone(c.expiresMs, now));
-        if (visited != null) pruneVisited(visited, candies, now);
+        if (visited != null) pruneVisited(visited, now);
         int k = Math.min(shown(), candies.size());
         while (bubbles.getChildCount() > k) bubbles.removeViewAt(k);
         long at = 0;
@@ -612,7 +622,7 @@ public final class PogoBubbles {
             Pogo.Candy c = candies.get(i);
             b.setTag(c);
             b.setContentDescription(TextUtils.isEmpty(c.location) ? ctx.getString(R.string.pogo_candy_title) : c.location);
-            b.setImageDrawable(visited != null && visited.contains(c.coords) ? grayIcon : candyIcon);
+            b.setImageDrawable(isVisited(visited, c) ? grayIcon : candyIcon);
             if (c.expiresMs > now && (at == 0 || c.expiresMs < at)) at = c.expiresMs;
         }
         return at;
@@ -695,13 +705,13 @@ public final class PogoBubbles {
         if (!shown) return;
         closeCard();
         if (visited == null) {
-            visited = new HashSet<>();
+            visited = new HashMap<>();
             ColorMatrix m = new ColorMatrix();
             m.setSaturation(0);
             grayIcon = PogoChips.candy(ctx);
             grayIcon.setColorFilter(new ColorMatrixColorFilter(m));
         }
-        visited.add(c.coords);
+        visited.put(c.coords, c.expiresMs);
         host.go(c.lat, c.lng, walk);
         render();
     }

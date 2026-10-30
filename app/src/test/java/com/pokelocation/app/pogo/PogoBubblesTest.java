@@ -10,9 +10,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 public class PogoBubblesTest {
     private static final int W = 1080, H = 2400, COL_W = 150, COL_H = 900, FULL = 1400, M = 20, TOP = 100;
@@ -86,10 +87,47 @@ public class PogoBubblesTest {
         assertEquals(5, PogoBubbles.candyCount(10, -1));
     }
 
-    @Test public void pruneVisitedKeepsOnlyLive() {
-        Set<String> visited = new HashSet<>(Arrays.asList("a", "b", "c"));
-        PogoBubbles.pruneVisited(visited, Arrays.asList(candy("a", 0), candy("c", 900)), 1000);
-        assertEquals(Collections.singleton("a"), visited);
+    @Test public void visitedIsCoordsAndExpiry() {
+        Map<String, Long> visited = new HashMap<>();
+        visited.put("a", 900L);
+        assertTrue(PogoBubbles.isVisited(visited, candy("a", 900)));
+        assertFalse(PogoBubbles.isVisited(visited, candy("a", 2000))); // spawn novo no mesmo lugar
+        assertFalse(PogoBubbles.isVisited(null, candy("a", 900)));
+    }
+
+    @Test public void newListDropsVisitedInOrder() {
+        Map<String, Long> visited = new HashMap<>();
+        visited.put("b", 900L);
+        visited.put("d", 900L);
+        List<Pogo.Candy> l = new ArrayList<>(Arrays.asList(candy("a", 900), candy("b", 900), candy("c", 900), candy("d", 900), candy("e", 900)));
+        PogoBubbles.dropVisited(l, visited);
+        assertEquals(Arrays.asList("a", "c", "e"), coords(l));
+    }
+
+    @Test public void visitedThatLeftAndCameBackStillDrops() {
+        Map<String, Long> visited = new HashMap<>();
+        visited.put("a", 900L);
+        PogoBubbles.pruneVisited(visited, 500); // "a" fora da lista: continua lembrada
+        List<Pogo.Candy> l = new ArrayList<>(Arrays.asList(candy("a", 900), candy("b", 900)));
+        PogoBubbles.dropVisited(l, visited);
+        assertEquals(Collections.singletonList("b"), coords(l));
+    }
+
+    @Test public void pruneForgetsOnlyAfterExpiry() {
+        Map<String, Long> visited = new HashMap<>();
+        visited.put("a", 1000L);
+        visited.put("b", 0L);
+        visited.put("c", 500L);
+        PogoBubbles.pruneVisited(visited, 999);
+        assertEquals(new HashSet<>(Arrays.asList("a", "b")), visited.keySet());
+        PogoBubbles.pruneVisited(visited, 1000);
+        assertEquals(Collections.singleton("b"), visited.keySet());
+    }
+
+    private static List<String> coords(List<Pogo.Candy> l) {
+        List<String> out = new ArrayList<>();
+        for (Pogo.Candy c : l) out.add(c.coords);
+        return out;
     }
 
     private static Pogo.Candy candy(String coords, long expires) {
