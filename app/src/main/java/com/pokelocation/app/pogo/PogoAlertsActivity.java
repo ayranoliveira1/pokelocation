@@ -55,7 +55,7 @@ import java.util.function.Consumer;
  * Alertas de Pokémon em duas abas. Notificações: o histórico do servidor (paginado; sem rede, o salvo pelo PogoAlert),
  * no PogoPanel com lista fixa.
  * Meus alertas: as regras do nosso servidor, que manda o push, com liga/desliga e excluir; "Novo alerta" troca a lista
- * pelo PogoFilterForm (a "Área" dele é o escopo) + nome. Sem edição: excluir e criar outro.
+ * pelo PogoFilterForm (a "Área" dele é o escopo) + nome; o lápis abre o mesmo editor com o alerta.
  */
 public final class PogoAlertsActivity extends BaseActivity {
     private final List<Pogo.Rule> rules = new ArrayList<>();
@@ -67,6 +67,7 @@ public final class PogoAlertsActivity extends BaseActivity {
     private FrameLayout formBox;
     private PogoFilterForm form;
     private PogoFilter editing;
+    private Pogo.Rule edited;
     private double lat, lng;
     private BaseAdapter adapter;
     private boolean busy, deniedForever;
@@ -144,7 +145,7 @@ public final class PogoAlertsActivity extends BaseActivity {
         lb.addView(list, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         add = new MaterialButton(this);
         add.setText(R.string.pogo_alert_new);
-        add.setOnClickListener(v -> openEditor());
+        add.setOnClickListener(v -> openEditor(null));
         lb.addView(add, margins(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT), pad));
         listBox = lb;
 
@@ -458,20 +459,27 @@ public final class PogoAlertsActivity extends BaseActivity {
         }
         texts.addView(title);
         texts.addView(sub);
+        texts.setOnClickListener(v -> openEditor(r));
         row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         Switch on = new Switch(this);
         on.setChecked(r.enabled);
         on.setOnCheckedChangeListener((b, checked) -> setEnabled(r, checked, b));
         row.addView(on);
-        ImageView del = new ImageView(this);
-        del.setImageResource(R.drawable.ic_delete);
-        del.setColorFilter(getColor(R.color.on_surface_variant));
-        del.setContentDescription(getString(R.string.delete));
-        int t = Ui.dp(this, 48), p = Ui.dp(this, 12);
-        del.setPadding(p, p, p, p);
-        del.setOnClickListener(v -> confirmDelete(r));
-        row.addView(del, new LinearLayout.LayoutParams(t, t));
+        int t = Ui.dp(this, 48);
+        row.addView(action(R.drawable.ic_edit, R.string.edit, v -> openEditor(r)), new LinearLayout.LayoutParams(t, t));
+        row.addView(action(R.drawable.ic_delete, R.string.delete, v -> confirmDelete(r)), new LinearLayout.LayoutParams(t, t));
         return row;
+    }
+
+    private ImageView action(int icon, int description, View.OnClickListener click) {
+        ImageView v = new ImageView(this);
+        v.setImageResource(icon);
+        v.setColorFilter(getColor(R.color.on_surface_variant));
+        v.setContentDescription(getString(description));
+        int p = Ui.dp(this, 12);
+        v.setPadding(p, p, p, p);
+        v.setOnClickListener(click);
+        return v;
     }
 
     private String summary(Pogo.Rule r) {
@@ -525,22 +533,51 @@ public final class PogoAlertsActivity extends BaseActivity {
         });
     }
 
-    /** Começa dos filtros salvos (os que o usuário já usa no mapa). */
-    private void openEditor() {
-        editing = PogoFilter.load(this).copy();
+    /** r null = alerta novo, a partir dos filtros salvos (os que o usuário já usa no mapa). */
+    private void openEditor(Pogo.Rule r) {
+        edited = r;
+        editing = r == null ? PogoFilter.load(this).copy() : editorFilter(r);
         form = new PogoFilterForm(this, editing, () -> {}, on -> {},
                 () -> startActivity(new Intent(this, PogoActivity.class)));
         formBox.addView(form.view());
-        name.setText("");
-        center.setText(Double.isNaN(lat) ? "" : getString(R.string.pogo_alert_center, CoordParser.label(lat, lng)));
+        if (r != null) form.fillLabels();
+        name.setText(r == null ? "" : r.name);
+        double[] c = center(r, lat, lng);
+        center.setText(Double.isNaN(c[0]) ? "" : getString(R.string.pogo_alert_center, CoordParser.label(c[0], c[1])));
         listBox.setVisibility(View.GONE);
         editor.setVisibility(View.VISIBLE);
+    }
+
+    /** O servidor guarda os filters sem o km: o escopo do alerta vira a "Área" do form. */
+    static PogoFilter editorFilter(Pogo.Rule r) {
+        PogoFilter f = r.filter.copy();
+        f.km = r.world ? 0 : r.radiusKm;
+        return f;
+    }
+
+    private static double[] center(Pogo.Rule old, double lat, double lng) {
+        return old != null && !old.world ? new double[]{old.lat, old.lng} : new double[]{lat, lng};
+    }
+
+    static Pogo.Rule rule(Pogo.Rule old, PogoFilter f, String name, double lat, double lng) {
+        Pogo.Rule r = new Pogo.Rule();
+        double[] c = center(old, lat, lng);
+        r.id = old == null ? null : old.id;
+        r.enabled = old == null || old.enabled;
+        r.name = name;
+        r.filter = f;
+        r.world = f.km == 0;
+        r.radiusKm = f.km;
+        r.lat = c[0];
+        r.lng = c[1];
+        return r;
     }
 
     private void closeEditor() {
         if (form != null) form.destroy();
         form = null;
         editing = null;
+        edited = null;
         formBox.removeAllViews();
         editor.setVisibility(View.GONE);
         listBox.setVisibility(View.VISIBLE);
@@ -549,28 +586,25 @@ public final class PogoAlertsActivity extends BaseActivity {
 
     private void save() {
         if (busy || editing == null) return;
-        Pogo.Rule r = new Pogo.Rule();
-        r.filter = PogoText.asSent(this, editing);   // sem treinador o form esconde o Shiny: um shiny salvo de antes viraria 422
-        r.world = editing.km == 0;
-        if (!r.world && Double.isNaN(lat)) {
+        Pogo.Rule old = edited;
+        // sem treinador o form esconde o Shiny: um shiny salvo de antes viraria 422
+        Pogo.Rule r = rule(old, PogoText.asSent(this, editing), name.getText().toString().trim(), lat, lng);
+        if (!r.world && Double.isNaN(r.lat)) {
             Ui.toast(this, R.string.pogo_alert_no_center);
             return;
         }
-        r.lat = lat;
-        r.lng = lng;
-        r.radiusKm = editing.km;
-        r.enabled = true;
-        String n = name.getText().toString().trim();
-        r.name = n.isEmpty() ? summary(r) : n;
+        if (r.name.isEmpty()) r.name = summary(r);
         busy = true;
         Context app = getApplicationContext();
-        Io.run(() -> Pogo.addRule(app, r), new Io.Callback<Pogo.Rule>() {
+        Io.run(() -> old == null ? Pogo.addRule(app, r) : Pogo.updateRule(app, r), new Io.Callback<Pogo.Rule>() {
             @Override public void onResult(Pogo.Rule saved) {
                 busy = false;
-                rules.add(saved);
+                if (old == null) rules.add(saved);
+                // por id: o switch pode ter trocado o objeto da linha enquanto o editor estava aberto
+                else for (int i = 0; i < rules.size(); i++) if (TextUtils.equals(rules.get(i).id, saved.id)) rules.set(i, saved);
                 closeEditor();
                 render();
-                checkNotifications(true);
+                checkNotifications(r.enabled);
             }
 
             @Override public void onError(Throwable t) {
