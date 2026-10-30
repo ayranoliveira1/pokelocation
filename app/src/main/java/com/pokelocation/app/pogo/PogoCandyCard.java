@@ -1,6 +1,7 @@
 package com.pokelocation.app.pogo;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.view.LayoutInflater;
@@ -22,6 +23,7 @@ final class PogoCandyCard {
 
     final View view;
     private final Context ctx;
+    private final ImageView icon;
     private final TextView sub, expires, coords;
     private final java.text.DateFormat time;
     private Pogo.Candy candy;
@@ -38,7 +40,7 @@ final class PogoCandyCard {
         ctx = c;
         time = DateFormat.getTimeFormat(c);
         view = LayoutInflater.from(c).inflate(R.layout.pogo_candy_card, null);
-        ((ImageView) view.findViewById(R.id.pcc_icon)).setImageDrawable(PogoChips.candy(c));
+        icon = view.findViewById(R.id.pcc_icon);
         sub = view.findViewById(R.id.pcc_sub);
         expires = view.findViewById(R.id.pcc_expires);
         coords = view.findViewById(R.id.pcc_coords);
@@ -52,6 +54,10 @@ final class PogoCandyCard {
             @Override public void onViewAttachedToWindow(View x) { Io.main().post(tick); }
             @Override public void onViewDetachedFromWindow(View x) { Io.main().removeCallbacks(tick); }
         });
+    }
+
+    void icon(Drawable d) {
+        icon.setImageDrawable(d);
     }
 
     void bind(Pogo.Candy c, String distance) {

@@ -9,6 +9,7 @@ import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
@@ -88,8 +89,16 @@ public final class PogoBubbles {
     private final Drawable icon;
     private final List<Pogo.Mon> mons = new ArrayList<>();
     private int n, candyN, candyCap, downX, downY;   // a coluna no DOWN da logo: o arraste conta a partir daqui
-    private boolean open = true, visible, shown, destroyed, candyMode;
+    private boolean open = true, visible, shown, destroyed, candyMode, candyLoading;
+    private Bitmap candyBmp;
     private final Consumer<Bitmap> onIcon = b -> { if (b != null && !destroyed && !candyMode) icons(); };
+    private final Consumer<Bitmap> onCandy = b -> {
+        candyLoading = false;
+        if (b == null || destroyed || candyBmp != null) return;
+        useCandy(b);
+        showMode();
+        if (candyMode) render();
+    };
     private final Runnable auto = this::auto, retry = this::retry, prune = this::render, user = () -> load(true);
     private final View.OnLayoutChangeListener cardFit = (v, l, t, r, b, ol, ot, or, ob) -> { if (b - t != ob - ot) fitCard(v); };
     private long lastAt, candyAt;
@@ -141,6 +150,9 @@ public final class PogoBubbles {
         count.setOnClickListener(v -> cycle());
         side.addView(count, sideLp());
         mode = button(null, R.string.pogo_mode_to_candy, v -> switchMode());
+        mode.setScaleType(ImageView.ScaleType.FIT_CENTER);   // o item baixado tem 96 px: nos 20dp dos outros ícones
+        int mp = (size - Ui.dp(c, 20)) / 2;
+        mode.setPadding(mp, mp, mp, mp);
         showMode();
         bubbles = new LinearLayout(c);
         bubbles.setOrientation(LinearLayout.VERTICAL);
@@ -427,7 +439,7 @@ public final class PogoBubbles {
     }
 
     private void showMode() {
-        if (candyIcon == null) candyIcon = PogoChips.candy(ctx);
+        candyIcons();
         if (candyMode && ballIcon == null) ballIcon = PogoChips.pokeball(ctx, ctx.getColor(R.color.primary));
         mode.setImageDrawable(candyMode ? ballIcon : candyIcon);
         mode.setContentDescription(ctx.getString(candyMode ? R.string.pogo_mode_to_pokemon : R.string.pogo_mode_to_candy));
@@ -612,6 +624,7 @@ public final class PogoBubbles {
 
     private long renderCandies(long now) {
         if (candies == null) return 0;
+        candyIcons();
         candies.removeIf(c -> PogoText.gone(c.expiresMs, now));
         if (visited != null) pruneVisited(visited, now);
         int k = Math.min(shown(), candies.size());
@@ -706,14 +719,43 @@ public final class PogoBubbles {
         closeCard();
         if (visited == null) {
             visited = new HashMap<>();
-            ColorMatrix m = new ColorMatrix();
-            m.setSaturation(0);
-            grayIcon = PogoChips.candy(ctx);
-            grayIcon.setColorFilter(new ColorMatrixColorFilter(m));
+            grayIcon = gray(newCandy());
         }
         visited.put(c.coords, c.expiresMs);
         host.go(c.lat, c.lng, walk);
         render();
+    }
+
+    /** A imagem do item pelo cache dos ícones; até ela chegar (offline, servidor sem a rota), o desenho do PogoChips. */
+    private void candyIcons() {
+        if (candyBmp != null) return;
+        Bitmap b = PogoIcons.cachedCandy();
+        if (b != null) {
+            useCandy(b);
+            return;
+        }
+        if (candyIcon == null) candyIcon = PogoChips.candy(ctx);
+        if (candyLoading) return;
+        candyLoading = true;
+        PogoIcons.loadCandy(app, onCandy);
+    }
+
+    private void useCandy(Bitmap b) {
+        candyBmp = b;
+        candyIcon = newCandy();
+        if (grayIcon != null) grayIcon = gray(newCandy());
+        if (candyCard != null) candyCard.icon(candyIcon);
+    }
+
+    private Drawable newCandy() {
+        return candyBmp != null ? new BitmapDrawable(ctx.getResources(), candyBmp) : PogoChips.candy(ctx);
+    }
+
+    private static Drawable gray(Drawable d) {
+        ColorMatrix m = new ColorMatrix();
+        m.setSaturation(0);
+        d.setColorFilter(new ColorMatrixColorFilter(m));
+        return d;
     }
 
     private void hold(View b, Pogo.Candy c) {
@@ -732,6 +774,7 @@ public final class PogoBubbles {
                 @Override public void close() { closeCard(); }
             });
             candyCard.view.addOnLayoutChangeListener(cardFit);
+            candyCard.icon(candyIcon);
         }
         cardCandy = c;
         candyCard.bind(c, Cooldown.formatDistance(Geo.distance(host.lat(), host.lng(), c.lat, c.lng)));
