@@ -55,6 +55,8 @@ public final class OverlayService extends Service
     private double prevLat, prevLng, prevAlt;
     private boolean recording;
     private double[] rec;
+    /** Os pontos do walkTo: o motor guarda o próprio array, e qualquer outra rota (lista, GPX, gerada, mapa) é outro. */
+    private double[] walk;
     private int elevSeq;
 
     @Override
@@ -324,10 +326,11 @@ public final class OverlayService extends Service
         Ui.share(this, CoordParser.snippet(engine.lat(), engine.lng()));
     }
 
-    /** TELEPORT, FAVORITES, mapa, painel. O motor pausa a rota se houver. alt NaN → elevação. */
+    /** TELEPORT, FAVORITES, mapa, painel. O motor pausa a rota do usuário; o "ir andando" é cancelado. alt NaN → elevação. */
     public void teleportTo(double lat, double lng, double alt) {
         savePrev();
         closeMap();
+        if (walk != null && walk == engine.routePoints()) engine.stopRoute();
         engine.teleport(lat, lng, alt);
         if (Double.isNaN(alt)) fetchElevation(lat, lng);
     }
@@ -349,8 +352,8 @@ public final class OverlayService extends Service
         closeMap();
         engine.stopRoute();
         opts.routeMode = MockEngine.ROUTE_STOP;
-        engine.startRoute(new double[]{engine.lat(), engine.lng(), engine.alt(), lat, lng, alt},
-                MockEngine.ROUTE_STOP, false);
+        walk = new double[]{engine.lat(), engine.lng(), engine.alt(), lat, lng, alt};
+        engine.startRoute(walk, MockEngine.ROUTE_STOP, false);
     }
 
     private void savePrev() {

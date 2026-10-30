@@ -18,6 +18,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -34,7 +35,10 @@ import java.util.function.Consumer;
  */
 public final class PogoIcons {
     /** Pelo nosso servidor, que busca no PokeMiners e no UICONS (GitHub) e guarda; o nome do arquivo é o de lá. */
-    static final String PM = "/v1/pogo/icon/pm/", UICONS = "/v1/pogo/icon/u/";
+    static final String PM = "/v1/pogo/icon/pm/", UICONS = "/v1/pogo/icon/u/", ITEM = "/v1/pogo/icon/it/";
+    /** 1301 = Rare Candy no enum de itens do jogo. */
+    static final String CANDY_URL = ITEM + "1301.png";
+    private static final String CANDY = "it|1301";
     /** Decodifica em até ~256 px (256 KB passageiros): o recorte da margem precisa da resolução cheia do PNG. */
     private static final int TRIM_PX = 256;
     /** O mesmo zoom para todas as espécies (só os grandes ganham menos, para não cortar); ajuste aqui. */
@@ -64,14 +68,29 @@ public final class PogoIcons {
     private PogoIcons() {}
 
     public static Bitmap cached(Pogo.Mon m) {
+        return cached(key(m));
+    }
+
+    static Bitmap cachedCandy() {
+        return cached(CANDY);
+    }
+
+    private static Bitmap cached(String key) {
         synchronized (LOCK) {
-            return sMem == null ? null : sMem.get(key(m));
+            return sMem == null ? null : sMem.get(key);
         }
     }
 
     /** cb na main; null se nenhum ícone da cadeia veio (o chamador mantém o desenho de hoje). */
     public static void load(Context c, Pogo.Mon m, Consumer<Bitmap> cb) {
-        String key = key(m);
+        load(c, key(m), m, cb);
+    }
+
+    static void loadCandy(Context c, Consumer<Bitmap> cb) {
+        load(c, CANDY, null, cb);
+    }
+
+    private static void load(Context c, String key, Pogo.Mon m, Consumer<Bitmap> cb) {
         Context app = c.getApplicationContext();
         synchronized (LOCK) {
             Bitmap b = mem(app).get(key);
@@ -88,7 +107,7 @@ public final class PogoIcons {
             }
             PENDING.put(key, new ArrayList<>(Arrays.asList(cb)));
         }
-        List<String> chain = urls(m.id, m.name, m.form, m.costume, m.shiny);
+        List<String> chain = m == null ? Collections.singletonList(CANDY_URL) : urls(m.id, m.name, m.form, m.costume, m.shiny);
         exec().execute(() -> {
             Bitmap b = fetch(app, chain, key);
             List<Consumer<Bitmap>> cbs;
@@ -158,10 +177,10 @@ public final class PogoIcons {
         return k;
     }
 
-    /** Nome no disco: o último segmento da URL; os UICONS ganham prefixo para não colidir. */
+    /** Nome no disco: o último segmento da URL; os UICONS e os itens ganham prefixo para não colidir. */
     static String fileName(String url) {
         String seg = url.substring(url.lastIndexOf('/') + 1);
-        return url.startsWith(UICONS) ? "u" + seg : seg;
+        return url.startsWith(UICONS) ? "u" + seg : url.startsWith(ITEM) ? "it" + seg : seg;
     }
 
     private static Bitmap fetch(Context c, List<String> chain, String key) {
