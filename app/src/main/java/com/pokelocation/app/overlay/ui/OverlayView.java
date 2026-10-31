@@ -145,6 +145,16 @@ public final class OverlayView implements View.OnClickListener {
         b.putBoolean(Prefs.TELEPORT_WALK_MODE, walkMode);
     }
 
+    /** Antes do 1º setVisible, que cria as janelas nas posições. */
+    public void restoreSession(Bundle b) {
+        stickX = b.getInt(Prefs.JOYSTICK_X, stickX);
+        stickY = b.getInt(Prefs.JOYSTICK_Y, stickY);
+        drawerX = b.getInt(Prefs.DRAWER_X, drawerX);
+        drawerY = b.getInt(Prefs.DRAWER_Y, drawerY);
+        walkMode = b.getBoolean(Prefs.TELEPORT_WALK_MODE, walkMode);
+        lastMockedTime = b.getLong(Prefs.LAST_MOCKED_TIME, lastMockedTime);
+    }
+
     /** Valor em memória usado no cooldown dos painéis (prefs no início; = agora ao abrir o Teleport). */
     public long lastMockedTime() {
         return lastMockedTime;

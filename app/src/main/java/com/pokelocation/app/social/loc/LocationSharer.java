@@ -125,7 +125,7 @@ public final class LocationSharer {
             }
             long g = SocialDb.seenGeneration();
             if (g != gen) { // logout + login entre dois ticks: nada da conta anterior segue
-                halt();
+                if (gen >= 0) halt();
                 gen = g;
             }
             if (!SignalLoader.loaded()) {

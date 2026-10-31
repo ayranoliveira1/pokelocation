@@ -4,6 +4,9 @@ import android.app.Application;
 import android.os.Build;
 
 import com.pokelocation.app.data.Prefs;
+import com.pokelocation.app.ipc.Intents;
+import com.pokelocation.app.ipc.SpoofStateReceiver;
+import com.pokelocation.app.ipc.WidgetPing;
 import com.pokelocation.app.map.MapHelper;
 import com.pokelocation.app.util.Themes;
 
@@ -42,6 +45,14 @@ public final class App extends Application {
     public void onCreate() {
         super.onCreate();
         if (process() != PROC_MAIN) return;
+        // Antes da sessão pendente: um Stop no meio cai no receiver ou no "live", nunca entre os dois.
+        SpoofStateReceiver.register(this);
+        Prefs.applySession(this, Prefs.pendingSession(this));
+        boolean spoof = Intents.isOverlayRunning(this);
+        if (spoof != Prefs.getBool(this, Prefs.SPOOF_ACTIVE)) {
+            Prefs.edit(this).putBoolean(Prefs.SPOOF_ACTIVE, spoof).apply();
+            WidgetPing.requestUpdateNow(this);
+        }
         Themes.applyNightMode(Prefs.getString(this, Prefs.SETTINGS_THEME_MODE));
         // CARTO Voyager exige API key: o valor antigo migra para o padrão OSM
         if ("voyager".equals(Prefs.getString(this, Prefs.MAP_TILE_SOURCE))) {
