@@ -21,6 +21,9 @@ bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
   parte do app para liberar RAM (a tela principal em segundo plano, o mini-mapa ao fechar ou o próprio joystick), o
   sistema apaga o GPS falso mesmo com o joystick ligado. Antes ele não voltava, e a posição real podia chegar ao jogo;
   agora o joystick recria o GPS falso em menos de 1 s.
+- **Menos RAM no jogo:** ligar, parar ou religar o joystick não abre mais a parte principal do app em segundo plano
+  (eram ~70 MB a mais justamente quando falta memória). A sessão do joystick fica guardada e é aplicada quando o app
+  abrir.
 - **Push de volta:** o APK da v1.3 saiu sem a configuração do Firebase e não recebia notificações (alertas do PoGo e
   mensagens); a v1.3.1 volta a receber.
 
