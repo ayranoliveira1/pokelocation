@@ -310,10 +310,11 @@ public final class Intents {
         reply(c, request, e);
     }
 
-    /** setPackage(self). session (Prefs.SESSION_KEYS) só no Stop. */
+    static final int SPOOF_STATE_FLAGS = Intent.FLAG_RECEIVER_FOREGROUND | Intent.FLAG_RECEIVER_REGISTERED_ONLY;
+
+    /** setPackage(self), só para a Main viva: morta, ela não sobe por isso. session (Prefs.SESSION_KEYS) só no Stop. */
     public static void broadcastSpoofState(Context c, boolean active, Bundle sessionOrNull) {
-        Intent b = new Intent(BC_SPOOF_STATE_CHANGED).setPackage(c.getPackageName())
-                .addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        Intent b = new Intent(BC_SPOOF_STATE_CHANGED).setPackage(c.getPackageName()).addFlags(SPOOF_STATE_FLAGS);
         if (sessionOrNull != null) b.putExtras(sessionOrNull);
         b.putExtra(EXTRA_SPOOF_ACTIVE, active);
         c.sendBroadcast(b);

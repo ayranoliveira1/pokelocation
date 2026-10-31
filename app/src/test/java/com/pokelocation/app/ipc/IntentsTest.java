@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import android.content.Intent;
+
 import com.pokelocation.app.ui.main.MainActivity;
 
 import org.junit.Test;
@@ -21,5 +23,11 @@ public class IntentsTest {
         assertFalse(Intents.validLatLng(0, Double.POSITIVE_INFINITY));
         assertFalse(Intents.validLatLng(500, 0));
         assertFalse(Intents.validLatLng(0, -180.5));
+    }
+
+    @Test
+    public void spoofStateOnlyReachesARunningMain() {
+        assertTrue((Intents.SPOOF_STATE_FLAGS & Intent.FLAG_RECEIVER_REGISTERED_ONLY) != 0);
+        assertTrue((Intents.SPOOF_STATE_FLAGS & Intent.FLAG_RECEIVER_FOREGROUND) != 0);
     }
 }

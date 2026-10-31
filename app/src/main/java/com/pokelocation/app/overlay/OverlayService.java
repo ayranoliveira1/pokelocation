@@ -153,7 +153,10 @@ public final class OverlayService extends Service
                 || checkSelfPermission("android.permission.INSTALL_LOCATION_PROVIDER") != PackageManager.PERMISSION_GRANTED)) {
             engine.setOnMockLost(this::onMockLost);
         }
+        Bundle pending = Prefs.pendingSession(this);
+        if (pending != null) opts = MapOptions.fromIntent(new Intent().putExtras(pending), opts);
         ui = new OverlayView(Themes.overlayContext(this), engine, cfg, this);
+        if (pending != null) ui.restoreSession(pending);
         engine.start(lat, lng, alt);
         ui.setVisible(!hidden);
         running = true;
@@ -181,7 +184,6 @@ public final class OverlayService extends Service
 
     /** Stop (INT_STOP_JOYSTICK, ACTION_STOP, notificação): sessão → main e encerra. */
     public void stopSpoof() {
-        sendSession();
         stopSelf();
     }
 
@@ -200,6 +202,8 @@ public final class OverlayService extends Service
         b.putLong(Prefs.LAST_MOCKED_TIME, System.currentTimeMillis());
         ui.putSession(b);
         opts.toBundle(b);
+        Prefs.saveLive(this, engine.lat(), engine.lng(), engine.alt());   // o start sem a Main tira a posição do live
+        Prefs.savePendingSession(this, b);
         Intents.broadcastSpoofState(this, false, b);
     }
 
@@ -226,7 +230,7 @@ public final class OverlayService extends Service
     public void onDestroy() {
         if (destroyed) return;
         destroyed = true;
-        sendSession(); // parada pelo sistema/stopService externo: a sessão não se perde
+        sendSession(); // toda parada; já fora do AMS, a Main que subir agora não o vê rodando
         running = false;
         notif.release();
         if (sharer != null) sharer.stop();

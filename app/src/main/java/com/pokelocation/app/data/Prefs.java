@@ -326,11 +326,44 @@ public final class Prefs {
         e.putLong("time", System.currentTimeMillis()).apply();
     }
 
-    /** SÓ main (SpoofStateReceiver): copia as SESSION_KEYS presentes no bundle. */
-    @SuppressWarnings("deprecation")
+    /** SÓ main (SpoofStateReceiver e App): copia as SESSION_KEYS presentes no bundle. */
     public static void applySession(Context c, Bundle session) {
         if (session == null) return;
         SharedPreferences.Editor e = edit(c);
+        putSession(e, session);
+        e.apply();
+    }
+
+    /** SÓ :overlay, no Stop: a Main morta aplica ao subir. commit: o processo se mata logo depois. */
+    @SuppressWarnings("deprecation")
+    public static void savePendingSession(Context c, Bundle session) {
+        SharedPreferences.Editor e = c.getSharedPreferences(LIVE_FILE, Context.MODE_MULTI_PROCESS).edit();
+        putSession(e, session);
+        e.commit();
+    }
+
+    @SuppressWarnings("deprecation")
+    public static Bundle pendingSession(Context c) {
+        Map<String, ?> live = c.getSharedPreferences(LIVE_FILE, Context.MODE_MULTI_PROCESS).getAll();
+        if (!newer(live.get(LAST_MOCKED_TIME), sp(c).getAll().get(LAST_MOCKED_TIME))) return null;
+        Bundle b = new Bundle();
+        for (String k : SESSION_KEYS) {
+            Object v = live.get(k);
+            if (isDoubleKey(k)) b.putDouble(k, decodeDouble(v, k));
+            else if (v instanceof Boolean) b.putBoolean(k, (Boolean) v);
+            else if (v instanceof Long) b.putLong(k, (Long) v);
+            else if (v instanceof Integer) b.putInt(k, (Integer) v);
+        }
+        return b;
+    }
+
+    /** Estrito: aplicada, a sessão leva o seu LAST_MOCKED_TIME para as prefs e não volta. */
+    static boolean newer(Object pendingTime, Object mainTime) {
+        return pendingTime instanceof Long && (!(mainTime instanceof Long) || (Long) pendingTime > (Long) mainTime);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void putSession(SharedPreferences.Editor e, Bundle session) {
         for (String k : SESSION_KEYS) {
             if (!session.containsKey(k)) continue;
             Object v = session.get(k);
@@ -341,6 +374,5 @@ public final class Prefs {
             else if (LAST_MOCKED_TIME.equals(k) && v instanceof Number) e.putLong(k, ((Number) v).longValue());
             else if (v instanceof Number) e.putInt(k, ((Number) v).intValue());
         }
-        e.apply();
     }
 }
