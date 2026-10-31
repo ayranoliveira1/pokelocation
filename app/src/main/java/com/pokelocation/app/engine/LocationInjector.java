@@ -23,7 +23,7 @@ import java.lang.reflect.Method;
  * System Mode usa ILocationManager.reportLocation() via reflection para bypassar mock detection.
  * Fallback para test provider quando system mode indisponível (API >= 29 ou sem permissão).
  */
-public final class LocationInjector {
+public class LocationInjector {
     private static final String TAG = "LocationInjector";
     public static final String[] PROVIDERS_NORMAL = {"gps", "network", "passive"};
     public static final String[] PROVIDERS_INDIRECT = {"network"};       // F61
@@ -56,6 +56,15 @@ public final class LocationInjector {
         sCurrent = this;
     }
 
+    /** Teste JVM: sem Context nem LocationManager; o teste sobrescreve os ganchos. */
+    LocationInjector(boolean indirect) {
+        lm = null;
+        providers = indirect ? PROVIDERS_INDIRECT : PROVIDERS_NORMAL;
+        active = new boolean[providers.length];
+        loc = new Location("gps");
+        privacyModeEnabled = false;
+    }
+
     private boolean tryInitSystemMode(Context c) {
         if (Build.VERSION.SDK_INT >= 29) return false;
         if (!c.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS)) return false;
@@ -84,9 +93,23 @@ public final class LocationInjector {
     /** Instância viva do processo (a MockingActivity usa); null se nenhuma. */
     public static LocationInjector current() { return sCurrent; }
 
-    /** Remove resíduo dos 3 → addTestProvider + setTestProviderEnabled nos providers do modo; false se nenhum. */
+    // Ganchos sobrescritos no teste JVM.
     @SuppressLint("InlinedApi")   // constantes inteiras (inlined), valem em qualquer API
     @SuppressWarnings("deprecation")
+    void addProvider(String p) {
+        // requiresNetwork, requiresSatellite, requiresCell, hasMonetaryCost, altitude, speed, bearing, POWER_LOW, ACCURACY_FINE
+        lm.addTestProvider(p, false, false, false, false, true, true, true,
+                ProviderProperties.POWER_USAGE_LOW, ProviderProperties.ACCURACY_FINE);
+        lm.setTestProviderEnabled(p, true);
+    }
+
+    @SuppressWarnings("deprecation")
+    void sendLocation(String p, Location l) {
+        if (Build.VERSION.SDK_INT < 29) lm.setTestProviderStatus(p, LocationProvider.AVAILABLE, null, l.getTime());
+        lm.setTestProviderLocation(p, l);
+    }
+
+    /** Remove resíduo dos 3 → addTestProvider + setTestProviderEnabled nos providers do modo; false se nenhum. */
     public boolean register() {
         for (String p : PROVIDERS_NORMAL) {
             try {
@@ -98,10 +121,7 @@ public final class LocationInjector {
         for (int i = 0; i < providers.length; i++) {
             String p = providers[i];
             try {
-                // requiresNetwork, requiresSatellite, requiresCell, hasMonetaryCost, altitude, speed, bearing, POWER_LOW, ACCURACY_FINE
-                lm.addTestProvider(p, false, false, false, false, true, true, true,
-                        ProviderProperties.POWER_USAGE_LOW, ProviderProperties.ACCURACY_FINE);
-                lm.setTestProviderEnabled(p, true);
+                addProvider(p);
                 active[i] = true;
                 any = true;
             } catch (SecurityException e) {
@@ -114,7 +134,6 @@ public final class LocationInjector {
     }
 
     /** Sem alocar. setTestProviderStatus só < API 29; depois A-GPS reset se ativo (F63). */
-    @SuppressWarnings("deprecation")
     public void publish(double lat, double lng, double alt, float speedMs, boolean hasSpeed,
                         float accuracy, float bearing, boolean hasBearing) {
         if (systemMode && reportLocationMethod != null) {
@@ -138,18 +157,32 @@ public final class LocationInjector {
             String p = providers[i];
             try {
                 l.setProvider(p);
-                if (Build.VERSION.SDK_INT < 29) lm.setTestProviderStatus(p, LocationProvider.AVAILABLE, null, now);
-                lm.setTestProviderLocation(p, l);
-            } catch (Exception e) {
-                if (!loggedPublish) {
-                    loggedPublish = true;
-                    Log.w(TAG, "setTestProviderLocation failed: " + p + " " + e);
+                sendLocation(p, l);
+            } catch (IllegalArgumentException e) {
+                // A Samsung apaga os test providers do pacote quando qualquer processo do app morre.
+                try {
+                    addProvider(p);
+                    sendLocation(p, l);
+                    Log.w(TAG, "test provider recreated: " + p);
+                } catch (SecurityException e2) {
+                    active[i] = false;
+                    logPublish(p, e2);
+                } catch (Exception e2) {
+                    logPublish(p, e2);
                 }
+            } catch (Exception e) {
+                logPublish(p, e);
             }
         }
         if (agpsReset) {
             resetAgps();
         }
+    }
+
+    private void logPublish(String p, Exception e) {
+        if (loggedPublish) return;
+        loggedPublish = true;
+        Log.w(TAG, "setTestProviderLocation failed: " + p + " " + e);
     }
 
     private void publishSystemMode(double lat, double lng, double alt, float speedMs, boolean hasSpeed,
