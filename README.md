@@ -15,6 +15,17 @@ bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
 
 ## Versões
 
+### v1.3.1: o GPS falso não cai mais no meio do jogo
+
+- **GPS falso volta sozinho:** em aparelhos Samsung (visto num Galaxy A22 com Android 13), quando o Android fecha uma
+  parte do app para liberar RAM (a tela principal em segundo plano, o mini-mapa ao fechar ou o próprio joystick), o
+  sistema apaga o GPS falso mesmo com o joystick ligado. Antes ele não voltava, e a posição real podia chegar ao jogo;
+  agora o joystick recria o GPS falso em menos de 1 s.
+- **Push de volta:** o APK da v1.3 saiu sem a configuração do Firebase e não recebia notificações (alertas do PoGo e
+  mensagens); a v1.3.1 volta a receber.
+
+Precisa do servidor v1.2, como a v1.3.
+
 ### v1.3: Rare Candy no joystick e editar alertas
 
 - **Modo Rare Candy na coluna de bolhas:** um botão novo na fileira da logo troca entre Pokémon e candies; o ícone dele
@@ -104,10 +115,10 @@ configuração e os modos avançados de injeção. Os detalhes estão em [Como u
 ## Instalação
 
 **[⬇️ Baixar o APK mais recente](https://github.com/ayranoliveira1/pokelocation/releases/latest)** (também em
-[`apks/`](apks/pokelocation-v1.3-release.apk)).
+[`apks/`](apks/pokelocation-v1.3.1-release.apk)).
 
 ```bash
-adb install -r apks/pokelocation-v1.3-release.apk
+adb install -r apks/pokelocation-v1.3.1-release.apk
 ```
 
 Ou copie o APK para o aparelho e abra pelo gerenciador de arquivos (permita "instalar apps desconhecidos").
@@ -327,6 +338,10 @@ POKELOCATION_KEY_PASSWORD=...
 ```
 
 Sem elas, o release é gerado sem assinatura.
+
+**Push (Firebase):** os valores entram por `-P` no build, nunca no repositório: `POKELOCATION_FIREBASE_APP_ID`,
+`POKELOCATION_FIREBASE_API_KEY`, `POKELOCATION_FIREBASE_PROJECT_ID` e `POKELOCATION_FIREBASE_SENDER_ID`. Sem eles o
+app compila, mas não recebe notificações.
 
 > `assembleDebug` só gera o APK, não instala. Para testar uma mudança no aparelho, use `installDebug`.
 > Debug e release têm assinaturas diferentes: trocar de um para o outro exige desinstalar (e apaga os dados do app).
