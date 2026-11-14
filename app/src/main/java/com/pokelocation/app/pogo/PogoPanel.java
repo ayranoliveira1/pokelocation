@@ -107,6 +107,7 @@ public final class PogoPanel {
     private final IdentityHashMap<Pogo.Mon, Row> rows = new IdentityHashMap<>();
     private final StringBuilder line = new StringBuilder(96);
     private String[] despawn;
+    private Drawable seenBadge;
 
     private static final class Row {
         final String title, stats, dist, iv;
@@ -122,14 +123,20 @@ public final class PogoPanel {
 
     /** O bloco de um Pokémon: disco com a foto, nome / PC · Nv · tempo / local, pílula de IV. */
     private static final class Holder {
+        final FrameLayout disc;
+        final View col;
         final ImageView photo;
         final TextView name, stats, time, place, iv;
-        final GradientDrawable ivBg;
+        final GradientDrawable discBg, ivBg;
         Pogo.Mon mon;
-        boolean warn;
+        boolean warn, seen, dim;
 
-        Holder(ImageView photo, TextView name, TextView stats, TextView time, TextView place, TextView iv, GradientDrawable ivBg) {
+        Holder(FrameLayout disc, GradientDrawable discBg, ImageView photo, View col, TextView name, TextView stats, TextView time,
+               TextView place, TextView iv, GradientDrawable ivBg) {
+            this.disc = disc;
+            this.discBg = discBg;
             this.photo = photo;
+            this.col = col;
             this.name = name;
             this.stats = stats;
             this.time = time;
@@ -588,6 +595,7 @@ public final class PogoPanel {
         Io.main().removeCallbacks(auto);
         spin();
         if (destroyed || !attached || paused) return;
+        PogoSeen.refresh(app, null);
         Io.main().postDelayed(tick, 1000);
         if (task == null && loaded && !fixed) Io.main().postDelayed(auto, Math.max(0, lastAt + FRESH_MS - System.currentTimeMillis()));
     }
@@ -850,11 +858,28 @@ public final class PogoPanel {
         }
         StringBuilder s = line;
         s.setLength(0);
-        long left = m.despawnMs - System.currentTimeMillis();
+        long now = System.currentTimeMillis(), left = m.despawnMs - now;
         if (m.despawnMs > 0 && left > 0) PogoText.clock(s.append(r.stats.isEmpty() ? "" : " · "), left);
         else if (fixed && m.despawnMs > 0) s.append(r.stats.isEmpty() ? "" : " · ").append(ctx.getString(R.string.pogo_notified_expired));
         h.time.setText(s);
-        row.setAlpha(fixed && m.despawnMs > 0 && left <= 0 ? 0.5f : 1f);
+        boolean seen = PogoSeen.has(m, now);
+        if (seen != h.seen) {
+            h.seen = seen;
+            h.disc.setForeground(seen ? badge() : null);
+            h.disc.setContentDescription(seen ? ctx.getString(R.string.pogo_seen) : null);
+        }
+        // Esmaece cada parte, e não o row inteiro, para o selo (foreground do disco) ficar nítido.
+        boolean dim = fixed && m.despawnMs > 0 && left <= 0;
+        if (dim != h.dim) {
+            h.dim = dim;
+            int a = dim ? 128 : 255;
+            row.getBackground().setAlpha(a);
+            h.discBg.setAlpha(a);
+            float f = dim ? 0.5f : 1f;
+            h.photo.setAlpha(f);
+            h.col.setAlpha(f);
+            h.iv.setAlpha(f);
+        }
         boolean warn = left > 0 && left < 3 * 60_000;
         if (warn != h.warn) {
             h.warn = warn;
@@ -864,6 +889,11 @@ public final class PogoPanel {
         rowPlace(s, m, r);
         h.place.setText(s);
         h.place.setVisibility(s.length() == 0 ? View.GONE : View.VISIBLE);
+    }
+
+    private Drawable badge() {
+        if (seenBadge == null) seenBadge = PogoChips.seen(ctx);
+        return seenBadge;
     }
 
     private void click(Pogo.Mon m) {
@@ -918,7 +948,7 @@ public final class PogoPanel {
         iv.setBackground(ivBg);
         iv.setPadding(ip, 0, ip, 0);
         row.addView(iv, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, Ui.dp(c, 28)));
-        row.setTag(new Holder(photo, name, stats, time, place, iv, ivBg));
+        row.setTag(new Holder(disc, d, photo, col, name, stats, time, place, iv, ivBg));
         return row;
     }
 

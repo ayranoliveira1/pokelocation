@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pogo_mode_to_alerts">Show alerts</string>
+    <string name="pogo_alerts_none">No alerts yet</string>
+    <string name="pogo_alerts_none_filtered">No alerts match this filter</string>
+    <string name="pogo_alerts_alive">Only those still on the map</string>
+</resources>

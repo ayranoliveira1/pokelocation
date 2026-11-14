@@ -96,6 +96,13 @@ public class PogoAlertTest {
         assertTrue(world.verified);
     }
 
+    @Test public void pushMonCarriesHistoryIdForDedupe() {
+        Pogo.Mon m = PogoAlert.mon(push("rc", "X1", "h", "H1", "n", "Pikachu"));
+        assertEquals("H1", m.historyId);
+        assertEquals("X1", m.reveal);
+        assertNull(PogoAlert.mon(push("rc", "X1", "h", "")).historyId);
+    }
+
     /** 2 Pokémon no filtro avisam 1 vez; as rodadas seguintes não; outro spawn da espécie, sim. */
     @Test public void sameSpawnOnlyOnce() {
         JSONObject seen = new JSONObject();
@@ -226,5 +233,11 @@ public class PogoAlertTest {
         assertEquals(1_000, PogoAlert.budget(NOW + 9_100));
         PogoAlert.done(NOW + 10_100);
         assertEquals(8_000, PogoAlert.budget(NOW + 12_000));
+    }
+
+    @Test public void pushMonCarriesTheSpawnButNotTheEncounter() {
+        Pogo.Mon m = PogoAlert.mon(spawn("326", NOW + 10 * MIN));
+        assertEquals("326", m.spawn);
+        assertNull(m.encounter);
     }
 }

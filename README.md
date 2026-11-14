@@ -15,6 +15,26 @@ bateria. O mapa usa OpenStreetMap (osmdroid), sem chave de API.
 
 ## Versões
 
+### v1.4: alertas no joystick e marca de "já tocado"
+
+- **Modo Alertas na coluna de bolhas:** um sino novo na fileira da logo, ao lado do Rare Candy, mostra os alertas das
+  suas regras sobre o jogo, do mais novo para o mais velho. A fileira mostra os dois modos em que você não está
+  (Pokémon, Rare Candy e Alertas).
+- **Lista longa, sem o 5/10:** a coluna rola dentro da altura de 10 bolhas, sem descer até o joystick. Ela traz 50
+  alertas por vez, e os próximos 50 entram ao rolar até o fim (o servidor guarda até 200, por 7 dias).
+- **Mesmo card do Pokémon:** tocar no alerta abre **Ver coordenadas**, **Teleportar** e **Favoritar**.
+- **Despawnados apagados:** a bolha fica cinza e meio transparente na hora em que o Pokémon some.
+- **Filtro dos alertas:** **Só os que ainda estão no mapa** e a escolha de Pokémon (espécie e forma, igual ao filtro
+  normal). Sem nada escolhido, aparecem todos. Fica salvo à parte, sem mexer no filtro do mapa nem nas regras.
+- **Push na hora:** com a coluna aberta no modo Alertas, o alerta novo entra no topo sem buscar na rede, e Atualizar
+  traz a primeira página de novo.
+- **Marca de "já tocado":** ao abrir o card de um Pokémon, ele ganha um selo vermelho com check no canto superior
+  esquerdo, na coluna do joystick (Pokémon e Alertas), no mini-mapa, no mapa e nas listas do app. A marca vale por
+  spawn: outro Pokémon da mesma espécie, ou o mesmo que nasceu de novo, começa sem selo. Ela fica guardada no aparelho
+  e some sozinha 1 h depois do despawn (ou do toque, num alerta antigo).
+
+Precisa do servidor v1.2, como a v1.3. Instala por cima da v1.3.1 sem perder nada.
+
 ### v1.3.1: o GPS falso não cai mais no meio do jogo
 
 - **GPS falso volta sozinho:** em aparelhos Samsung (visto num Galaxy A22 com Android 13), quando o Android fecha uma
@@ -118,10 +138,10 @@ configuração e os modos avançados de injeção. Os detalhes estão em [Como u
 ## Instalação
 
 **[⬇️ Baixar o APK mais recente](https://github.com/ayranoliveira1/pokelocation/releases/latest)** (também em
-[`apks/`](apks/pokelocation-v1.3.1-release.apk)).
+[`apks/`](apks/pokelocation-v1.4-release.apk)).
 
 ```bash
-adb install -r apks/pokelocation-v1.3.1-release.apk
+adb install -r apks/pokelocation-v1.4-release.apk
 ```
 
 Ou copie o APK para o aparelho e abra pelo gerenciador de arquivos (permita "instalar apps desconhecidos").

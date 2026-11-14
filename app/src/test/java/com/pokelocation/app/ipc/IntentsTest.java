@@ -10,6 +10,8 @@ import com.pokelocation.app.ui.main.MainActivity;
 
 import org.junit.Test;
 
+import java.util.Arrays;
+
 public class IntentsTest {
     @Test
     public void mainActivityNameMatchesClass() {
@@ -29,5 +31,16 @@ public class IntentsTest {
     public void spoofStateOnlyReachesARunningMain() {
         assertTrue((Intents.SPOOF_STATE_FLAGS & Intent.FLAG_RECEIVER_REGISTERED_ONLY) != 0);
         assertTrue((Intents.SPOOF_STATE_FLAGS & Intent.FLAG_RECEIVER_FOREGROUND) != 0);
+    }
+
+    @Test
+    public void pogoAlertReachesOnlyLiveReceivers() {
+        assertTrue((Intents.POGO_ALERT_FLAGS & Intent.FLAG_RECEIVER_REGISTERED_ONLY) != 0);
+    }
+
+    @Test
+    public void pogoAlertIsNotPublic() {
+        assertFalse(Arrays.asList(Intents.PUBLIC_ACTIONS).contains(Intents.BC_POGO_ALERT));
+        assertFalse(Intents.replayable(Intents.BC_POGO_ALERT));
     }
 }

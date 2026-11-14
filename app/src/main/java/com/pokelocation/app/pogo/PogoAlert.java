@@ -6,7 +6,10 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Person;
 import android.app.TaskStackBuilder;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Icon;
@@ -16,6 +19,8 @@ import android.os.SystemClock;
 import android.service.notification.StatusBarNotification;
 import android.view.View;
 import android.widget.RemoteViews;
+
+import androidx.core.content.ContextCompat;
 
 import com.pokelocation.app.R;
 import com.pokelocation.app.geo.CoordParser;
@@ -61,6 +66,11 @@ public final class PogoAlert {
 
     public static void show(Context c, Map<String, String> d) {
         if (!remember(c, d)) return;
+        try {
+            Intents.broadcastPogoAlert(c, bundle(d));
+        } catch (RuntimeException ignored) {
+            // o seen já foi gravado: sem o post, este aviso nunca mais sairia
+        }
         Pogo.Mon mon = mon(d);
         Consumer<Pogo.Mon> live = sLive;
         if (live != null) live.accept(mon);
@@ -107,6 +117,35 @@ public final class PogoAlert {
 
     static synchronized void done(long now) { sLast = now; }
 
+    /** Coluna do :overlay no modo alertas: cada push novo chega em on, na main. */
+    static BroadcastReceiver listen(Context app, Consumer<Pogo.Mon> on) {
+        BroadcastReceiver r = new BroadcastReceiver() {
+            @Override public void onReceive(Context c, Intent i) {
+                Bundle b = i.getExtras();
+                if (b == null) return;
+                Map<String, String> d = new HashMap<>();
+                for (String k : b.keySet()) d.put(k, b.getString(k));
+                on.accept(mon(d));
+            }
+        };
+        ContextCompat.registerReceiver(app, r, new IntentFilter(Intents.BC_POGO_ALERT),
+                app.getPackageName() + ".permission.INTERNAL", null, ContextCompat.RECEIVER_NOT_EXPORTED);
+        return r;
+    }
+
+    static void unlisten(Context app, BroadcastReceiver r) {
+        try {
+            app.unregisterReceiver(r);
+        } catch (IllegalArgumentException ignored) {
+        }
+    }
+
+    private static Bundle bundle(Map<String, String> d) {
+        Bundle b = new Bundle();
+        for (Map.Entry<String, String> x : d.entrySet()) b.putString(x.getKey(), x.getValue());
+        return b;
+    }
+
     /** again: a foto chegou depois do prazo; troca o aviso ainda à vista sem tocar de novo. */
     private static void post(Context c, Map<String, String> d, Bitmap photo, boolean again) {
         long despawn;
@@ -124,8 +163,7 @@ public final class PogoAlert {
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CHANNEL) : legacy(c);
         String tag = d.get("e") != null ? d.get("e") : d.get("rc"); // um aviso por spawn, sem sobrescrever outro
         if (again && !visible(nm, tag)) return;
-        Bundle data = new Bundle();
-        for (Map.Entry<String, String> x : d.entrySet()) data.putString(x.getKey(), x.getValue());
+        Bundle data = bundle(d);
         String title = title(d.get("n"), d.get("iv"), d.get("cp"), despawn, System.currentTimeMillis(),
                 "1".equals(d.get("s")));
         String where = where(d);
@@ -255,6 +293,7 @@ public final class PogoAlert {
         if (Double.isNaN(m.lng)) m.lat = Double.NaN;
         m.location = blank(d.get("l"));
         m.historyId = blank(d.get("h"));
+        m.spawn = blank(d.get("e"));   // não em m.encounter: ligaria o enrich (um /search) ao abrir o card
         if (m.location == null && Double.isNaN(m.lat)) m.location = blank(d.get("r"));
         return m;
     }
