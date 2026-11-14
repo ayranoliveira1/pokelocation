@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
 import android.os.Process;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -67,6 +68,7 @@ public final class PogoLayer extends Overlay implements MapPoiLayer {
     private final Point px = new Point();
     private final GeoPoint gp = new GeoPoint(0.0, 0.0);
     private final RectF dst = new RectF();
+    private final Drawable seen;
     private final float iconR, haloR, picR, dotR;
     private final FrameLayout cardHost;   // mesma área do mapa, por cima dos controles
     private PogoCard card;
@@ -82,6 +84,7 @@ public final class PogoLayer extends Overlay implements MapPoiLayer {
     private Io.Task task;
     private final Runnable tick = this::poll;
     private final Consumer<Bitmap> onIcon = b -> { if (b != null && mv != null) mv.invalidate(); };
+    private final Runnable onSeen = () -> { if (mv != null) mv.invalidate(); };
 
     /** status: o map_pogo_box (indicador + texto), escondido pelo toque; goLabel: botão de ir do card. */
     public PogoLayer(Context c, MapView mv, FrameLayout cardHost, View status, int goLabel, MapPoiLayer.OnGo onReveal) {
@@ -104,6 +107,7 @@ public final class PogoLayer extends Overlay implements MapPoiLayer {
         ring.setStyle(Paint.Style.STROKE);
         ring.setStrokeWidth(Ui.dp(c, 1));
         dot.setColor(c.getColor(R.color.outline));
+        seen = PogoChips.seen(c);
         status.setOnClickListener(v -> v.setVisibility(View.GONE));
         mv.getOverlays().add(this);
     }
@@ -113,6 +117,7 @@ public final class PogoLayer extends Overlay implements MapPoiLayer {
     public void resume() {
         resumed = true;
         lastBox = null;
+        PogoSeen.refresh(app, onSeen);
         poll();
     }
 
@@ -205,6 +210,7 @@ public final class PogoLayer extends Overlay implements MapPoiLayer {
                 if (e == null) show(PogoText.count(app, l.size(), filter, false));
                 else show(alive(now) > 0 ? PogoText.stale(app, e) : PogoText.error(app, e));   // os da última busca ficam
                 if (mv != null) mv.invalidate();
+                PogoSeen.refresh(app, onSeen);
                 poll();
             });
         });
@@ -250,10 +256,15 @@ public final class PogoLayer extends Overlay implements MapPoiLayer {
                     asked = true;
                 }
                 c.drawCircle(px.x, px.y, dotR, dot);
-                continue;
+            } else {
+                dst.set(px.x - picR, px.y - picR, px.x + picR, px.y + picR);
+                c.drawBitmap(b, null, dst, bmp);
             }
-            dst.set(px.x - picR, px.y - picR, px.x + picR, px.y + picR);
-            c.drawBitmap(b, null, dst, bmp);
+            if (PogoSeen.has(m, now)) {
+                int r = (int) iconR;
+                seen.setBounds(px.x - r, px.y - r, px.x + r, px.y + r);
+                seen.draw(c);
+            }
         }
         if (asked) askAt = now + 2000;
     }
@@ -277,6 +288,7 @@ public final class PogoLayer extends Overlay implements MapPoiLayer {
         if (hit == null) return false;
         if (card == null) card = new PogoCard(ctx, goLabel, (lat, lng, t) -> onReveal.at(lat, lng), this::closeCard);
         card.bind(hit, null);
+        map.invalidate();
         toPixels(pj, hit);
         tapX = px.x;
         tapY = px.y;
