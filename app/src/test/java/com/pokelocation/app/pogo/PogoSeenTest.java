@@ -74,8 +74,9 @@ public class PogoSeenTest {
         assertSame(k, PogoSeen.key(m));
     }
 
-    @Test public void untilIsDespawnPlusAnHourOrTwoHoursWhenUnknown() {
+    @Test public void untilIsLaterOfDespawnAndNowPlusAnHourOrTwoHoursWhenUnknown() {
         assertEquals(NOW + 10 * MIN + 60 * MIN, PogoSeen.until(mon(19, "1", null, 0, 0, NOW + 10 * MIN), NOW));
+        assertEquals(NOW + 60 * MIN, PogoSeen.until(mon(19, "1", null, 0, 0, NOW - 180 * MIN), NOW));
         assertEquals(NOW + 120 * MIN, PogoSeen.until(mon(19, "1", null, 0, 0, 0), NOW));
     }
 

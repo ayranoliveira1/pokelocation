@@ -792,9 +792,8 @@ public final class PogoBubbles {
             b.setTag(m);
             seen(b, m, now);
             b.setColorFilter(gone ? GRAY : null);
-            int a = gone ? 128 : 255;   // na view, o alfa esmaeceria o selo junto
-            b.setImageAlpha(a);
-            b.getBackground().setAlpha(a);
+            // Só o fundo: na view esmaeceria o selo junto, e na imagem o fundo claro lavaria o sprite cinza.
+            b.getBackground().setAlpha(gone ? 128 : 255);
         }
         win = null;
         icons();

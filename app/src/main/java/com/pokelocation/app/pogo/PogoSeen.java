@@ -46,7 +46,7 @@ final class PogoSeen {
 
     private static String e5(double v) { return Double.isNaN(v) ? "" : String.valueOf(Math.round(v * 1e5)); }
 
-    static long until(Pogo.Mon m, long now) { return m.despawnMs > 0 ? m.despawnMs + KEEP : now + KEEP_UNKNOWN; }
+    static long until(Pogo.Mon m, long now) { return m.despawnMs > 0 ? Math.max(m.despawnMs, now) + KEEP : now + KEEP_UNKNOWN; }
 
     static boolean has(Pogo.Mon m, long now) {
         String k = key(m);
