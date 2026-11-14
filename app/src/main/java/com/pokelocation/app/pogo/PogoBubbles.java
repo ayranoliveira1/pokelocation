@@ -2,6 +2,7 @@ package com.pokelocation.app.pogo;
 
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -38,6 +39,9 @@ import com.pokelocation.app.ui.panel.PanelHost;
 import com.pokelocation.app.util.Ui;
 import com.pokelocation.app.util.WindowDrag;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,8 +51,8 @@ import java.util.function.Consumer;
 
 /**
  * Coluna de bolhas sobre o jogo (:overlay): a logo no topo e um ícone por Pokémon (ou Rare Candy) perto da posição
- * atual. A logo arrasta a coluna e abre, para o lado de dentro da tela, atualizar, filtros, a quantidade e o modo; a
- * bolha abre o PogoCard ao lado.
+ * atual, ou por alerta recebido. A logo arrasta a coluna e abre, para o lado de dentro da tela, atualizar, filtros, a
+ * quantidade e os modos; a bolha abre o PogoCard ao lado.
  * Janelas próprias, fora do PanelHost: abrir o Teleport ou o chat (closeAll) não a fecha.
  */
 public final class PogoBubbles {
@@ -62,13 +66,16 @@ public final class PogoBubbles {
     }
 
     private static final String TAG = "PogoBubbles", POS = "overlay_panels", COUNT = "pogo_col_n", MODE = "pogo_col_mode",
-            CANDY_N = "pogo_candy_n", CANDY_KM = "pogo_candy_km", CANDY_CAP = "pogo_candy_cap";
+            CANDY_N = "pogo_candy_n", CANDY_KM = "pogo_candy_km", CANDY_CAP = "pogo_candy_cap",
+            ALERT_ALIVE = "pogo_alert_alive", ALERT_SPECIES = "pogo_alert_species";
     /** O servidor aceita 10 buscas/min por conta e o 429 vem sem retry_after: a busca manual espera este tanto. */
     private static final long GAP_MS = 6_000;
     private static final int FEW = 5, MANY = 10, CAP = 10;
     static final int[] CANDY_COUNTS = {5, 10, 25, 50, 75, 100};
     /** Opacidade do card sobre o jogo, para não atrapalhar. */
     private static final float ALPHA = 0.8f;
+    private static final int POKEMON = PogoAlertCol.MODE_POKEMON, CANDY = PogoAlertCol.MODE_CANDY, ALERTS = PogoAlertCol.MODE_ALERTS;
+    private static final ColorMatrixColorFilter GRAY = grayFilter();
 
     private final Context ctx, app;
     private final Host host;
@@ -81,23 +88,30 @@ public final class PogoBubbles {
     private final int size, gap, margin;
     private final LinearLayout root, side, bubbles;
     private final ScrollView scroll;
-    private final ImageView mode;
+    private final ImageView filter;
+    private final ImageView[] toMode = new ImageView[2];
     private final TextView count;
     private final ObjectAnimator spin;
     private final WindowManager.LayoutParams lp, sideLp;
     private final ImageView logo;
     private final Drawable icon;
-    private final List<Pogo.Mon> mons = new ArrayList<>();
-    private int n, candyN, candyCap, downX, downY;   // a coluna no DOWN da logo: o arraste conta a partir daqui
-    private boolean open = true, visible, shown, destroyed, candyMode, candyLoading;
+    private final List<Pogo.Mon> mons = new ArrayList<>(), shownAlerts = new ArrayList<>(), early = new ArrayList<>();
+    private List<Pogo.Mon> alerts = new ArrayList<>();
+    private int mode, n, candyN, candyCap, downX, downY;   // a coluna no DOWN da logo: o arraste conta a partir daqui
+    private boolean open = true, visible, shown, destroyed, candyLoading, alertAlive, stuck, wantEmpty;
+    private PogoFilter alertSpecies;
+    private String next;
+    private Io.Task more;
+    private BroadcastReceiver live;
+    private int[] win;
     private Bitmap candyBmp;
-    private final Consumer<Bitmap> onIcon = b -> { if (b != null && !destroyed && !candyMode) icons(); };
+    private final Consumer<Bitmap> onIcon = b -> { if (b != null && !destroyed && mode != CANDY) icons(); };
     private final Consumer<Bitmap> onCandy = b -> {
         candyLoading = false;
         if (b == null || destroyed || candyBmp != null) return;
         useCandy(b);
         showMode();
-        if (candyMode) render();
+        if (mode == CANDY) render();
     };
     private final Runnable auto = this::auto, retry = this::retry, prune = this::render, user = () -> load(true);
     private final View.OnLayoutChangeListener cardFit = (v, l, t, r, b, ol, ot, or, ob) -> { if (b - t != ob - ot) fitCard(v); };
@@ -108,7 +122,7 @@ public final class PogoBubbles {
     private Pogo.Mon cardMon;
     private PogoFilterSheet sheet;
     private PanelHost sheetHost, candySheet;
-    private Drawable spinner, ballIcon, candyIcon, grayIcon;
+    private Drawable spinner, ballIcon, candyIcon, grayIcon, bellIcon;
     private List<Pogo.Candy> candies;
     private Map<String, Long> visited;
     private PogoCandyCard candyCard;
@@ -126,7 +140,9 @@ public final class PogoBubbles {
         pos = c.getSharedPreferences(POS, Context.MODE_PRIVATE);   // só o :overlay grava
         key = classic ? "pogo_col_classic" : "pogo_col_drawer_top";   // o padrão da gaveta saiu de baixo: a salva antiga não vale
         n = pos.getInt(COUNT, FEW) == MANY ? MANY : FEW;
-        candyMode = pos.getInt(MODE, 0) == 1;
+        mode = PogoAlertCol.mode(pos.getInt(MODE, POKEMON));
+        alertAlive = pos.getBoolean(ALERT_ALIVE, false);
+        alertSpecies = species(pos.getString(ALERT_SPECIES, null));
         candyN = pos.getInt(CANDY_N, FEW);
         candyCap = pos.getInt(CANDY_CAP, CAP);
         size = c.getResources().getDimensionPixelSize(R.dimen.ov_btn);   // o botão da gaveta
@@ -140,7 +156,7 @@ public final class PogoBubbles {
         logo.setContentDescription(c.getString(R.string.pogo_bubbles_logo));
         side = new LinearLayout(c);
         button(PogoChips.refresh(c, primary), R.string.pogo_refresh, v -> refreshNow());
-        button(PogoChips.lines(c, primary), R.string.pogo_panel_filters, v -> openSheet());
+        filter = button(PogoChips.lines(c, primary), R.string.pogo_panel_filters, v -> openSheet());
         count = new TextView(c);
         count.setGravity(Gravity.CENTER);
         count.setTextSize(15);
@@ -149,29 +165,39 @@ public final class PogoBubbles {
         count.setBackground(round());
         count.setOnClickListener(v -> cycle());
         side.addView(count, sideLp());
-        mode = button(null, R.string.pogo_mode_to_candy, v -> switchMode());
-        mode.setScaleType(ImageView.ScaleType.FIT_CENTER);   // o item baixado tem 96 px: nos 20dp dos outros ícones
         int mp = (size - Ui.dp(c, 20)) / 2;
-        mode.setPadding(mp, mp, mp, mp);
+        for (int i = 0; i < toMode.length; i++) {
+            int j = i;
+            ImageView b = toMode[i] = button(null, R.string.pogo_mode_to_candy, v -> switchMode(PogoAlertCol.others(mode)[j]));
+            b.setScaleType(ImageView.ScaleType.FIT_CENTER);   // o item baixado tem 96 px: nos 20dp dos outros ícones
+            b.setPadding(mp, mp, mp, mp);
+        }
         showMode();
         bubbles = new LinearLayout(c);
         bubbles.setOrientation(LinearLayout.VERTICAL);
         scroll = new ScrollView(c) {
             @Override protected void onMeasure(int w, int h) {
                 readScreen();
-                int max = Math.min(MeasureSpec.getSize(h), Math.max(0, scr.y - lp.y - size));
+                int max = PogoAlertCol.colMax(Math.min(MeasureSpec.getSize(h), Math.max(0, scr.y - lp.y - size)), size, gap, mode);
                 super.onMeasure(w, MeasureSpec.makeMeasureSpec(max, MeasureSpec.AT_MOST));
             }
         };
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> closeCard());   // o card deixaria de apontar para a bolha
+        scroll.setOnScrollChangeListener((v, x, y, ox, oy) -> {
+            closeCard();   // o card deixaria de apontar para a bolha
+            if (mode == ALERTS) scrolled(y);
+        });
         scroll.addView(bubbles);
         root = new LinearLayout(c);
         root.setOrientation(LinearLayout.VERTICAL);
         root.addView(logo, new LinearLayout.LayoutParams(size, size));
         root.addView(scroll);
-        View.OnLayoutChangeListener resized = (v, l, t, r, b, ol, ot, or, ob) -> { if (b - t != ob - ot || r - l != or - ol) fit(); };
+        View.OnLayoutChangeListener resized = (v, l, t, r, b, ol, ot, or, ob) -> {
+            if (b - t == ob - ot && r - l == or - ol) return;
+            fit();
+            if (mode == ALERTS) icons();
+        };
         root.addOnLayoutChangeListener(resized);
         bubbles.addOnLayoutChangeListener(resized);
 
@@ -218,6 +244,8 @@ public final class PogoBubbles {
         task = null;
         sync();
         loading(false);
+        if (more != null) more.cancel();
+        more = null;
         if (card != null) card.destroy();
         card = null;
         if (candyCard != null) candyCard.destroy();
@@ -225,6 +253,8 @@ public final class PogoBubbles {
         if (sheetHost != null) sheetHost.dismiss();
         if (candySheet != null) candySheet.dismiss();
         mons.clear();
+        alerts.clear();
+        shownAlerts.clear();
         bubbles.removeAllViews();
         PogoIcons.trim();
     }
@@ -240,12 +270,15 @@ public final class PogoBubbles {
             Io.main().removeCallbacks(retry);
             Io.main().removeCallbacks(prune);
             Io.main().removeCallbacks(user);
+            unlisten();
+            if (more != null) more.cancel();
+            more = null;
             remove(root);
             shown = false;
             return;
         }
         readScreen();
-        int k = shown();
+        int k = mode == ALERTS ? MANY : shown();
         int[] p = place(classic, lp.x, lp.y, size, size + k * (size + gap), size + Math.max(MANY, k) * (size + gap), scr.x,
                 scr.y, margin, size, host.stick());
         lp.x = p[0];
@@ -259,6 +292,9 @@ public final class PogoBubbles {
         loading(task != null);
         render();
         schedule();
+        if (mode != ALERTS) return;
+        listen();
+        if (task == null) load(false);   // escondida, os pushes não chegaram
     }
 
     private WindowManager.LayoutParams params(int width) {
@@ -305,7 +341,7 @@ public final class PogoBubbles {
         if (!shown) return;
         readScreen();
         int x = WindowDrag.clamp(lp.x, 0, Math.max(0, scr.x - root.getWidth()));
-        int y = WindowDrag.clamp(lp.y, 0, Math.max(0, scr.y - size - bubbles.getHeight()));
+        int y = WindowDrag.clamp(lp.y, 0, Math.max(0, scr.y - size - PogoAlertCol.colMax(bubbles.getHeight(), size, gap, mode)));
         if (x == lp.x && y == lp.y) return;
         lp.x = x;
         lp.y = y;
@@ -378,7 +414,11 @@ public final class PogoBubbles {
     }
 
     private GradientDrawable round() {
-        GradientDrawable g = PogoChips.round(ctx, 20, ctx.getColor(R.color.surface), ctx.getColor(R.color.outline));
+        return oval(ctx.getColor(R.color.surface), ctx.getColor(R.color.outline));
+    }
+
+    private GradientDrawable oval(int fill, int stroke) {
+        GradientDrawable g = PogoChips.round(ctx, 20, fill, stroke);
         g.setShape(GradientDrawable.OVAL);
         return g;
     }
@@ -417,11 +457,11 @@ public final class PogoBubbles {
     }
 
     private int shown() {
-        return candyMode ? candyCount(candyN, candyCap) : n;
+        return mode == CANDY ? candyCount(candyN, candyCap) : n;
     }
 
     private void cycle() {
-        if (candyMode) {
+        if (mode == CANDY) {
             candyN = nextCandyCount(shown(), candyCap);
             pos.edit().putInt(CANDY_N, candyN).apply();
         } else {
@@ -435,26 +475,48 @@ public final class PogoBubbles {
     private void showCount() {
         int k = shown();
         count.setText(String.valueOf(k));
-        count.setContentDescription(ctx.getString(candyMode ? R.string.pogo_candy_count : R.string.pogo_bubbles_count, k));
+        count.setContentDescription(ctx.getString(mode == CANDY ? R.string.pogo_candy_count : R.string.pogo_bubbles_count, k));
     }
 
     private void showMode() {
         candyIcons();
-        if (candyMode && ballIcon == null) ballIcon = PogoChips.pokeball(ctx, ctx.getColor(R.color.primary));
-        mode.setImageDrawable(candyMode ? ballIcon : candyIcon);
-        mode.setContentDescription(ctx.getString(candyMode ? R.string.pogo_mode_to_pokemon : R.string.pogo_mode_to_candy));
+        int primary = ctx.getColor(R.color.primary);
+        int[] to = PogoAlertCol.others(mode);
+        for (int i = 0; i < toMode.length; i++) {
+            if (to[i] == POKEMON && ballIcon == null) ballIcon = PogoChips.pokeball(ctx, primary);
+            if (to[i] == ALERTS && bellIcon == null) bellIcon = PogoChips.bell(ctx, primary);
+            toMode[i].setImageDrawable(to[i] == POKEMON ? ballIcon : to[i] == CANDY ? candyIcon : bellIcon);
+            toMode[i].setContentDescription(ctx.getString(to[i] == POKEMON ? R.string.pogo_mode_to_pokemon
+                    : to[i] == CANDY ? R.string.pogo_mode_to_candy : R.string.pogo_mode_to_alerts));
+        }
+        count.setVisibility(mode == ALERTS ? View.GONE : View.VISIBLE);
+        showFilter();
         showCount();
     }
 
-    private void switchMode() {
+    private void showFilter() {
+        filter.setBackground(mode == ALERTS && PogoAlertCol.filtered(alertSpecies, alertAlive)
+                ? oval(ctx.getColor(R.color.primary_container), ctx.getColor(R.color.primary)) : round());
+    }
+
+    private void switchMode(int to) {
         if (task != null) task.cancel();
         task = null;
+        if (more != null) more.cancel();
+        more = null;
         Io.main().removeCallbacks(auto);
         Io.main().removeCallbacks(retry);
         closeCard();
         closeSide();
-        candyMode = !candyMode;
-        pos.edit().putInt(MODE, candyMode ? 1 : 0).apply();
+        mode = to;
+        pos.edit().putInt(MODE, mode).apply();
+        if (mode == ALERTS && shown) listen();
+        else unlisten();
+        if (mode != ALERTS) {
+            alerts.clear();
+            shownAlerts.clear();
+            next = null;
+        }
         showMode();
         bubbles.removeAllViews();
         render();
@@ -490,7 +552,7 @@ public final class PogoBubbles {
     /** Atualizar e filtro: antes dos GAP_MS da última busca do modo, espera carregando em vez de levar o 429. */
     private void loadSoon() {
         Io.main().removeCallbacks(user);
-        long wait = (candyMode ? candyAt : lastAt) + GAP_MS - System.currentTimeMillis();
+        long wait = mode == ALERTS ? 0 : (mode == CANDY ? candyAt : lastAt) + GAP_MS - System.currentTimeMillis();
         if (wait <= 0) {
             load(true);
             return;
@@ -501,8 +563,9 @@ public final class PogoBubbles {
 
     private void schedule() {
         Io.main().removeCallbacks(auto);
-        if (shown && task == null) {
-            Io.main().postDelayed(auto, Math.max(0, (candyMode ? candyAt : lastAt) + PogoPanel.FRESH_MS - System.currentTimeMillis()));
+        if (shown && task == null && mode != ALERTS) {   // nos alertas o push mantém a lista
+            long at = mode == CANDY ? candyAt : lastAt;
+            Io.main().postDelayed(auto, Math.max(0, at + PogoPanel.FRESH_MS - System.currentTimeMillis()));
         }
     }
 
@@ -523,8 +586,12 @@ public final class PogoBubbles {
         Io.main().removeCallbacks(auto);
         Io.main().removeCallbacks(retry);
         loading(true);
+        if (mode == ALERTS) {
+            loadAlerts(t, user);
+            return;
+        }
         double lat = host.lat(), lng = host.lng();
-        if (candyMode) {
+        if (mode == CANDY) {
             loadCandies(t, user, lat, lng);
             return;
         }
@@ -580,6 +647,97 @@ public final class PogoBubbles {
         });
     }
 
+    private void loadAlerts(Io.Task t, boolean user) {
+        if (more != null) more.cancel();
+        more = null;
+        early.clear();
+        wantEmpty = false;
+        PogoPanel.NET.execute(() -> {
+            if (t.isCancelled()) return;
+            Pogo.Page got = null;
+            Exception err = null;
+            try {
+                got = Pogo.history(app, null, PogoAlertCol.PAGE);
+            } catch (Exception e) {
+                err = e;
+                Log.w(TAG, "alerts: " + (e instanceof Pogo.Error ? ((Pogo.Error) e).http : e.getClass().getSimpleName()));
+            }
+            Pogo.Page p = got;
+            Exception e = err;
+            Io.main().post(() -> {
+                if (!done(t, e, user)) return;
+                alerts = PogoAlertCol.first(early, p.mons);
+                next = p.next;
+                early.clear();
+                stuck = false;
+                wantEmpty = user;
+                render();
+                emptyToast();
+            });
+        });
+    }
+
+    /** O erro trava as próximas até o Atualizar; o toast só quando quem pediu foi o rolar até o fim. */
+    private void loadMore(boolean user) {
+        Io.Task t = more = new Io.Task();
+        String before = next;
+        PogoPanel.NET.execute(() -> {
+            if (t.isCancelled()) return;
+            Pogo.Page got = null;
+            Exception err = null;
+            try {
+                got = Pogo.history(app, before, PogoAlertCol.PAGE);
+            } catch (Exception e) {
+                err = e;
+                Log.w(TAG, "alerts more: " + (e instanceof Pogo.Error ? ((Pogo.Error) e).http : e.getClass().getSimpleName()));
+            }
+            Pogo.Page p = got;
+            Exception e = err;
+            Io.main().post(() -> {
+                if (t.isCancelled() || destroyed) return;
+                more = null;
+                if (e != null) {
+                    stuck = true;
+                    if (user) Ui.toast(app, PogoText.error(app, e));
+                } else {
+                    PogoAlertCol.append(alerts, p.mons);
+                    next = p.next;
+                    render();
+                }
+                emptyToast();
+            });
+        });
+    }
+
+    private void scrolled(int y) {
+        icons();
+        if (next != null && more == null && task == null && !stuck
+                && PogoAlertCol.atEnd(y, scroll.getHeight(), bubbles.getHeight(), size)) loadMore(true);
+    }
+
+    /** Quem pediu (Atualizar, filtro) só ouve o vazio depois das páginas que o needMore puxou sozinho. */
+    private void emptyToast() {
+        if (!wantEmpty || more != null) return;
+        wantEmpty = false;
+        if (alerts.isEmpty()) Ui.toast(app, R.string.pogo_alerts_none);
+        else if (shownAlerts.isEmpty() && next == null) Ui.toast(app, R.string.pogo_alerts_none_filtered);
+    }
+
+    private void listen() {
+        if (live == null) live = PogoAlert.listen(app, this::pushed);
+    }
+
+    private void unlisten() {
+        if (live == null) return;
+        PogoAlert.unlisten(app, live);
+        live = null;
+    }
+
+    private void pushed(Pogo.Mon m) {
+        if (task != null) early.add(m);
+        if (PogoAlertCol.push(alerts, m)) render();
+    }
+
     /**
      * Fim da busca t; false se ela foi descartada ou deu erro (já tratado). A descartada não mexe na logo: quem a
      * cancelou já ligou outra busca (load, switchMode) ou desligou a logo (destroy).
@@ -587,8 +745,8 @@ public final class PogoBubbles {
     private boolean done(Io.Task t, Exception e, boolean user) {
         if (t.isCancelled() || destroyed) return false;
         task = null;
-        if (candyMode) candyAt = System.currentTimeMillis();
-        else lastAt = System.currentTimeMillis();
+        if (mode == CANDY) candyAt = System.currentTimeMillis();
+        else if (mode == POKEMON) lastAt = System.currentTimeMillis();
         loading(false);
         if (e == null) return true;
         if (user) Ui.toast(app, PogoText.error(app, e));
@@ -600,7 +758,7 @@ public final class PogoBubbles {
     /** Tira os vencidos, mostra os n primeiros (os mais perto) e agenda o próximo vencimento; sem tick de 1 s. */
     private void render() {
         long now = System.currentTimeMillis();
-        long at = candyMode ? renderCandies(now) : renderMons(now);
+        long at = mode == CANDY ? renderCandies(now) : mode == ALERTS ? renderAlerts(now) : renderMons(now);
         Io.main().removeCallbacks(prune);
         if (shown && at > 0) Io.main().postDelayed(prune, at - now);
     }
@@ -614,12 +772,29 @@ public final class PogoBubbles {
             Pogo.Mon m = mons.get(i);
             b.setTag(m);
             b.setContentDescription(m.name);
-            Bitmap bmp = PogoIcons.cached(m);
-            if (bmp != null) b.setImageBitmap(bmp);
-            else b.setImageResource(R.drawable.pogo_ic_pokemon);
-            if (bmp == null && m.id > 0) PogoIcons.load(app, m, onIcon);
         }
+        win = null;
+        icons();
         return nextDespawn(mons, k, now);
+    }
+
+    private long renderAlerts(long now) {
+        PogoAlertCol.visible(alerts, alertAlive, alertSpecies::wants, now, shownAlerts);
+        int k = shownAlerts.size();
+        while (bubbles.getChildCount() > k) bubbles.removeViewAt(k);
+        for (int i = 0; i < k; i++) {
+            ImageView b = i < bubbles.getChildCount() ? (ImageView) bubbles.getChildAt(i) : bubble();
+            Pogo.Mon m = shownAlerts.get(i);
+            boolean gone = PogoText.gone(m.despawnMs, now);
+            b.setTag(m);
+            b.setContentDescription(m.name);
+            b.setColorFilter(gone ? GRAY : null);
+            b.setAlpha(gone ? 0.5f : 1f);
+        }
+        win = null;
+        icons();
+        if (shown && PogoAlertCol.needMore(k, next, more != null || task != null, stuck)) loadMore(false);
+        return nextDespawn(alerts, alerts.size(), now);
     }
 
     private long renderCandies(long now) {
@@ -641,12 +816,25 @@ public final class PogoBubbles {
         return at;
     }
 
+    /**
+     * Nos alertas só a janela à vista (±1 tela) segura foto: fora dela o vetor solta o bitmap e o teto fica no LRU dos
+     * ícones. Busca só o que acabou de entrar na janela (win = null depois de trocar as tags).
+     */
     private void icons() {
-        for (int i = 0; i < bubbles.getChildCount(); i++) {
+        int k = bubbles.getChildCount();
+        int[] w = mode == ALERTS ? PogoAlertCol.window(scroll.getScrollY(), scroll.getHeight(), size + gap, k) : new int[]{0, k};
+        for (int i = 0; i < k; i++) {
             ImageView b = (ImageView) bubbles.getChildAt(i);
-            Bitmap bmp = PogoIcons.cached((Pogo.Mon) b.getTag());
-            if (bmp != null) b.setImageBitmap(bmp);
+            Pogo.Mon m = (Pogo.Mon) b.getTag();
+            boolean in = i >= w[0] && i < w[1];
+            Bitmap bmp = in ? PogoIcons.cached(m) : null;
+            Drawable d = b.getDrawable();
+            Bitmap had = d instanceof BitmapDrawable ? ((BitmapDrawable) d).getBitmap() : null;
+            if (bmp != null && bmp != had) b.setImageBitmap(bmp);
+            else if (bmp == null && (had != null || d == null)) b.setImageResource(R.drawable.pogo_ic_pokemon);
+            if (in && bmp == null && m.id > 0 && (win == null || i < win[0] || i >= win[1])) PogoIcons.load(app, m, onIcon);
         }
+        win = w;
     }
 
     /** O menor despawn ainda no futuro entre os k primeiros; 0 = nada a agendar. */
@@ -666,9 +854,9 @@ public final class PogoBubbles {
         d.setColor(ctx.getColor(R.color.surface));
         d.setStroke(Ui.dp(ctx, 1), ctx.getColor(R.color.outline));
         b.setBackground(d);
-        int p = Ui.dp(ctx, candyMode ? 8 : 4);
+        int p = Ui.dp(ctx, mode == CANDY ? 8 : 4);
         b.setPadding(p, p, p, p);
-        if (candyMode) gestures(b);
+        if (mode == CANDY) gestures(b);
         else b.setOnClickListener(this::tap);
         LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(size, size);
         l.topMargin = gap;
@@ -751,10 +939,14 @@ public final class PogoBubbles {
         return candyBmp != null ? new BitmapDrawable(ctx.getResources(), candyBmp) : PogoChips.candy(ctx);
     }
 
-    private static Drawable gray(Drawable d) {
+    private static ColorMatrixColorFilter grayFilter() {
         ColorMatrix m = new ColorMatrix();
         m.setSaturation(0);
-        d.setColorFilter(new ColorMatrixColorFilter(m));
+        return new ColorMatrixColorFilter(m);
+    }
+
+    private static Drawable gray(Drawable d) {
+        d.setColorFilter(GRAY);
         return d;
     }
 
@@ -858,7 +1050,7 @@ public final class PogoBubbles {
     private void openSheet() {
         closeSide();
         closeCard();
-        if (candyMode) {
+        if (mode == CANDY) {
             if (candySheet != null) return;
             candySheet = PogoCandySheet.show(ctx, pos.getInt(CANDY_KM, PogoCandySheet.DEFAULT_KM), km -> {
                 pos.edit().putInt(CANDY_KM, km).apply();
@@ -868,14 +1060,16 @@ public final class PogoBubbles {
             return;
         }
         if (sheet != null) return;
-        PogoFilterSheet s = new PogoFilterSheet(ctx, PogoFilter.load(app), f -> {
-            f.save(app);
-            sheet.close();
-            loadSoon();
-        }, () -> {
+        Runnable closed = () -> {
             sheet = null;
             if (sheetHost != null) sheetHost.dismiss();
-        }, null, null);
+        };
+        PogoFilterSheet s = mode == ALERTS ? PogoFilterSheet.alerts(ctx, alertSpecies, alertAlive, this::applyAlerts, closed)
+                : new PogoFilterSheet(ctx, PogoFilter.load(app), f -> {
+                    f.save(app);
+                    sheet.close();
+                    loadSoon();
+                }, closed, null, null);
         sheet = s;
         sheetHost = PanelHost.sheet(ctx, s.view(), s::back);
         sheetHost.setOnDismiss(() -> {
@@ -883,5 +1077,26 @@ public final class PogoBubbles {
             sheet = null;
             sheetHost = null;
         });
+    }
+
+    /** À parte do PogoFilter do mapa: filtra a lista carregada e só busca mais páginas se a coluna ficar curta. */
+    private void applyAlerts(PogoFilter f, boolean alive) {
+        alertSpecies = f;
+        alertAlive = alive;
+        pos.edit().putBoolean(ALERT_ALIVE, alive).putString(ALERT_SPECIES, f.stored().toString()).apply();
+        sheet.close();
+        showFilter();
+        wantEmpty = true;
+        render();
+        emptyToast();
+    }
+
+    private static PogoFilter species(String s) {
+        if (s == null) return new PogoFilter();
+        try {
+            return PogoFilter.fromJson(new JSONObject(s));
+        } catch (JSONException e) {
+            return new PogoFilter();
+        }
     }
 }
