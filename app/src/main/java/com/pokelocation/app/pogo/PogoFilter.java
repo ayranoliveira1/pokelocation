@@ -167,6 +167,28 @@ public final class PogoFilter {
 
     static String labelKey(int id, int form) { return id + "|" + form; }
 
+    static int alertsActive(PogoFilter species, boolean alive) {
+        return (alive ? 1 : 0) + (species.pokemonIds.isEmpty() && species.speciesForms.isEmpty() ? 0 : 1);
+    }
+
+    /** Espécie dos alertas: o push traz a forma como número ou como nome do upstream ("Alola"), não o form_id. */
+    boolean wants(Pogo.Mon m) {
+        if (pokemonIds.isEmpty() && speciesForms.isEmpty() || pokemonIds.contains(m.id)) return true;
+        String form = formKey(m.form);
+        for (int[] sf : speciesForms) {
+            if (sf[0] != m.id) continue;
+            if (form.isEmpty() || form.equals(String.valueOf(sf[1]))) return true;
+            if (form.chars().allMatch(Character::isDigit)) continue;
+            // ponytail: casa pelo nome do rótulo do catálogo; se divergir do upstream, a forma não casa (aí o push manda o form_id)
+            String l = labels.get(labelKey(sf[0], sf[1]));
+            int at = l != null ? l.indexOf(" · ") : -1;
+            if (at < 0 || l.startsWith("#", at + 3) || formKey(l.substring(at + 3)).equals(form)) return true;
+        }
+        return false;
+    }
+
+    static String formKey(String s) { return s == null ? "" : s.trim().toUpperCase(Locale.ROOT).replace(' ', '_'); }
+
     /** Troca o conteúdo sem trocar o objeto (quem tem a referência vê a mudança). */
     public void set(PogoFilter o) {
         pokemonIds.clear();

@@ -200,4 +200,70 @@ public class PogoFilterTest {
         assertNull(PogoFilter.chosen(l, f));
         assertNull(PogoFilter.chosen(new ArrayList<>(), f));
     }
+
+    private static Pogo.Mon mon(int id, String form) {
+        Pogo.Mon m = new Pogo.Mon();
+        m.id = id;
+        m.form = form;
+        return m;
+    }
+
+    private static PogoFilter rattataAlola(String label) {
+        PogoFilter f = new PogoFilter();
+        f.speciesForms.add(new int[]{19, 61});
+        if (label != null) f.labels.put(PogoFilter.labelKey(19, 61), label);
+        return f;
+    }
+
+    @Test public void wantsEverythingWithNoSpecies() {
+        assertTrue(new PogoFilter().wants(mon(19, null)));
+        assertTrue(new PogoFilter().wants(mon(150, "ALOLA")));
+    }
+
+    @Test public void wantsBySpeciesAnyForm() {
+        PogoFilter f = new PogoFilter();
+        f.pokemonIds.add(19);
+        assertTrue(f.wants(mon(19, null)));
+        assertTrue(f.wants(mon(19, "ALOLA")));
+        assertTrue(f.wants(mon(19, "45")));
+    }
+
+    @Test public void wantsFormByNumericId() {
+        PogoFilter f = rattataAlola("Rattata · Alola");
+        assertTrue(f.wants(mon(19, "61")));
+        assertFalse(f.wants(mon(19, "45")));
+    }
+
+    @Test public void wantsFormByLabelName() {
+        PogoFilter f = rattataAlola("Rattata · Alola");
+        assertTrue(f.wants(mon(19, "ALOLA")));
+        assertTrue(f.wants(mon(19, "Alola")));
+        assertFalse(f.wants(mon(19, "NORMAL")));
+        PogoFilter two = rattataAlola("Rattata · Alola Form");
+        assertTrue(two.wants(mon(19, "alola_form")));
+    }
+
+    @Test public void formWithoutLabelFallsBackToSpecies() {
+        assertTrue(rattataAlola(null).wants(mon(19, "NORMAL")));
+        assertTrue(rattataAlola("Rattata · Alola").wants(mon(19, null)));
+        assertTrue(rattataAlola("Rattata · #61").wants(mon(19, "ALOLA")));
+    }
+
+    @Test public void otherSpeciesIsRejected() {
+        PogoFilter f = rattataAlola("Rattata · Alola");
+        f.pokemonIds.add(25);
+        assertFalse(f.wants(mon(20, "ALOLA")));
+        assertFalse(f.wants(mon(20, "61")));
+        assertFalse(f.wants(mon(150, null)));
+    }
+
+    @Test public void alertsActiveCountsAliveAndSpecies() {
+        PogoFilter none = new PogoFilter();
+        assertEquals(0, PogoFilter.alertsActive(none, false));
+        assertEquals(1, PogoFilter.alertsActive(none, true));
+        assertEquals(1, PogoFilter.alertsActive(rattataAlola(null), false));
+        assertEquals(2, PogoFilter.alertsActive(rattataAlola(null), true));
+        none.ivMin = 90.0;
+        assertEquals(0, PogoFilter.alertsActive(none, false));
+    }
 }
