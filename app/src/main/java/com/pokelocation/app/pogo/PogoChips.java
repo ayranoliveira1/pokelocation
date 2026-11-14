@@ -391,6 +391,42 @@ final class PogoChips {
         };
     }
 
+    /** Selo de "já tocado": bounds = a caixa do círculo do Pokémon; ignora alfa e filtro de quem usa. */
+    static Drawable seen(Context c) {
+        float r = Ui.dp(c, 6), u = r / 6;
+        Paint disc = fill(0xFFC62828);   // fixo: o danger do escuro (#EF9A9A) tira o contraste do check
+        Paint check = fill(0xFFFFFFFF);
+        check.setStyle(Paint.Style.STROKE);
+        check.setStrokeWidth(1.5f);
+        check.setStrokeCap(Paint.Cap.ROUND);
+        check.setStrokeJoin(Paint.Join.ROUND);
+        android.graphics.Path tick = new android.graphics.Path();
+        tick.moveTo(3.4f, 6.2f);
+        tick.lineTo(5.2f, 8);
+        tick.lineTo(8.6f, 4.4f);
+        return new Drawable() {
+            @Override public void draw(Canvas cv) {
+                android.graphics.Rect b = getBounds();
+                float o = seenInset(b.width(), r);
+                cv.drawCircle(b.left + o, b.top + o, r, disc);
+                int save = cv.save();
+                cv.translate(b.left + o - r, b.top + o - r);
+                cv.scale(u, u);
+                cv.drawPath(tick, check);
+                cv.restoreToCount(save);
+            }
+
+            @Override public void setAlpha(int a) {}
+            @Override public void setColorFilter(ColorFilter cf) {}
+            @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+        };
+    }
+
+    /** O centro na borda a 45° (1 − √½ do raio), sem vazar da view. */
+    static float seenInset(float d, float r) {
+        return Math.max(0.146f * d, r);
+    }
+
     static View summaryChip(Context c, CharSequence text, View.OnClickListener open, View.OnClickListener remove) {
         LinearLayout chip = new LinearLayout(c);
         chip.setGravity(Gravity.CENTER_VERTICAL);
