@@ -360,6 +360,37 @@ final class PogoChips {
         };
     }
 
+    /** Grade de 24, como candy(); o traço é dividido pela escala para dar 2dp. */
+    static Drawable bell(Context c, int color) {
+        float sw = Ui.dp(c, 2);
+        Paint p = fill(color);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeJoin(Paint.Join.ROUND);
+        android.graphics.Path bell = new android.graphics.Path();
+        bell.moveTo(6.5f, 17);
+        bell.lineTo(6.5f, 11);
+        bell.arcTo(new android.graphics.RectF(6.5f, 5.5f, 17.5f, 16.5f), 180, 180);
+        bell.lineTo(17.5f, 17);
+        bell.moveTo(4.5f, 17);
+        bell.lineTo(19.5f, 17);
+        bell.moveTo(12, 3.5f);
+        bell.lineTo(12, 5.5f);
+        bell.addArc(new android.graphics.RectF(10, 17, 14, 21), 0, 180);
+        return new Icon(Ui.dp(c, 20), p) {
+            @Override public void draw(Canvas cv) {
+                android.graphics.Rect b = getBounds();
+                float u = b.width() / 24f;
+                p.setStrokeWidth(sw / u);
+                int save = cv.save();
+                cv.translate(b.left, b.top);
+                cv.scale(u, u);
+                cv.drawPath(bell, p);
+                cv.restoreToCount(save);
+            }
+        };
+    }
+
     static View summaryChip(Context c, CharSequence text, View.OnClickListener open, View.OnClickListener remove) {
         LinearLayout chip = new LinearLayout(c);
         chip.setGravity(Gravity.CENTER_VERTICAL);
