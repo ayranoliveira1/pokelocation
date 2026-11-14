@@ -37,7 +37,8 @@ public final class Intents {
 
     public static final String BC_STATUS_RESPONSE = "pokelocation.action.STATUS_RESPONSE",
             BC_ERROR = "pokelocation.action.ERROR", BC_RECORD_SAVED = "pokelocation.action.RECORD_SAVED",
-            BC_SPOOF_STATE_CHANGED = "pokelocation.action.SPOOF_STATE_CHANGED";
+            BC_SPOOF_STATE_CHANGED = "pokelocation.action.SPOOF_STATE_CHANGED",
+            BC_POGO_ALERT = "pokelocation.action.POGO_ALERT";
 
     public static final String INT_STOP_JOYSTICK = "com.pokelocation.app.internal.STOP_JOYSTICK",
             INT_TELEPORT_UI = "com.pokelocation.app.internal.TELEPORT_UI",      // abre o TeleportPanel com lat,lng
@@ -318,5 +319,13 @@ public final class Intents {
         if (sessionOrNull != null) b.putExtras(sessionOrNull);
         b.putExtra(EXTRA_SPOOF_ACTIVE, active);
         c.sendBroadcast(b);
+    }
+
+    static final int POGO_ALERT_FLAGS = Intent.FLAG_RECEIVER_REGISTERED_ONLY | Intent.FLAG_RECEIVER_FOREGROUND;
+
+    /** Push novo para a coluna do :overlay já à vista; sem ela registrada, nenhum processo sobe. */
+    public static void broadcastPogoAlert(Context c, Bundle data) {
+        c.sendBroadcast(new Intent(BC_POGO_ALERT).setPackage(c.getPackageName()).addFlags(POGO_ALERT_FLAGS).putExtras(data),
+                c.getPackageName() + ".permission.INTERNAL");
     }
 }
