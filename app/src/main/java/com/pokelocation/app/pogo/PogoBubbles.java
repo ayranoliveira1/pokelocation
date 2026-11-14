@@ -113,7 +113,8 @@ public final class PogoBubbles {
         showMode();
         if (mode == CANDY) render();
     };
-    private final Runnable auto = this::auto, retry = this::retry, prune = this::render, user = () -> load(true);
+    private final Runnable auto = this::auto, retry = this::retry, prune = this::render, user = () -> load(true),
+            reseen = this::reseen;
     private final View.OnLayoutChangeListener cardFit = (v, l, t, r, b, ol, ot, or, ob) -> { if (b - t != ob - ot) fitCard(v); };
     private long lastAt, candyAt;
     private Io.Task task;
@@ -122,7 +123,7 @@ public final class PogoBubbles {
     private Pogo.Mon cardMon;
     private PogoFilterSheet sheet;
     private PanelHost sheetHost, candySheet;
-    private Drawable spinner, ballIcon, candyIcon, grayIcon, bellIcon;
+    private Drawable spinner, ballIcon, candyIcon, grayIcon, bellIcon, seenBadge;
     private List<Pogo.Candy> candies;
     private Map<String, Long> visited;
     private PogoCandyCard candyCard;
@@ -291,6 +292,7 @@ public final class PogoBubbles {
         shown = true;
         loading(task != null);
         render();
+        PogoSeen.refresh(app, reseen);
         schedule();
         if (mode != ALERTS) return;
         listen();
@@ -581,6 +583,7 @@ public final class PogoBubbles {
 
     /** O centro é a posição de agora; user: o atualizar e o filtro (mostram o erro e o vazio); o automático fica quieto. */
     private void load(boolean user) {
+        PogoSeen.refresh(app, reseen);
         if (task != null) task.cancel();
         Io.Task t = task = new Io.Task();
         Io.main().removeCallbacks(auto);
@@ -771,7 +774,7 @@ public final class PogoBubbles {
             ImageView b = i < bubbles.getChildCount() ? (ImageView) bubbles.getChildAt(i) : bubble();
             Pogo.Mon m = mons.get(i);
             b.setTag(m);
-            b.setContentDescription(m.name);
+            seen(b, m, now);
         }
         win = null;
         icons();
@@ -787,14 +790,38 @@ public final class PogoBubbles {
             Pogo.Mon m = shownAlerts.get(i);
             boolean gone = PogoText.gone(m.despawnMs, now);
             b.setTag(m);
-            b.setContentDescription(m.name);
+            seen(b, m, now);
             b.setColorFilter(gone ? GRAY : null);
-            b.setAlpha(gone ? 0.5f : 1f);
+            int a = gone ? 128 : 255;   // na view, o alfa esmaeceria o selo junto
+            b.setImageAlpha(a);
+            b.getBackground().setAlpha(a);
         }
         win = null;
         icons();
         if (shown && PogoAlertCol.needMore(k, next, more != null || task != null, stuck)) loadMore(false);
         return nextDespawn(alerts, alerts.size(), now);
+    }
+
+    private void reseen() {
+        if (!shown || destroyed || mode == CANDY) return;
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < bubbles.getChildCount(); i++) {
+            ImageView b = (ImageView) bubbles.getChildAt(i);
+            if (b.getTag() instanceof Pogo.Mon) seen(b, (Pogo.Mon) b.getTag(), now);
+        }
+    }
+
+    private void seen(ImageView b, Pogo.Mon m, long now) {
+        boolean s = PogoSeen.has(m, now);
+        b.setForeground(s ? badge() : null);
+        b.setContentDescription(!s ? m.name : m.name == null ? ctx.getString(R.string.pogo_seen)
+                : ctx.getString(R.string.pogo_seen_named, m.name));
+    }
+
+    /** Uma instância para todas as bolhas: todas têm o mesmo tamanho, então os bounds do foreground são os mesmos. */
+    private Drawable badge() {
+        if (seenBadge == null) seenBadge = PogoChips.seen(ctx);
+        return seenBadge;
     }
 
     private long renderCandies(long now) {
@@ -990,6 +1017,7 @@ public final class PogoBubbles {
         }
         cardMon = m;
         card.bind(m, Double.isNaN(m.lat) ? null : Cooldown.formatDistance(Geo.distance(host.lat(), host.lng(), m.lat, m.lng)));
+        seen((ImageView) b, m, System.currentTimeMillis());
         if (!beside(card.view, b)) cardMon = null;
     }
 
