@@ -101,6 +101,8 @@ public final class Pogo {
         public boolean verified, shiny, background;
         /** Chave do PogoIcons, montada 1× (o draw consulta por marcador e por frame). */
         String iconKey;
+        /** Chave do PogoSeen, montada 1× (o draw do mapa consulta por marcador e por frame); o push já a traz (e). */
+        String spawn;
     }
 
     /** coords ("lat,lng" da API) é a identidade da candy. distanceKm NaN se não veio; expiresMs 0 = nunca é podada. */

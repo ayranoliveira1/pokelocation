@@ -293,6 +293,7 @@ public final class PogoAlert {
         if (Double.isNaN(m.lng)) m.lat = Double.NaN;
         m.location = blank(d.get("l"));
         m.historyId = blank(d.get("h"));
+        m.spawn = blank(d.get("e"));   // não em m.encounter: ligaria o enrich (um /search) ao abrir o card
         if (m.location == null && Double.isNaN(m.lat)) m.location = blank(d.get("r"));
         return m;
     }

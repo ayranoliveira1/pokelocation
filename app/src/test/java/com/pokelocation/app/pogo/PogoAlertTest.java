@@ -234,4 +234,10 @@ public class PogoAlertTest {
         PogoAlert.done(NOW + 10_100);
         assertEquals(8_000, PogoAlert.budget(NOW + 12_000));
     }
+
+    @Test public void pushMonCarriesTheSpawnButNotTheEncounter() {
+        Pogo.Mon m = PogoAlert.mon(spawn("326", NOW + 10 * MIN));
+        assertEquals("326", m.spawn);
+        assertNull(m.encounter);
+    }
 }
