@@ -241,6 +241,10 @@ public class PogoFilterTest {
         assertFalse(f.wants(mon(19, "NORMAL")));
         PogoFilter two = rattataAlola("Rattata · Alola Form");
         assertTrue(two.wants(mon(19, "alola_form")));
+        PogoFilter real = rattataAlola("Rattata · RATTATA_ALOLA");   // o rótulo do catálogo de verdade
+        assertTrue(real.wants(mon(19, "ALOLA")));
+        assertTrue(real.wants(mon(19, "Alola")));
+        assertFalse(real.wants(mon(19, "NORMAL")));
     }
 
     @Test public void formWithoutLabelFallsBackToSpecies() {

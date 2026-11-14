@@ -179,10 +179,13 @@ public final class PogoFilter {
             if (sf[0] != m.id) continue;
             if (form.isEmpty() || form.equals(String.valueOf(sf[1]))) return true;
             if (form.chars().allMatch(Character::isDigit)) continue;
-            // ponytail: casa pelo nome do rótulo do catálogo; se divergir do upstream, a forma não casa (aí o push manda o form_id)
+            // ponytail: casa pelo nome do rótulo do catálogo ("Alola" ou "RATTATA_ALOLA"); se divergir do upstream, a forma
+            // não casa, e pelo sufixo a GALARIAN_ZEN também aceita f="ZEN" (uma bolha a mais). Resolve o push mandar o form_id
             String l = labels.get(labelKey(sf[0], sf[1]));
             int at = l != null ? l.indexOf(" · ") : -1;
-            if (at < 0 || l.startsWith("#", at + 3) || formKey(l.substring(at + 3)).equals(form)) return true;
+            if (at < 0 || l.startsWith("#", at + 3)) return true;
+            String name = formKey(l.substring(at + 3));
+            if (name.equals(form) || name.endsWith("_" + form)) return true;
         }
         return false;
     }
