@@ -11,6 +11,7 @@ import android.widget.TextView;
 import com.pokelocation.app.R;
 import com.pokelocation.app.util.Ui;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
@@ -27,12 +28,26 @@ public final class PogoFilterSheet {
     private final TextView apply;
     private final Runnable onClosed;
     private final Consumer<Boolean> focusable;
-    private boolean closing;
+    private final boolean alerts;
+    private boolean closing, alive;
 
-    @SuppressWarnings("deprecation") // getSystemWindowInsetBottom: o Insets.Type é da API 30
     public PogoFilterSheet(Context c, PogoFilter current, Consumer<PogoFilter> onApply, Runnable onClosed,
                            Consumer<Boolean> focusable, Runnable linkTrainer) {
+        this(c, current, false, false, (f, a) -> onApply.accept(f), onClosed, focusable, linkTrainer);
+    }
+
+    static PogoFilterSheet alerts(Context c, PogoFilter species, boolean alive, BiConsumer<PogoFilter, Boolean> onApply,
+                                  Runnable onClosed) {
+        return new PogoFilterSheet(c, species, true, alive, onApply, onClosed, null, null);
+    }
+
+    @SuppressWarnings("deprecation") // getSystemWindowInsetBottom: o Insets.Type é da API 30
+    private PogoFilterSheet(Context c, PogoFilter current, boolean alerts, boolean alive,
+                            BiConsumer<PogoFilter, Boolean> onApply, Runnable onClosed,
+                            Consumer<Boolean> focusable, Runnable linkTrainer) {
         this.c = c;
+        this.alerts = alerts;
+        this.alive = alive;
         this.onClosed = onClosed;
         this.focusable = focusable;
         edit = current.copy();
@@ -72,14 +87,15 @@ public final class PogoFilterSheet {
         sheet.addView(head);
 
         form = new PogoFilterForm(c, edit, this::count, focusable, linkTrainer);
-        form.showSaved();
+        if (alerts) form.alertsMode(alive, on -> this.alive = on);
+        else form.showSaved();
         clear.setOnClickListener(v -> form.reset());
         sheet.addView(form.view(), new LinearLayout.LayoutParams(-1, 0, 1));
 
         apply = text(0, R.color.on_primary);
         apply.setTypeface(PogoChips.MEDIUM);
         apply.setBackground(shape(R.color.primary, null));
-        apply.setOnClickListener(v -> { if (!closing) onApply.accept(edit); }); // quem hospeda fecha no onApply
+        apply.setOnClickListener(v -> { if (!closing) onApply.accept(edit, this.alive); }); // quem hospeda fecha no onApply
         LinearLayout.LayoutParams al = new LinearLayout.LayoutParams(-1, Ui.dp(c, 52));
         al.setMargins(dp16, Ui.dp(c, 8), dp16, dp16);
         sheet.addView(apply, al);
@@ -135,7 +151,7 @@ public final class PogoFilterSheet {
     public void render() { form.render(); }
 
     private void count() {
-        int n = edit.activeCount();
+        int n = alerts ? PogoFilter.alertsActive(edit, alive) : edit.activeCount();
         apply.setText(n == 0 ? c.getString(R.string.pogo_f_show) : c.getResources().getQuantityString(R.plurals.pogo_f_show_n, n, n));
     }
 

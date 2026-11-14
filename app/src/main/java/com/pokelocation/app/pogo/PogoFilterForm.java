@@ -68,6 +68,9 @@ public final class PogoFilterForm {
     private View savedField;
     private TextView savedName;
     private View modal;
+    /** Não null = modo alertas: só "ainda no mapa" + Espécie. */
+    private Consumer<Boolean> onAlive;
+    private boolean alive;
 
     /** focusable: liga/desliga o teclado da janela do :overlay ao editar (null no app); linkTrainer null = sem atalho. */
     public PogoFilterForm(Context c, PogoFilter f, Runnable onChanged, Consumer<Boolean> focusable, Runnable linkTrainer) {
@@ -111,6 +114,7 @@ public final class PogoFilterForm {
     /** Volta ao padrão, inclusive o escopo (Mundo inteiro). */
     public void reset() {
         f.set(new PogoFilter());
+        if (onAlive != null) onAlive.accept(alive = false);
         changed();
         render();
     }
@@ -127,8 +131,19 @@ public final class PogoFilterForm {
         render();
     }
 
+    void alertsMode(boolean alive, Consumer<Boolean> onAlive) {
+        this.alive = alive;
+        this.onAlive = onAlive;
+        render();
+    }
+
     public void render() {
         body.removeAllViews();
+        if (onAlive != null) {
+            sw(R.string.pogo_alerts_alive, alive, on -> onAlive.accept(alive = on));
+            speciesBlock();
+            return;
+        }
         if (saved != null) savedBar();
         title(R.string.pogo_f_where);
         // o bloco que lê como uma unidade: seletor e raio no mesmo container; o raio só no "Perto"
@@ -155,26 +170,7 @@ public final class PogoFilterForm {
         title(R.string.pogo_f_sort);
         seg(c.getResources().getStringArray(R.array.pogo_sorts), PogoFilter.SORTS.indexOf(f.sort), w -> f.sort = PogoFilter.SORTS.get(w));
 
-        title(R.string.pogo_f_species);
-        int n = f.pokemonIds.size() + f.speciesForms.size();
-        link((n == 0 ? c.getString(R.string.all) : c.getString(R.string.selected_count, n)) + "  ›", v -> species());
-        if (n > 0) {
-            PogoChips.Flow chips = new PogoChips.Flow(c);
-            List<String> keys = new ArrayList<>();
-            for (int id : f.pokemonIds) keys.add(PogoFilter.labelKey(id, -1));
-            for (int[] sf : f.speciesForms) keys.add(PogoFilter.labelKey(sf[0], sf[1]));
-            for (int i = 0; i < Math.min(6, keys.size()); i++) {
-                String k = keys.get(i), l = f.labels.get(k);
-                chips.addView(PogoChips.summaryChip(c, l != null ? l : "#" + k.replace("|-1", "").replace('|', '·'),
-                        v -> species(), v -> {
-                            toggle(k, null);
-                            changed();
-                            render();
-                        }));
-            }
-            if (keys.size() > 6) chips.addView(PogoChips.summaryChip(c, "+" + (keys.size() - 6), v -> species(), null));
-            body.addView(chips);
-        }
+        speciesBlock();
 
         title(R.string.pogo_f_quality);
         boolean any = f.ivMin == null && f.ivMax == null;
@@ -254,6 +250,29 @@ public final class PogoFilterForm {
             String[] counts = new String[PogoFilter.NUM_RESULTS.length];
             for (int i = 0; i < counts.length; i++) counts[i] = String.valueOf(PogoFilter.NUM_RESULTS[i]);
             seg(counts, indexOf(PogoFilter.NUM_RESULTS, f.numResults), w -> f.numResults = PogoFilter.NUM_RESULTS[w]);
+        }
+    }
+
+    private void speciesBlock() {
+        title(R.string.pogo_f_species);
+        int n = f.pokemonIds.size() + f.speciesForms.size();
+        link((n == 0 ? c.getString(R.string.all) : c.getString(R.string.selected_count, n)) + "  ›", v -> species());
+        if (n > 0) {
+            PogoChips.Flow chips = new PogoChips.Flow(c);
+            List<String> keys = new ArrayList<>();
+            for (int id : f.pokemonIds) keys.add(PogoFilter.labelKey(id, -1));
+            for (int[] sf : f.speciesForms) keys.add(PogoFilter.labelKey(sf[0], sf[1]));
+            for (int i = 0; i < Math.min(6, keys.size()); i++) {
+                String k = keys.get(i), l = f.labels.get(k);
+                chips.addView(PogoChips.summaryChip(c, l != null ? l : "#" + k.replace("|-1", "").replace('|', '·'),
+                        v -> species(), v -> {
+                            toggle(k, null);
+                            changed();
+                            render();
+                        }));
+            }
+            if (keys.size() > 6) chips.addView(PogoChips.summaryChip(c, "+" + (keys.size() - 6), v -> species(), null));
+            body.addView(chips);
         }
     }
 

@@ -56,6 +56,11 @@ public class PogoTest {
         assertEquals("/reveal/a%2Bb%2Fc%3D", Pogo.revealPath("a+b/c="));
     }
 
+    @Test public void historyPathUsesLimitAndCursor() throws Exception {
+        assertEquals("/notifications?limit=50", Pogo.historyPath(null, 50));
+        assertEquals("/notifications?limit=20&before=a%2Bb%3D", Pogo.historyPath("a+b=", 20));
+    }
+
     @Test public void lookupParsesItemsAndSkipsBroken() throws Exception {
         List<Pogo.Mon> l = Pogo.parseLookup("{\"mode\":\"pokemon\",\"results\":["
                 + "{\"reveal_code\":\"X1\",\"pokemon_id\":255,\"pokemon_name\":\"Torchic\",\"form\":null,\"gender\":\"Male\","

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pogo_seen">Seen</string>
+    <string name="pogo_seen_named">%1$s, seen</string>
+</resources>

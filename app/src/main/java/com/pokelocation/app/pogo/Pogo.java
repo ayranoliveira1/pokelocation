@@ -101,6 +101,8 @@ public final class Pogo {
         public boolean verified, shiny, background;
         /** Chave do PogoIcons, montada 1× (o draw consulta por marcador e por frame). */
         String iconKey;
+        /** Chave do PogoSeen, montada 1× (o draw do mapa consulta por marcador e por frame); o push já a traz (e). */
+        String spawn;
     }
 
     /** coords ("lat,lng" da API) é a identidade da candy. distanceKm NaN se não veio; expiresMs 0 = nunca é podada. */
@@ -615,9 +617,14 @@ public final class Pogo {
 
     /** Os avisos já enviados, do mais novo para o mais velho; before = o next da página anterior (null = do começo). */
     static Page history(Context c, String before) throws IOException {
-        String q = "/notifications?limit=" + HISTORY_PAGE + (before == null ? "" : "&before=" + URLEncoder.encode(before, "UTF-8"));
+        return history(c, before, HISTORY_PAGE);
+    }
+
+    /** l (local) e r (regra) são texto livre: acima da página de 20 o MAX_BODY pode não bastar. */
+    static Page history(Context c, String before, int limit) throws IOException {
         try {
-            return page(new JSONObject(proxy(c, "GET", q, null, MAX_BODY, TIMEOUT_MS)));
+            return page(new JSONObject(proxy(c, "GET", historyPath(before, limit), null,
+                    limit > HISTORY_PAGE ? RULES_MAX : MAX_BODY, TIMEOUT_MS)));
         } catch (JSONException x) {
             throw new IOException("bad response");
         }
@@ -730,6 +737,10 @@ public final class Pogo {
 
     static String revealPath(String code) throws IOException {
         return "/reveal/" + URLEncoder.encode(code, "UTF-8");
+    }
+
+    static String historyPath(String before, int limit) throws IOException {
+        return "/notifications?limit=" + limit + (before == null ? "" : "&before=" + URLEncoder.encode(before, "UTF-8"));
     }
 
     static List<Mon> parseLookup(String text) throws IOException { return json(new StringReader(text), r -> results(r, true)); }

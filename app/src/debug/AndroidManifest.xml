@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Login/Amigos abríveis por "adb shell am start -n" (sem o wizard da MainActivity) e servidor local por HTTPS. -->
+<!-- Login/Amigos abríveis por "adb shell am start -n" (sem o wizard da MainActivity), push de alerta simulado por
+     "adb shell am broadcast -n" (DUMP: só o shell) e servidor local por HTTPS. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <application android:networkSecurityConfig="@xml/network_security_config">
@@ -7,5 +8,7 @@
             tools:replace="android:exported" />
         <activity android:name="com.pokelocation.app.social.ui.FriendsActivity" android:exported="true"
             tools:replace="android:exported" />
+        <receiver android:name="com.pokelocation.app.pogo.DebugAlertReceiver" android:exported="true"
+            android:permission="android.permission.DUMP" />
     </application>
 </manifest>

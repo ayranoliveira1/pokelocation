@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pogo_mode_to_alerts">Mostrar alertas</string>
+    <string name="pogo_alerts_none">Nenhum alerta ainda</string>
+    <string name="pogo_alerts_none_filtered">Nenhum alerta com esse filtro</string>
+    <string name="pogo_alerts_alive">Só os que ainda estão no mapa</string>
+</resources>

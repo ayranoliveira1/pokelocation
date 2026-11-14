@@ -92,6 +92,7 @@ final class PogoCard {
     void bind(Pogo.Mon mon, String distance) {
         cancel();
         m = mon;
+        PogoSeen.mark(app, mon);
         extra = null;
         dist = distance;
         ll = null;

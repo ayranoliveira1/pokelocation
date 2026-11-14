@@ -48,6 +48,17 @@ public class PogoBubblesTest {
         assertArrayEquals(new int[]{400, H - COL_H}, PogoBubbles.place(true, 400, H - 10, COL_W, COL_H, FULL, W, H, M, TOP, null)); // 10 bolhas: sobe
     }
 
+    /** Com 200 alertas a coluna rola dentro da altura de 10 bolhas: nasce e sobe como o modo Pokémon com 10. */
+    @Test public void alertsColumnPlacesLikeTenBubbles() {
+        int size = 130, gap = 16, ten = size + 10 * (size + gap);
+        int alerts = size + PogoAlertCol.colMax(200 * (size + gap), size, gap, PogoAlertCol.MODE_ALERTS);
+        assertEquals(ten, alerts);
+        for (int[] at : new int[][]{{-1, -1}, {400, H - 10}}) {
+            assertArrayEquals(PogoBubbles.place(false, at[0], at[1], COL_W, ten, ten, W, H, M, TOP, STICK),
+                    PogoBubbles.place(false, at[0], at[1], COL_W, alerts, alerts, W, H, M, TOP, STICK));
+        }
+    }
+
     @Test public void opensTowardTheMiddle() {
         assertTrue(PogoBubbles.onLeft(0, COL_W, W));
         assertTrue(PogoBubbles.onLeft(W / 2 - COL_W, COL_W, W));
